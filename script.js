@@ -454,7 +454,7 @@ async function generateImage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
+          generationConfig: { responseModalities: ['TEXT', 'IMAGE'], imageConfig: { aspectRatio } }
         })
       }
     );
@@ -650,14 +650,14 @@ CRITICAL: Every line must sound natural when SUNG with a melody — rhythmic, mu
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: lyrics.split('\n').filter(l => !l.startsWith('TITLE:') && !l.startsWith('GENRE:') && !l.startsWith('VOICE:')).join('\n').trim() }]
+            parts: [{ text: `Sing this song expressively with clear rhythm, melody, and emotion. Use natural singing voice with pitch variation, not monotone reading. Breathe naturally between lines.\n\n${lyrics.split('\n').filter(l => !l.startsWith('TITLE:') && !l.startsWith('GENRE:') && !l.startsWith('VOICE:')).join('\n').trim()}` }]
           }],
           generationConfig: {
             responseModalities: ['AUDIO'],
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName: voice.toLowerCase().includes('female') ? 'Kore' : 'Fenrir'
+                  voiceName: voice.toLowerCase().includes('female') ? 'Aoede' : 'Charon'
                 }
               }
             }
