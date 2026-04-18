@@ -436,17 +436,18 @@ async function generateImage() {
     </div>`;
 
   try {
+    // Use Gemini image generation (works with AI Studio key)
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instances: [{ prompt: fullPrompt }],
-          parameters: {
-            sampleCount: qty,
-            aspectRatio: aspectRatio,
-            personGeneration: 'allow_adult'
+          contents: [{
+            parts: [{ text: fullPrompt }]
+          }],
+          generationConfig: {
+            responseModalities: ['TEXT', 'IMAGE']
           }
         })
       }
@@ -458,25 +459,36 @@ async function generateImage() {
     }
 
     const data = await res.json();
-    const predictions = data.predictions || [];
 
-    if (!predictions.length) throw new Error('No images generated. Try a different prompt.');
+    // Extract image parts from response
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const imageParts = parts.filter(p => p.inlineData?.mimeType?.startsWith('image/'));
+
+    if (!imageParts.length) throw new Error('No images generated. Try a different prompt.');
 
     const card = document.createElement('div');
     card.className = 'img-result-card';
 
     const grid = document.createElement('div');
-    grid.className = `img-grid qty-${qty}`;
+    grid.className = `img-grid qty-${imageParts.length}`;
 
-    predictions.forEach((pred, i) => {
-      const base64 = pred.bytesBase64Encoded;
-      const mime   = pred.mimeType || 'image/png';
-      const src    = `data:${mime};base64,${base64}`;
+    const blobUrls = [];
+
+    imageParts.forEach((part, i) => {
+      const base64 = part.inlineData.data;
+      const mime   = part.inlineData.mimeType || 'image/png';
+      // Convert to Blob URL for reliable mobile display
+      const byteChars = atob(base64);
+      const byteArr = new Uint8Array(byteChars.length);
+      for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
+      const blob = new Blob([byteArr], { type: mime });
+      const blobUrl = URL.createObjectURL(blob);
+      blobUrls.push({ blobUrl, mime });
 
       const img = document.createElement('img');
-      img.src = src;
+      img.src = blobUrl;
       img.alt = `Generated image ${i + 1}`;
-      img.onclick = () => openImageFullscreen(src);
+      img.onclick = () => openImageFullscreen(blobUrl);
       grid.appendChild(img);
     });
 
@@ -485,15 +497,13 @@ async function generateImage() {
     const dlWrap = document.createElement('div');
     dlWrap.style.cssText = 'padding:12px;display:flex;flex-direction:column;gap:8px;';
 
-    predictions.forEach((pred, i) => {
-      const base64 = pred.bytesBase64Encoded;
-      const mime   = pred.mimeType || 'image/png';
-      const ext    = mime.split('/')[1] || 'png';
+    blobUrls.forEach(({ blobUrl, mime }, i) => {
+      const ext = mime.split('/')[1] || 'png';
       const a = document.createElement('a');
       a.className = 'btn-download';
-      a.href = `data:${mime};base64,${base64}`;
+      a.href = blobUrl;
       a.download = `jeethy-image-${Date.now()}-${i + 1}.${ext}`;
-      a.innerHTML = `<i class="fas fa-download"></i> Download Image ${qty > 1 ? i + 1 : ''}`;
+      a.innerHTML = `<i class="fas fa-download"></i> Download Image ${blobUrls.length > 1 ? i + 1 : ''}`;
       dlWrap.appendChild(a);
     });
 
@@ -648,22 +658,31 @@ Make the lyrics emotional, meaningful, and fitting for the ${style} genre.`
 
     if (!audioB64) throw new Error('No audio generated. Try a different prompt.');
 
-    const audioSrc = `data:${audioMime};base64,${audioB64}`;
+    // Convert base64 → Blob URL (required for mobile audio playback)
+    const byteChars = atob(audioB64);
+    const byteArr = new Uint8Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+    const audioBlob = new Blob([byteArr], { type: audioMime });
+    const audioBlobUrl = URL.createObjectURL(audioBlob);
 
     const card = document.createElement('div');
     card.className = 'song-result-card';
     card.innerHTML = `
       <div class="song-result-title">
-        <i class="fas fa-music"></i> ${songTitle}
+        <i class="fas fa-music"></i> ${escapeHtml(songTitle)}
         <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:auto">${style} · ${voice} voice</span>
       </div>
-      <audio controls src="${audioSrc}"></audio>
+      <audio controls preload="auto" style="width:100%;margin-bottom:10px"></audio>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);max-height:140px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;margin-bottom:10px">${escapeHtml(lyrics)}</div>
     `;
 
+    // Set audio src after inserting into DOM (fixes mobile autoplay issue)
+    const audioEl = card.querySelector('audio');
+    audioEl.src = audioBlobUrl;
+
     const a = document.createElement('a');
     a.className = 'btn-download';
-    a.href = audioSrc;
+    a.href = audioBlobUrl;
     a.download = `jeethy-song-${Date.now()}.wav`;
     a.innerHTML = '<i class="fas fa-download"></i> Download Song';
     card.appendChild(a);
