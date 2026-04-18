@@ -8,7 +8,7 @@
 
 // ── MODELS (updated: gemini-2.5-flash) ───
 const GEMINI_CHAT_MODEL  = 'gemini-2.5-flash';
-const GEMINI_IMAGE_MODEL = 'imagen-3.0-generate-002';
+const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image';
 const GEMINI_TTS_MODEL   = 'gemini-2.5-flash-preview-tts';
 const HOME_URL = 'https://jeethylabs.site';
 
