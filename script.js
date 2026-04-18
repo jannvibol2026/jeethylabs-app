@@ -8,7 +8,7 @@
 
 // ── MODELS (updated: gemini-2.5-flash) ───
 const GEMINI_CHAT_MODEL  = 'gemini-2.5-flash';
-const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image-preview';
+const GEMINI_IMAGE_MODEL = 'imagen-3.0-generate-002';
 const GEMINI_TTS_MODEL   = 'gemini-2.5-flash-preview-tts';
 const HOME_URL = 'https://jeethylabs.site';
 
@@ -437,7 +437,7 @@ async function generateImage() {
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:predict?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
