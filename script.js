@@ -559,8 +559,10 @@ function openImageFullscreen(src) {
 }
 
 // ══════════════════════════════════════════
-//  PANEL 3 — SONG GENERATE
+//  PANEL 3 — SONG GENERATE (Lyria 3 Pro)
 // ══════════════════════════════════════════
+
+const LYRIA_MODEL = 'lyria-3-pro-preview';
 
 async function generateSong() {
   const key = getActiveApiKey();
@@ -570,8 +572,9 @@ async function generateSong() {
   const prompt = document.getElementById('songPrompt').value.trim();
   if (!prompt) return showToast('Please enter a song description', 'error');
 
-  const style = getActiveChip('songStyleGroup');
-  const voice = getActiveChip('songVoiceGroup').replace(/[^\w]/g, '').trim();
+  const style  = getActiveChip('songStyleGroup');
+  const voice  = getActiveChip('songVoiceGroup').replace(/[^\w]/g, '').trim();
+  const isKhmer = /[\u1780-\u17FF]/.test(prompt);
 
   const btn = document.getElementById('songGenBtn');
   btn.disabled = true;
@@ -581,237 +584,81 @@ async function generateSong() {
   resultsEl.innerHTML = `
     <div class="loading-card green-loader">
       <div class="loading-spinner"></div>
-      <div class="loading-label">Composing your song with AI... (~30s)</div>
+      <div class="loading-label">Generating song with Lyria 3... (~20s)</div>
     </div>`;
 
   try {
-    // Step 1: Generate lyrics
-    const lyricsRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CHAT_MODEL}:generateContent?key=${key}`,
+    // Build Lyria 3 Pro prompt
+    const voiceHint  = voice.toLowerCase().includes('female') ? 'female vocalist' : 'male vocalist';
+    const langHint   = isKhmer ? 'Lyrics must be in Khmer language (ភាសាខ្មែរ).' : '';
+    const lyriaPrompt = `Create a full ${style} song about: ${prompt}. ${voiceHint}, ${style} genre with full instrumental arrangement, verses, chorus and bridge. ${langHint}`.trim();
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${LYRIA_MODEL}:generateContent?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            role: 'user',
-            parts: [{
-              text: `You are a professional ${style} songwriter. Write a complete SINGABLE song — NOT spoken word or poetry, but real song lyrics with rhythm, rhyme, and melody flow.
-
-Requirements:
-- Theme: ${prompt}
-- Genre: ${style} (lyrics must match this genre's rhythm and energy)
-- Vocalist: ${voice} voice
-- Language: use the EXACT same language as the theme input. If input is in Khmer (ភាសាខ្មែរ), write ALL lyrics in Khmer script only.
-- Each line must have natural rhythm and rhyme that can be sung, not just read
-- Include brief musical cues like (soft verse), (build up), (strong beat chorus)
-
-Format EXACTLY as below:
-TITLE: [song title]
-GENRE: ${style}
-VOICE: ${voice}
-
-[VERSE 1]
-(4-6 lines with clear rhythm and rhyme)
-
-[PRE-CHORUS]
-(2-4 lines building energy)
-
-[CHORUS]
-(4-6 catchy, emotional, repeatable lines — the heart of the song)
-
-[VERSE 2]
-(4-6 lines continuing the story)
-
-[CHORUS]
-(repeat chorus)
-
-[BRIDGE]
-(2-4 emotional peak lines)
-
-[FINAL CHORUS]
-(chorus variation to close)
-
-CRITICAL: Every line must sound natural when SUNG with a melody — rhythmic, musical, not prose.`
-            }]
-          }]
-        })
-      }
-    );
-
-    if (!lyricsRes.ok) {
-      const err = await lyricsRes.json();
-      throw new Error(err.error?.message || `HTTP ${lyricsRes.status}`);
-    }
-
-    const lyricsData = await lyricsRes.json();
-    const lyrics = lyricsData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    const titleMatch = lyrics.match(/TITLE:\s*(.+)/);
-    const songTitle = titleMatch ? titleMatch[1].trim() : `${style} Song`;
-
-    // Step 2: TTS
-    const ttsRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TTS_MODEL}:generateContent?key=${key}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: lyrics.split('\n').filter(l => !l.startsWith('TITLE:') && !l.startsWith('GENRE:') && !l.startsWith('VOICE:')).join('\n').trim() }]
-          }],
+          contents: [{ parts: [{ text: lyriaPrompt }] }],
           generationConfig: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: voice.toLowerCase().includes('female') ? 'Aoede' : 'Charon'
-                }
-              }
-            }
+            responseModalities: ['AUDIO', 'TEXT'],
+            responseMimeType: 'audio/mp3'
           }
         })
       }
     );
 
-    if (!ttsRes.ok) {
-      const err = await ttsRes.json();
-      throw new Error(err.error?.message || `TTS HTTP ${ttsRes.status}`);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
     }
 
-    const ttsData = await ttsRes.json();
-    const audioB64  = ttsData.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    const audioMime = ttsData.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType || 'audio/wav';
+    const data = await res.json();
 
-    if (!audioB64) throw new Error('No audio generated. Try a different prompt.');
-
-    // ── Step A: Decode TTS PCM → Float32 ──────────────────────────────
-    const pcmChars = atob(audioB64);
-    const pcmBytes = new Uint8Array(pcmChars.length);
-    for (let i = 0; i < pcmChars.length; i++) pcmBytes[i] = pcmChars.charCodeAt(i);
-
-    const TTS_SR = 24000;
-    const numSamples = pcmBytes.length / 2;
-    const vocalF32 = new Float32Array(numSamples);
-    const dv = new DataView(pcmBytes.buffer);
-    for (let i = 0; i < numSamples; i++) vocalF32[i] = dv.getInt16(i * 2, true) / 32768;
-
-    // ── Step B: Generate background music with Web Audio API ───────────
-    // Genre-based params
-    const genreParams = {
-      'Pop':      { bpm: 110, chords: [[261.63,329.63,392],[293.66,369.99,440],[349.23,440,523.25],[392,493.88,587.33]], beatVol:0.18, chordVol:0.13, waveType:'sine' },
-      'Sad':      { bpm: 72,  chords: [[261.63,311.13,392],[246.94,293.66,369.99],[220,277.18,349.23],[196,246.94,311.13]], beatVol:0.10, chordVol:0.10, waveType:'sine' },
-      'Relaxing': { bpm: 80,  chords: [[261.63,329.63,392],[293.66,369.99,440],[349.23,440,523.25],[329.63,415.30,493.88]], beatVol:0.08, chordVol:0.09, waveType:'sine' },
-      'Other':    { bpm: 100, chords: [[261.63,329.63,392],[293.66,369.99,440],[349.23,440,523.25],[392,493.88,587.33]], beatVol:0.15, chordVol:0.12, waveType:'sine' },
-    };
-    const gp = genreParams[style] || genreParams['Pop'];
-    const MIX_SR = TTS_SR;
-    const totalSec = numSamples / TTS_SR;
-    const totalMixSamples = Math.ceil(totalSec * MIX_SR);
-
-    const offCtx = new OfflineAudioContext(2, totalMixSamples, MIX_SR);
-
-    // Chord progression — one chord per bar (4 beats)
-    const secPerBeat = 60 / gp.bpm;
-    const secPerBar  = secPerBeat * 4;
-    const numBars    = Math.ceil(totalSec / secPerBar);
-
-    for (let bar = 0; bar < numBars; bar++) {
-      const chord = gp.chords[bar % gp.chords.length];
-      const startT = bar * secPerBar;
-      chord.forEach(freq => {
-        const osc  = offCtx.createOscillator();
-        const gain = offCtx.createGain();
-        osc.type = gp.waveType;
-        osc.frequency.value = freq;
-        // Gentle attack/release per bar
-        gain.gain.setValueAtTime(0, startT);
-        gain.gain.linearRampToValueAtTime(gp.chordVol, startT + 0.15);
-        gain.gain.setValueAtTime(gp.chordVol, startT + secPerBar - 0.2);
-        gain.gain.linearRampToValueAtTime(0, startT + secPerBar);
-        osc.connect(gain); gain.connect(offCtx.destination);
-        osc.start(startT); osc.stop(Math.min(startT + secPerBar, totalSec));
-      });
-    }
-
-    // Simple kick + hi-hat rhythm
-    const numBeats = Math.ceil(totalSec / secPerBeat);
-    for (let b = 0; b < numBeats; b++) {
-      const bt = b * secPerBeat;
-      // Kick on beat 1 & 3
-      if (b % 4 === 0 || b % 4 === 2) {
-        const buf = offCtx.createBuffer(1, Math.floor(MIX_SR * 0.15), MIX_SR);
-        const ch  = buf.getChannelData(0);
-        for (let s = 0; s < ch.length; s++) ch[s] = (Math.random()*2-1) * Math.exp(-s/(MIX_SR*0.04));
-        const src = offCtx.createBufferSource();
-        const g   = offCtx.createGain(); g.gain.value = gp.beatVol * 1.4;
-        src.buffer = buf; src.connect(g); g.connect(offCtx.destination);
-        src.start(bt);
-      }
-      // Hi-hat every half beat
-      const hht = bt + secPerBeat * 0.5;
-      if (hht < totalSec) {
-        const buf2 = offCtx.createBuffer(1, Math.floor(MIX_SR * 0.06), MIX_SR);
-        const ch2  = buf2.getChannelData(0);
-        for (let s = 0; s < ch2.length; s++) ch2[s] = (Math.random()*2-1) * Math.exp(-s/(MIX_SR*0.015));
-        const src2 = offCtx.createBufferSource();
-        const g2   = offCtx.createGain(); g2.gain.value = gp.beatVol * 0.5;
-        src2.buffer = buf2; src2.connect(g2); g2.connect(offCtx.destination);
-        src2.start(hht);
+    // Extract audio and optional lyrics text
+    let audioB64 = null, audioMime = 'audio/mp3', songTitle = `${style} Song`, lyricsText = '';
+    for (const c of (data.candidates || [])) {
+      for (const p of (c.content?.parts || [])) {
+        if (p.inlineData?.data && !audioB64) {
+          audioB64  = p.inlineData.data;
+          audioMime = p.inlineData.mimeType || 'audio/mp3';
+        }
+        if (p.text) lyricsText += p.text;
       }
     }
 
-    const renderedBg = await offCtx.startRendering();
-    const bgLeft  = renderedBg.getChannelData(0);
-    const bgRight = renderedBg.numberOfChannels > 1 ? renderedBg.getChannelData(1) : bgLeft;
+    if (!audioB64) throw new Error('No audio generated. Please try again.');
 
-    // ── Step C: Mix vocals + background → stereo WAV ──────────────────
-    const mixLen = totalMixSamples;
-    const wavBuffer = new ArrayBuffer(44 + mixLen * 4); // 16-bit stereo
-    const wavView   = new DataView(wavBuffer);
-    function writeStr(off, s) { for (let i=0;i<s.length;i++) wavView.setUint8(off+i, s.charCodeAt(i)); }
-    const numCh = 2, bps = 16;
-    const byteRate  = MIX_SR * numCh * bps / 8;
-    const blockAlign = numCh * bps / 8;
-    const dataSize  = mixLen * numCh * 2;
-    writeStr(0, 'RIFF'); wavView.setUint32(4, 36 + dataSize, true);
-    writeStr(8, 'WAVE'); writeStr(12, 'fmt ');
-    wavView.setUint32(16, 16, true); wavView.setUint16(20, 1, true);
-    wavView.setUint16(22, numCh, true); wavView.setUint32(24, MIX_SR, true);
-    wavView.setUint32(28, byteRate, true); wavView.setUint16(32, blockAlign, true);
-    wavView.setUint16(34, bps, true); writeStr(36, 'data');
-    wavView.setUint32(40, dataSize, true);
-    let off = 44;
-    const VOCAL_VOL = 0.82, BG_VOL = 0.38;
-    for (let i = 0; i < mixLen; i++) {
-      const v = i < vocalF32.length ? vocalF32[i] * VOCAL_VOL : 0;
-      const L = Math.max(-1, Math.min(1, v + bgLeft[i]  * BG_VOL));
-      const R = Math.max(-1, Math.min(1, v + bgRight[i] * BG_VOL));
-      wavView.setInt16(off, L * 32767, true); off += 2;
-      wavView.setInt16(off, R * 32767, true); off += 2;
-    }
-
-    const audioBlob    = new Blob([wavBuffer], { type: 'audio/wav' });
+    // Decode base64 → Blob
+    const raw = atob(audioB64);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    const audioBlob    = new Blob([bytes], { type: audioMime });
     const audioBlobUrl = URL.createObjectURL(audioBlob);
 
+    // Try to extract title from lyrics text
+    const titleMatch = lyricsText.match(/(?:title|song name)[:\s]+([^\n]+)/i);
+    if (titleMatch) songTitle = titleMatch[1].trim();
+
+    // Build result card
     const card = document.createElement('div');
     card.className = 'song-result-card';
     card.innerHTML = `
       <div class="song-result-title">
         <i class="fas fa-music"></i> ${escapeHtml(songTitle)}
-        <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:auto">${style} · ${voice} voice</span>
+        <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:auto">${style} · ${voiceHint}</span>
       </div>
       <audio controls preload="auto" style="width:100%;margin-bottom:10px"></audio>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);max-height:140px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;margin-bottom:10px">${escapeHtml(lyrics)}</div>
+      ${lyricsText ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);max-height:140px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;margin-bottom:10px">${escapeHtml(lyricsText)}</div>` : ''}
     `;
 
-    // Set audio src after inserting into DOM (fixes mobile autoplay issue)
     const audioEl = card.querySelector('audio');
     audioEl.src = audioBlobUrl;
 
     const a = document.createElement('a');
     a.className = 'btn-download';
     a.href = audioBlobUrl;
-    a.download = `jeethy-song-${Date.now()}.wav`;
+    a.download = `jeethy-song-${Date.now()}.mp3`;
     a.innerHTML = '<i class="fas fa-download"></i> Download Song';
     card.appendChild(a);
 
