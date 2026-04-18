@@ -9,7 +9,7 @@
 // ── MODELS (updated: gemini-2.5-flash) ───
 const GEMINI_CHAT_MODEL  = 'gemini-2.5-flash';
 const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image';
-const GEMINI_TTS_MODEL   = 'gemini-2.5-flash-preview-tts';
+const GEMINI_TTS_MODEL   = 'gemini-2.5-pro-preview-tts';
 const HOME_URL = 'https://jeethylabs.site';
 
 // ── OWNER KEY (injected at deploy time) ──
@@ -230,9 +230,18 @@ function closeUpgradeModal() {
 
 function upgradeNow() {
   closeUpgradeModal();
-  // Reset counter for demo (in production, this would require payment)
   if (userPlan === 'free') {
     openPlanModal();
+  }
+}
+
+// Require Pro plan to use a feature chip — otherwise show upgrade modal
+function requirePro(btn, groupId) {
+  if (userPlan === 'pro') {
+    selectChip(btn, groupId);
+  } else {
+    showUpgradeModal();
+    showToast('1080p is available on Pro plan only', 'error');
   }
 }
 
@@ -422,7 +431,8 @@ async function generateImage() {
   const ratioMap = { '1:1': '1:1', '9:16': '9:16', '16:9': '16:9' };
   const aspectRatio = ratioMap[ratio] || '1:1';
 
-  const fullPrompt = `${prompt}, style: ${style}, high quality ${quality === '1080p' ? 'ultra HD 1080p' : 'HD 720p'} photography`;
+  const qualityHint = quality === '1080p' ? 'ultra high resolution, sharp details, professional photography' : 'standard resolution';
+  const fullPrompt = `${prompt}, style: ${style}, ${qualityHint}, aspect ratio ${aspectRatio}`;
 
   const btn = document.getElementById('imgGenBtn');
   btn.disabled = true;
@@ -578,34 +588,43 @@ async function generateSong() {
           contents: [{
             role: 'user',
             parts: [{
-              text: `Create a complete song with these requirements:
-- Theme/description: ${prompt}
-- Genre/style: ${style}
-- Vocalist: ${voice} voice
-- Duration: at least 2 minutes (write enough lyrics)
-- Language: match the user's input language
+              text: `You are a professional ${style} songwriter. Write a complete SINGABLE song — NOT spoken word or poetry, but real song lyrics with rhythm, rhyme, and melody flow.
 
-Format your response as:
+Requirements:
+- Theme: ${prompt}
+- Genre: ${style} (lyrics must match this genre's rhythm and energy)
+- Vocalist: ${voice} voice
+- Language: use the EXACT same language as the theme input. If input is in Khmer (ភាសាខ្មែរ), write ALL lyrics in Khmer script only.
+- Each line must have natural rhythm and rhyme that can be sung, not just read
+- Include brief musical cues like (soft verse), (build up), (strong beat chorus)
+
+Format EXACTLY as below:
 TITLE: [song title]
 GENRE: ${style}
 VOICE: ${voice}
 
 [VERSE 1]
-(lyrics here)
+(4-6 lines with clear rhythm and rhyme)
+
+[PRE-CHORUS]
+(2-4 lines building energy)
 
 [CHORUS]
-(lyrics here)
+(4-6 catchy, emotional, repeatable lines — the heart of the song)
 
 [VERSE 2]
-(lyrics here)
+(4-6 lines continuing the story)
 
 [CHORUS]
-(lyrics here)
+(repeat chorus)
 
-[OUTRO]
-(lyrics here)
+[BRIDGE]
+(2-4 emotional peak lines)
 
-Make the lyrics emotional, meaningful, and fitting for the ${style} genre.`
+[FINAL CHORUS]
+(chorus variation to close)
+
+CRITICAL: Every line must sound natural when SUNG with a melody — rhythmic, musical, not prose.`
             }]
           }]
         })
@@ -631,14 +650,14 @@ Make the lyrics emotional, meaningful, and fitting for the ${style} genre.`
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: lyrics }]
+            parts: [{ text: lyrics.split('\n').filter(l => !l.startsWith('TITLE:') && !l.startsWith('GENRE:') && !l.startsWith('VOICE:')).join('\n').trim() }]
           }],
           generationConfig: {
             responseModalities: ['AUDIO'],
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName: voice.toLowerCase().includes('female') ? 'Aoede' : 'Charon'
+                  voiceName: voice.toLowerCase().includes('female') ? 'Kore' : 'Fenrir'
                 }
               }
             }
