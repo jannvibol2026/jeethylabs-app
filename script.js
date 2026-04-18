@@ -599,11 +599,7 @@ async function generateSong() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: lyriaPrompt }] }],
-          generationConfig: {
-            responseModalities: ['AUDIO', 'TEXT'],
-            responseMimeType: 'audio/mp3'
-          }
+          contents: [{ parts: [{ text: lyriaPrompt }] }]
         })
       }
     );
