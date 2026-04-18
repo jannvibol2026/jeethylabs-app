@@ -684,36 +684,111 @@ CRITICAL: Every line must sound natural when SUNG with a melody — rhythmic, mu
 
     if (!audioB64) throw new Error('No audio generated. Try a different prompt.');
 
-    // Convert base64 → PCM bytes
+    // ── Step A: Decode TTS PCM → Float32 ──────────────────────────────
     const pcmChars = atob(audioB64);
     const pcmBytes = new Uint8Array(pcmChars.length);
     for (let i = 0; i < pcmChars.length; i++) pcmBytes[i] = pcmChars.charCodeAt(i);
 
-    // Wrap raw PCM in a proper WAV container so browsers can play it
-    // Gemini TTS returns 16-bit PCM @ 24000 Hz mono
-    const sampleRate   = 24000;
-    const numChannels  = 1;
-    const bitsPerSample = 16;
-    const byteRate     = sampleRate * numChannels * bitsPerSample / 8;
-    const blockAlign   = numChannels * bitsPerSample / 8;
-    const dataSize     = pcmBytes.length;
-    const wavBuffer    = new ArrayBuffer(44 + dataSize);
-    const view         = new DataView(wavBuffer);
-    function writeStr(off, s) { for (let i=0;i<s.length;i++) view.setUint8(off+i, s.charCodeAt(i)); }
-    writeStr(0,  'RIFF');
-    view.setUint32(4,  36 + dataSize, true);
-    writeStr(8,  'WAVE');
-    writeStr(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1,  true);  // PCM
-    view.setUint16(22, numChannels,  true);
-    view.setUint32(24, sampleRate,   true);
-    view.setUint32(28, byteRate,     true);
-    view.setUint16(32, blockAlign,   true);
-    view.setUint16(34, bitsPerSample,true);
-    writeStr(36, 'data');
-    view.setUint32(40, dataSize, true);
-    new Uint8Array(wavBuffer, 44).set(pcmBytes);
+    const TTS_SR = 24000;
+    const numSamples = pcmBytes.length / 2;
+    const vocalF32 = new Float32Array(numSamples);
+    const dv = new DataView(pcmBytes.buffer);
+    for (let i = 0; i < numSamples; i++) vocalF32[i] = dv.getInt16(i * 2, true) / 32768;
+
+    // ── Step B: Generate background music with Web Audio API ───────────
+    // Genre-based params
+    const genreParams = {
+      'Pop':      { bpm: 110, chords: [[261.63,329.63,392],[293.66,369.99,440],[349.23,440,523.25],[392,493.88,587.33]], beatVol:0.18, chordVol:0.13, waveType:'sine' },
+      'Sad':      { bpm: 72,  chords: [[261.63,311.13,392],[246.94,293.66,369.99],[220,277.18,349.23],[196,246.94,311.13]], beatVol:0.10, chordVol:0.10, waveType:'sine' },
+      'Relaxing': { bpm: 80,  chords: [[261.63,329.63,392],[293.66,369.99,440],[349.23,440,523.25],[329.63,415.30,493.88]], beatVol:0.08, chordVol:0.09, waveType:'sine' },
+      'Other':    { bpm: 100, chords: [[261.63,329.63,392],[293.66,369.99,440],[349.23,440,523.25],[392,493.88,587.33]], beatVol:0.15, chordVol:0.12, waveType:'sine' },
+    };
+    const gp = genreParams[style] || genreParams['Pop'];
+    const MIX_SR = TTS_SR;
+    const totalSec = numSamples / TTS_SR;
+    const totalMixSamples = Math.ceil(totalSec * MIX_SR);
+
+    const offCtx = new OfflineAudioContext(2, totalMixSamples, MIX_SR);
+
+    // Chord progression — one chord per bar (4 beats)
+    const secPerBeat = 60 / gp.bpm;
+    const secPerBar  = secPerBeat * 4;
+    const numBars    = Math.ceil(totalSec / secPerBar);
+
+    for (let bar = 0; bar < numBars; bar++) {
+      const chord = gp.chords[bar % gp.chords.length];
+      const startT = bar * secPerBar;
+      chord.forEach(freq => {
+        const osc  = offCtx.createOscillator();
+        const gain = offCtx.createGain();
+        osc.type = gp.waveType;
+        osc.frequency.value = freq;
+        // Gentle attack/release per bar
+        gain.gain.setValueAtTime(0, startT);
+        gain.gain.linearRampToValueAtTime(gp.chordVol, startT + 0.15);
+        gain.gain.setValueAtTime(gp.chordVol, startT + secPerBar - 0.2);
+        gain.gain.linearRampToValueAtTime(0, startT + secPerBar);
+        osc.connect(gain); gain.connect(offCtx.destination);
+        osc.start(startT); osc.stop(Math.min(startT + secPerBar, totalSec));
+      });
+    }
+
+    // Simple kick + hi-hat rhythm
+    const numBeats = Math.ceil(totalSec / secPerBeat);
+    for (let b = 0; b < numBeats; b++) {
+      const bt = b * secPerBeat;
+      // Kick on beat 1 & 3
+      if (b % 4 === 0 || b % 4 === 2) {
+        const buf = offCtx.createBuffer(1, Math.floor(MIX_SR * 0.15), MIX_SR);
+        const ch  = buf.getChannelData(0);
+        for (let s = 0; s < ch.length; s++) ch[s] = (Math.random()*2-1) * Math.exp(-s/(MIX_SR*0.04));
+        const src = offCtx.createBufferSource();
+        const g   = offCtx.createGain(); g.gain.value = gp.beatVol * 1.4;
+        src.buffer = buf; src.connect(g); g.connect(offCtx.destination);
+        src.start(bt);
+      }
+      // Hi-hat every half beat
+      const hht = bt + secPerBeat * 0.5;
+      if (hht < totalSec) {
+        const buf2 = offCtx.createBuffer(1, Math.floor(MIX_SR * 0.06), MIX_SR);
+        const ch2  = buf2.getChannelData(0);
+        for (let s = 0; s < ch2.length; s++) ch2[s] = (Math.random()*2-1) * Math.exp(-s/(MIX_SR*0.015));
+        const src2 = offCtx.createBufferSource();
+        const g2   = offCtx.createGain(); g2.gain.value = gp.beatVol * 0.5;
+        src2.buffer = buf2; src2.connect(g2); g2.connect(offCtx.destination);
+        src2.start(hht);
+      }
+    }
+
+    const renderedBg = await offCtx.startRendering();
+    const bgLeft  = renderedBg.getChannelData(0);
+    const bgRight = renderedBg.numberOfChannels > 1 ? renderedBg.getChannelData(1) : bgLeft;
+
+    // ── Step C: Mix vocals + background → stereo WAV ──────────────────
+    const mixLen = totalMixSamples;
+    const wavBuffer = new ArrayBuffer(44 + mixLen * 4); // 16-bit stereo
+    const wavView   = new DataView(wavBuffer);
+    function writeStr(off, s) { for (let i=0;i<s.length;i++) wavView.setUint8(off+i, s.charCodeAt(i)); }
+    const numCh = 2, bps = 16;
+    const byteRate  = MIX_SR * numCh * bps / 8;
+    const blockAlign = numCh * bps / 8;
+    const dataSize  = mixLen * numCh * 2;
+    writeStr(0, 'RIFF'); wavView.setUint32(4, 36 + dataSize, true);
+    writeStr(8, 'WAVE'); writeStr(12, 'fmt ');
+    wavView.setUint32(16, 16, true); wavView.setUint16(20, 1, true);
+    wavView.setUint16(22, numCh, true); wavView.setUint32(24, MIX_SR, true);
+    wavView.setUint32(28, byteRate, true); wavView.setUint16(32, blockAlign, true);
+    wavView.setUint16(34, bps, true); writeStr(36, 'data');
+    wavView.setUint32(40, dataSize, true);
+    let off = 44;
+    const VOCAL_VOL = 0.82, BG_VOL = 0.38;
+    for (let i = 0; i < mixLen; i++) {
+      const v = i < vocalF32.length ? vocalF32[i] * VOCAL_VOL : 0;
+      const L = Math.max(-1, Math.min(1, v + bgLeft[i]  * BG_VOL));
+      const R = Math.max(-1, Math.min(1, v + bgRight[i] * BG_VOL));
+      wavView.setInt16(off, L * 32767, true); off += 2;
+      wavView.setInt16(off, R * 32767, true); off += 2;
+    }
 
     const audioBlob    = new Blob([wavBuffer], { type: 'audio/wav' });
     const audioBlobUrl = URL.createObjectURL(audioBlob);
