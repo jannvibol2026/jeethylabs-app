@@ -454,16 +454,23 @@ async function generateImage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ['TEXT', 'IMAGE'], imageGenerationConfig: { aspectRatio } }
+          generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio } }
         })
       }
     );
     if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message || `HTTP ${r.status}`); }
     const d = await r.json();
-    const pts = d.candidates?.[0]?.content?.parts || [];
-    const img = pts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
-    if (!img) throw new Error('No image in response');
-    return img.inlineData;
+    const parts = d.candidates?.[0]?.content?.parts || [];
+    // Search all candidates for image data
+    let imgData = null;
+    for (const c of (d.candidates || [])) {
+      for (const p of (c.content?.parts || [])) {
+        if (p.inlineData?.data) { imgData = p.inlineData; break; }
+      }
+      if (imgData) break;
+    }
+    if (!imgData) throw new Error('No image in response');
+    return imgData;
   }
 
   try {
