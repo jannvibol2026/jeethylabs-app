@@ -1,0 +1,568 @@
+/* ══════════════════════════════════════════
+   JEETHY LABS APP — script.js
+   Swipe · Chat · Image · Song
+══════════════════════════════════════════ */
+
+'use strict';
+
+// ── CONFIG ──────────────────────────────
+const GEMINI_CHAT_MODEL  = 'gemini-2.0-flash';
+const GEMINI_IMAGE_MODEL = 'imagen-3.0-generate-002';
+const HOME_URL = 'https://jeethylabs.site';
+
+// ── STATE ────────────────────────────────
+let currentPanel = 0;
+let apiKey = '';
+let chatHistory = [];   // [{role, parts}]
+let isChatLoading = false;
+let touchStartX = 0;
+let touchStartY = 0;
+
+// ── INIT ─────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  setWelcomeTime();
+  if (!apiKey) openApiModal();
+  initSwipe();
+});
+
+function setWelcomeTime() {
+  const el = document.getElementById('welcomeTime');
+  if (el) el.textContent = formatTime(new Date());
+}
+
+// ── PANEL NAVIGATION ─────────────────────
+function goToPanel(index) {
+  currentPanel = index;
+  const track = document.getElementById('panelsTrack');
+  track.style.transform = `translateX(-${index * 33.333}%)`;
+
+  // Update dots
+  document.querySelectorAll('.dot').forEach((d, i) =>
+    d.classList.toggle('active', i === index));
+
+  // Update tabs
+  document.querySelectorAll('.tab').forEach((t, i) =>
+    t.classList.toggle('active', i === index));
+}
+
+// ── TOUCH SWIPE ──────────────────────────
+function initSwipe() {
+  const wrap = document.getElementById('panelsWrap');
+
+  wrap.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  wrap.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    // Only swipe if horizontal movement dominates
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      if (dx < 0 && currentPanel < 2) goToPanel(currentPanel + 1);
+      if (dx > 0 && currentPanel > 0) goToPanel(currentPanel - 1);
+    }
+  }, { passive: true });
+}
+
+// ── API KEY MODAL ─────────────────────────
+function openApiModal() {
+  const m = document.getElementById('apiModal');
+  m.classList.add('open');
+  const inp = document.getElementById('apiKeyInput');
+  if (apiKey) inp.value = apiKey;
+  setTimeout(() => inp.focus(), 300);
+}
+
+function closeApiModal() {
+  document.getElementById('apiModal').classList.remove('open');
+}
+
+function saveApiKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val) return showToast('Please enter your API key', 'error');
+  apiKey = val;
+  
+  closeApiModal();
+  showToast('API key saved!', 'success');
+}
+
+// ══════════════════════════════════════════
+//  PANEL 1 — AI ASSISTANT
+// ══════════════════════════════════════════
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChat();
+  }
+}
+
+async function sendChat() {
+  if (isChatLoading) return;
+  if (!apiKey) return openApiModal();
+
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  // Append user message
+  appendMessage('user', text);
+  input.value = '';
+  input.style.height = 'auto';
+  isChatLoading = true;
+  document.getElementById('chatSendBtn').disabled = true;
+
+  // Add to history
+  chatHistory.push({ role: 'user', parts: [{ text }] });
+
+  // Show typing indicator
+  const typingId = appendTyping();
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CHAT_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{
+              text: `You are JeeThy Assistant, a helpful and friendly AI assistant created by JeeThy Labs. 
+Answer in the same language the user writes in. 
+Be concise but thorough. Format responses clearly with paragraphs.
+When appropriate use bullet points for lists.
+Never say you cannot do something — always try to help.`
+            }]
+          },
+          contents: chatHistory
+        })
+      }
+    );
+
+    removeTyping(typingId);
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not generate a response.';
+
+    chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+    appendMessage('bot', reply);
+
+  } catch (err) {
+    removeTyping(typingId);
+    appendMessage('bot', `⚠️ Error: ${err.message}. Please check your API key.`);
+  }
+
+  isChatLoading = false;
+  document.getElementById('chatSendBtn').disabled = false;
+}
+
+function appendMessage(role, text) {
+  const container = document.getElementById('chatMessages');
+  const isUser = role === 'user';
+
+  const div = document.createElement('div');
+  div.className = `msg ${isUser ? 'msg-user' : 'msg-bot'}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.innerHTML = isUser
+    ? '<i class="fas fa-user"></i>'
+    : '<i class="fas fa-brain"></i>';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+
+  if (isUser) {
+    bubble.textContent = text;
+  } else {
+    // Render markdown-like formatting
+    bubble.innerHTML = `<div class="prose-response">${formatMarkdown(text)}</div>`;
+  }
+
+  const time = document.createElement('span');
+  time.className = 'msg-time';
+  time.textContent = formatTime(new Date());
+  bubble.appendChild(time);
+
+  div.appendChild(avatar);
+  div.appendChild(bubble);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function appendTyping() {
+  const container = document.getElementById('chatMessages');
+  const id = 'typing-' + Date.now();
+
+  const div = document.createElement('div');
+  div.className = 'msg msg-bot';
+  div.id = id;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.innerHTML = '<i class="fas fa-brain"></i>';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+
+  div.appendChild(avatar);
+  div.appendChild(bubble);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+// Simple markdown → HTML
+function formatMarkdown(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^### (.+)$/gm, '<h4 style="font-size:14px;font-weight:700;margin:8px 0 4px">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 style="font-size:15px;font-weight:700;margin:8px 0 4px">$1</h3>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br/>')
+    .replace(/^(.)/gm, (m, p) => p === '<' ? m : `<p>${m}`)
+    .replace(/([^>])$/gm, (m, p) => `${m}</p>`)
+    .replace(/<p><\/p>/g, '')
+    .replace(/<p>(<[uoh])/g, '$1')
+    .replace(/(<\/[uoh][l4]>)<\/p>/g, '$1');
+}
+
+// ══════════════════════════════════════════
+//  PANEL 2 — IMAGE GENERATE
+// ══════════════════════════════════════════
+
+async function generateImage() {
+  if (!apiKey) return openApiModal();
+
+  const prompt  = document.getElementById('imgPrompt').value.trim();
+  if (!prompt) return showToast('Please enter a prompt', 'error');
+
+  const style   = getActiveChip('imgStyleGroup');
+  const ratio   = getActiveChip('imgRatioGroup');
+  const quality = getActiveChip('imgQualityGroup');
+  const qty     = parseInt(getActiveChip('imgQtyGroup')) || 1;
+
+  // Aspect ratio map
+  const ratioMap = { '1:1': '1:1', '9:16': '9:16', '16:9': '16:9' };
+  const aspectRatio = ratioMap[ratio] || '1:1';
+
+  const fullPrompt = `${prompt}, style: ${style}, high quality ${quality === '1080p' ? 'ultra HD 1080p' : 'HD 720p'} photography`;
+
+  const btn = document.getElementById('imgGenBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+
+  const resultsEl = document.getElementById('imgResults');
+  resultsEl.innerHTML = `
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <div class="loading-label">Generating ${qty} image${qty > 1 ? 's' : ''} with AI...</div>
+    </div>`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:predict?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instances: [{ prompt: fullPrompt }],
+          parameters: {
+            sampleCount: qty,
+            aspectRatio: aspectRatio,
+            personGeneration: 'allow_adult'
+          }
+        })
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const predictions = data.predictions || [];
+
+    if (!predictions.length) throw new Error('No images generated. Try a different prompt.');
+
+    // Build grid
+    const card = document.createElement('div');
+    card.className = 'img-result-card';
+
+    const grid = document.createElement('div');
+    grid.className = `img-grid qty-${qty}`;
+
+    predictions.forEach((pred, i) => {
+      const base64 = pred.bytesBase64Encoded;
+      const mime   = pred.mimeType || 'image/png';
+      const src    = `data:${mime};base64,${base64}`;
+
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = `Generated image ${i + 1}`;
+      img.onclick = () => openImageFullscreen(src);
+      grid.appendChild(img);
+    });
+
+    card.appendChild(grid);
+
+    // Download button
+    const dlWrap = document.createElement('div');
+    dlWrap.style.cssText = 'padding:12px;display:flex;flex-direction:column;gap:8px;';
+
+    predictions.forEach((pred, i) => {
+      const base64 = pred.bytesBase64Encoded;
+      const mime   = pred.mimeType || 'image/png';
+      const ext    = mime.split('/')[1] || 'png';
+      const a = document.createElement('a');
+      a.className = 'btn-download';
+      a.href = `data:${mime};base64,${base64}`;
+      a.download = `jeethy-image-${Date.now()}-${i + 1}.${ext}`;
+      a.innerHTML = `<i class="fas fa-download"></i> Download Image ${qty > 1 ? i + 1 : ''}`;
+      dlWrap.appendChild(a);
+    });
+
+    card.appendChild(dlWrap);
+
+    resultsEl.innerHTML = '';
+    resultsEl.appendChild(card);
+
+    // Scroll to results
+    document.querySelector('.panel-image .panel-inner-scroll').scrollTo({
+      top: 99999, behavior: 'smooth'
+    });
+
+  } catch (err) {
+    resultsEl.innerHTML = `<div class="error-card"><i class="fas fa-circle-exclamation"></i> ${err.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Image';
+}
+
+// Fullscreen image preview
+function openImageFullscreen(src) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:999;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+    cursor:pointer;animation:msgIn 0.2s ease;
+  `;
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:100%;max-height:100%;border-radius:12px;object-fit:contain;';
+  overlay.appendChild(img);
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+}
+
+// ══════════════════════════════════════════
+//  PANEL 3 — SONG GENERATE
+// ══════════════════════════════════════════
+
+async function generateSong() {
+  if (!apiKey) return openApiModal();
+
+  const prompt = document.getElementById('songPrompt').value.trim();
+  if (!prompt) return showToast('Please enter a song description', 'error');
+
+  const style = getActiveChip('songStyleGroup');
+  const voice = getActiveChip('songVoiceGroup').replace(/[^\w]/g, '').trim();
+
+  const btn = document.getElementById('songGenBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
+
+  const resultsEl = document.getElementById('songResults');
+  resultsEl.innerHTML = `
+    <div class="loading-card green-loader">
+      <div class="loading-spinner"></div>
+      <div class="loading-label">Composing your song with AI... (~30s)</div>
+    </div>`;
+
+  try {
+    // Step 1: Generate lyrics + song description using Gemini text
+    const lyricsRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CHAT_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            role: 'user',
+            parts: [{
+              text: `Create a complete song with these requirements:
+- Theme/description: ${prompt}
+- Genre/style: ${style}
+- Vocalist: ${voice} voice
+- Duration: at least 2 minutes (write enough lyrics)
+- Language: match the user's input language
+
+Format your response as:
+TITLE: [song title]
+GENRE: ${style}
+VOICE: ${voice}
+
+[VERSE 1]
+(lyrics here)
+
+[CHORUS]
+(lyrics here)
+
+[VERSE 2]
+(lyrics here)
+
+[CHORUS]
+(lyrics here)
+
+[OUTRO]
+(lyrics here)
+
+Make the lyrics emotional, meaningful, and fitting for the ${style} genre.`
+            }]
+          }]
+        })
+      }
+    );
+
+    if (!lyricsRes.ok) {
+      const err = await lyricsRes.json();
+      throw new Error(err.error?.message || `HTTP ${lyricsRes.status}`);
+    }
+
+    const lyricsData = await lyricsRes.json();
+    const lyrics = lyricsData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    // Extract title
+    const titleMatch = lyrics.match(/TITLE:\s*(.+)/);
+    const songTitle = titleMatch ? titleMatch[1].trim() : `${style} Song`;
+
+    // Step 2: Convert lyrics to speech using Gemini TTS
+    const ttsRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: lyrics }]
+          }],
+          generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: voice.toLowerCase().includes('female') ? 'Aoede' : 'Charon'
+                }
+              }
+            }
+          }
+        })
+      }
+    );
+
+    if (!ttsRes.ok) {
+      const err = await ttsRes.json();
+      throw new Error(err.error?.message || `TTS HTTP ${ttsRes.status}`);
+    }
+
+    const ttsData = await ttsRes.json();
+    const audioB64 = ttsData.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const audioMime = ttsData.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType || 'audio/wav';
+
+    if (!audioB64) throw new Error('No audio generated. Try a different prompt.');
+
+    const audioSrc = `data:${audioMime};base64,${audioB64}`;
+
+    // Render result
+    const card = document.createElement('div');
+    card.className = 'song-result-card';
+    card.innerHTML = `
+      <div class="song-result-title">
+        <i class="fas fa-music"></i> ${songTitle}
+        <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:auto">${style} · ${voice} voice</span>
+      </div>
+      <audio controls src="${audioSrc}"></audio>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);max-height:140px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;margin-bottom:10px">${escapeHtml(lyrics)}</div>
+    `;
+
+    // Download button
+    const a = document.createElement('a');
+    a.className = 'btn-download';
+    a.href = audioSrc;
+    a.download = `jeethy-song-${Date.now()}.wav`;
+    a.innerHTML = '<i class="fas fa-download"></i> Download Song';
+    card.appendChild(a);
+
+    resultsEl.innerHTML = '';
+    resultsEl.appendChild(card);
+
+    document.querySelector('.panel-song .panel-inner-scroll').scrollTo({
+      top: 99999, behavior: 'smooth'
+    });
+
+  } catch (err) {
+    resultsEl.innerHTML = `<div class="error-card"><i class="fas fa-circle-exclamation"></i> ${err.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
+}
+
+// ── UTILITIES ────────────────────────────
+
+function getActiveChip(groupId) {
+  const el = document.querySelector(`#${groupId} .chip.active`);
+  return el ? el.textContent.trim() : '';
+}
+
+function selectChip(el, groupId) {
+  document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function formatTime(d) {
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showToast(msg, type = 'info') {
+  const t = document.createElement('div');
+  t.style.cssText = `
+    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    background:${type === 'error' ? '#ef4444' : '#10b981'};
+    color:#fff;padding:10px 20px;border-radius:20px;
+    font-size:13px;font-weight:600;z-index:999;
+    animation:msgIn 0.3s ease;white-space:nowrap;
+  `;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
