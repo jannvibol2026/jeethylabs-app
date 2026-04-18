@@ -442,12 +442,8 @@ async function generateImage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instances: [{ prompt: fullPrompt }],
-          parameters: {
-            sampleCount: qty,
-            aspectRatio: aspectRatio,
-            personGeneration: 'allow_adult'
-          }
+          contents: [{ parts: [{ text: fullPrompt }] }],
+          generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
         })
       }
     );
@@ -458,7 +454,9 @@ async function generateImage() {
     }
 
     const data = await res.json();
-    const predictions = data.predictions || [];
+    const parts2 = data.candidates?.[0]?.content?.parts || [];
+    const imageParts2 = parts2.filter(p => p.inlineData?.mimeType?.startsWith('image/'));
+    const predictions = imageParts2.map(p => ({ bytesBase64Encoded: p.inlineData.data, mimeType: p.inlineData.mimeType }));
 
     if (!predictions.length) throw new Error('No images generated. Try a different prompt.');
 
