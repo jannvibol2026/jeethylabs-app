@@ -435,34 +435,35 @@ async function generateImage() {
       <div class="loading-label">Generating ${qty} image${qty > 1 ? 's' : ''} with AI...</div>
     </div>`;
 
-  try {
-    // Use Gemini image generation (works with AI Studio key)
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${key}`,
+  // Helper: single image request
+  async function fetchOneImage(prompt, k) {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${k}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [{ text: fullPrompt }]
-          }],
-          generationConfig: {
-            responseModalities: ['TEXT', 'IMAGE']
-          }
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
         })
       }
     );
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message || `HTTP ${r.status}`); }
+    const d = await r.json();
+    const pts = d.candidates?.[0]?.content?.parts || [];
+    const img = pts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
+    if (!img) throw new Error('No image in response');
+    return img.inlineData;
+  }
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error?.message || `HTTP ${res.status}`);
-    }
+  try {
+    // Call API qty times in parallel (Gemini returns 1 image per call)
+    const requests = Array.from({ length: qty }, () => fetchOneImage(fullPrompt, key));
+    const results  = await Promise.allSettled(requests);
 
-    const data = await res.json();
-
-    // Extract image parts from response
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const imageParts = parts.filter(p => p.inlineData?.mimeType?.startsWith('image/'));
+    const imageParts = results
+      .filter(r => r.status === 'fulfilled')
+      .map(r => r.value);
 
     if (!imageParts.length) throw new Error('No images generated. Try a different prompt.');
 
@@ -474,10 +475,9 @@ async function generateImage() {
 
     const blobUrls = [];
 
-    imageParts.forEach((part, i) => {
-      const base64 = part.inlineData.data;
-      const mime   = part.inlineData.mimeType || 'image/png';
-      // Convert to Blob URL for reliable mobile display
+    imageParts.forEach((inlineData, i) => {
+      const base64 = inlineData.data;
+      const mime   = inlineData.mimeType || 'image/png';
       const byteChars = atob(base64);
       const byteArr = new Uint8Array(byteChars.length);
       for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
@@ -658,11 +658,38 @@ Make the lyrics emotional, meaningful, and fitting for the ${style} genre.`
 
     if (!audioB64) throw new Error('No audio generated. Try a different prompt.');
 
-    // Convert base64 → Blob URL (required for mobile audio playback)
-    const byteChars = atob(audioB64);
-    const byteArr = new Uint8Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-    const audioBlob = new Blob([byteArr], { type: audioMime });
+    // Convert base64 → PCM bytes
+    const pcmChars = atob(audioB64);
+    const pcmBytes = new Uint8Array(pcmChars.length);
+    for (let i = 0; i < pcmChars.length; i++) pcmBytes[i] = pcmChars.charCodeAt(i);
+
+    // Wrap raw PCM in a proper WAV container so browsers can play it
+    // Gemini TTS returns 16-bit PCM @ 24000 Hz mono
+    const sampleRate   = 24000;
+    const numChannels  = 1;
+    const bitsPerSample = 16;
+    const byteRate     = sampleRate * numChannels * bitsPerSample / 8;
+    const blockAlign   = numChannels * bitsPerSample / 8;
+    const dataSize     = pcmBytes.length;
+    const wavBuffer    = new ArrayBuffer(44 + dataSize);
+    const view         = new DataView(wavBuffer);
+    function writeStr(off, s) { for (let i=0;i<s.length;i++) view.setUint8(off+i, s.charCodeAt(i)); }
+    writeStr(0,  'RIFF');
+    view.setUint32(4,  36 + dataSize, true);
+    writeStr(8,  'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1,  true);  // PCM
+    view.setUint16(22, numChannels,  true);
+    view.setUint32(24, sampleRate,   true);
+    view.setUint32(28, byteRate,     true);
+    view.setUint16(32, blockAlign,   true);
+    view.setUint16(34, bitsPerSample,true);
+    writeStr(36, 'data');
+    view.setUint32(40, dataSize, true);
+    new Uint8Array(wavBuffer, 44).set(pcmBytes);
+
+    const audioBlob    = new Blob([wavBuffer], { type: 'audio/wav' });
     const audioBlobUrl = URL.createObjectURL(audioBlob);
 
     const card = document.createElement('div');
