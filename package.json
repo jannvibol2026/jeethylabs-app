@@ -1,0 +1,12 @@
+{
+  "name": "jeethylabs-app",
+  "version": "1.0.0",
+  "description": "JeeThy Labs AI App — Chat, Image & Song",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
