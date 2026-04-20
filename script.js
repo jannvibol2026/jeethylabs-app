@@ -166,7 +166,7 @@ function injectAuthModal() {
           </button>
         </form>
 
-        <!-- SIGNUP FORM -->
+        <!-- SIGNUP FORM (Step 1) -->
         <form id="authSignupForm" onsubmit="submitSignup(event)" style="display:none;flex-direction:column;gap:10px;">
           <div>
             <label class="form-label">Full Name</label>
@@ -181,9 +181,41 @@ function injectAuthModal() {
             <input type="password" id="authSignupPass" class="form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password"/>
           </div>
           <button type="submit" id="authSignupBtn" class="btn-generate btn-purple" style="margin-bottom:0">
-            <i class="fas fa-user-plus"></i> Create Account
+            <i class="fas fa-paper-plane"></i> Send Verification Code
           </button>
         </form>
+
+        <!-- OTP FORM (Step 2) -->
+        <div id="authOtpForm" style="display:none;flex-direction:column;gap:12px;">
+          <div style="text-align:center;padding:8px 0;">
+            <i class="fas fa-envelope-circle-check" style="font-size:2rem;color:var(--purple);margin-bottom:8px;display:block;"></i>
+            <p style="font-size:13px;color:var(--muted);margin:0;">Code បានផ្ញើទៅ</p>
+            <p id="otpEmailDisplay" style="font-size:14px;font-weight:700;color:var(--text);margin:4px 0 0;"></p>
+          </div>
+          <div>
+            <label class="form-label">Verification Code (6 digits)</label>
+            <input type="text" id="authOtpInput" class="form-input"
+              placeholder="_ _ _ _ _ _"
+              maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
+              style="text-align:center;font-size:1.5rem;font-weight:700;letter-spacing:0.4em;"
+              oninput="this.value=this.value.replace(/[^0-9]/g,\'\')"/>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button type="button" onclick="backToSignup()" class="btn-generate" style="flex:1;margin-bottom:0;background:var(--surface2);color:var(--muted);">
+              <i class="fas fa-arrow-left"></i> Back
+            </button>
+            <button type="button" onclick="submitOtp()" id="authOtpBtn" class="btn-generate btn-purple" style="flex:2;margin-bottom:0">
+              <i class="fas fa-check-circle"></i> Verify & Create Account
+            </button>
+          </div>
+          <div style="text-align:center;">
+            <button type="button" onclick="resendOtp()" id="resendOtpBtn"
+              style="background:none;border:none;color:var(--purple);font-size:12px;cursor:pointer;text-decoration:underline;">
+              Resend code
+            </button>
+            <span id="resendTimer" style="font-size:12px;color:var(--muted);display:none;"></span>
+          </div>
+        </div>
 
       </div>
     </div>
@@ -291,32 +323,126 @@ async function logoutUser() {
 }
 
 // ── SUBMIT SIGNUP ─────────────────────────
+// ── OTP STATE ─────────────────────────────
+let _otpPendingData = null;
+let _resendCountdown = null;
+
 async function submitSignup(e) {
   e.preventDefault();
   clearAuthMsg();
-  const btn  = document.getElementById('authSignupBtn');
-  const name = document.getElementById('authSignupName').value.trim();
-  const email= document.getElementById('authSignupEmail').value.trim();
-  const pass = document.getElementById('authSignupPass').value;
+  const btn   = document.getElementById('authSignupBtn');
+  const name  = document.getElementById('authSignupName').value.trim();
+  const email = document.getElementById('authSignupEmail').value.trim();
+  const pass  = document.getElementById('authSignupPass').value;
+
+  // Email format validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return showAuthMsg('Please enter a valid email address.', 'error');
+  }
+  if (pass.length < 8) {
+    return showAuthMsg('Password must be at least 8 characters.', 'error');
+  }
+
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending code...';
+
   try {
-    const res  = await fetch('/api/signup', {
+    const res  = await fetch('/api/send-otp', {
       method:'POST', headers:{'Content-Type':'application/json'},
       credentials:'include', body: JSON.stringify({ name, email, password: pass })
     });
     const data = await res.json();
     if (res.ok) {
-      showAuthMsg(`Welcome, ${data.user.name}! 🎉`, 'success');
-      setTimeout(() => onAuthSuccess(data.user, true), 900);
+      _otpPendingData = { name, email, password: pass };
+      document.getElementById('otpEmailDisplay').textContent = email;
+      document.getElementById('authSignupForm').style.display = 'none';
+      document.getElementById('authOtpForm').style.display = 'flex';
+      document.getElementById('authOtpInput').value = '';
+      startResendTimer(60);
+      showAuthMsg('Code ត្រូវបានផ្ញើ! សូមពិនិត្យ Email.', 'success');
     } else {
-      showAuthMsg(data.error || 'Signup failed. Try again.', 'error');
+      showAuthMsg(data.error || 'Failed to send code. Try again.', 'error');
     }
   } catch {
     showAuthMsg('Network error. Check your connection.', 'error');
   }
   btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+  btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Verification Code';
+}
+
+async function submitOtp() {
+  clearAuthMsg();
+  const otp  = document.getElementById('authOtpInput').value.trim();
+  const btn  = document.getElementById('authOtpBtn');
+  if (!otp || otp.length !== 6) return showAuthMsg('Please enter the 6-digit code.', 'error');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+  try {
+    const res  = await fetch('/api/verify-otp', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body: JSON.stringify({ ..._otpPendingData, otp })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      _otpPendingData = null;
+      showAuthMsg(`Welcome, ${data.user.name}! 🎉 Account created!`, 'success');
+      setTimeout(() => onAuthSuccess(data.user, true), 900);
+    } else {
+      showAuthMsg(data.error || 'Invalid or expired code.', 'error');
+    }
+  } catch {
+    showAuthMsg('Network error. Check your connection.', 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-check-circle"></i> Verify & Create Account';
+}
+
+async function resendOtp() {
+  if (!_otpPendingData) return;
+  clearAuthMsg();
+  try {
+    const res = await fetch('/api/send-otp', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body: JSON.stringify(_otpPendingData)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showAuthMsg('Code ថ្មីត្រូវបានផ្ញើ!', 'success');
+      startResendTimer(60);
+    } else {
+      showAuthMsg(data.error || 'Failed to resend.', 'error');
+    }
+  } catch {
+    showAuthMsg('Network error.', 'error');
+  }
+}
+
+function startResendTimer(seconds) {
+  const btn   = document.getElementById('resendOtpBtn');
+  const timer = document.getElementById('resendTimer');
+  btn.style.display   = 'none';
+  timer.style.display = 'inline';
+  let s = seconds;
+  if (_resendCountdown) clearInterval(_resendCountdown);
+  _resendCountdown = setInterval(() => {
+    timer.textContent = `Resend in ${s}s`;
+    s--;
+    if (s < 0) {
+      clearInterval(_resendCountdown);
+      btn.style.display   = 'inline';
+      timer.style.display = 'none';
+    }
+  }, 1000);
+}
+
+function backToSignup() {
+  document.getElementById('authOtpForm').style.display   = 'none';
+  document.getElementById('authSignupForm').style.display = 'flex';
+  clearAuthMsg();
+  if (_resendCountdown) clearInterval(_resendCountdown);
 }
 
 // ── SUBMIT LOGIN ──────────────────────────
