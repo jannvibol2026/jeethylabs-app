@@ -5,9 +5,9 @@ const bcrypt       = require('bcryptjs');
 const jwt          = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const { Pool }     = require('pg');
-const nodemailer   = require('nodemailer');
 const crypto       = require('crypto');
 const path         = require('path');
+const https        = require('https');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -15,12 +15,10 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET    = process.env.JWT_SECRET    || 'changeme';
 const OWNER_API_KEY = process.env.OWNER_API_KEY || '';
 const DATABASE_URL  = process.env.DATABASE_URL  || '';
-const SMTP_HOST     = process.env.SMTP_HOST     || 'smtp.gmail.com';
-const SMTP_PORT     = parseInt(process.env.SMTP_PORT || '465');
-const SMTP_USER     = process.env.SMTP_USER     || '';
-const SMTP_PASS     = process.env.SMTP_PASS     || '';
+const RESEND_API_KEY = process.env.SMTP_PASS    || ''; // reuse SMTP_PASS for Resend API key
 const APP_NAME      = 'JeeThy Labs';
 const APP_URL       = process.env.APP_URL || 'https://app.jeethylabs.site';
+const FROM_EMAIL    = 'noreply@contact.jeethylabs.site';
 
 // ── DB ────────────────────────────────────
 const pool = new Pool({
@@ -32,25 +30,14 @@ pool.connect((err, client, release) => {
   else { console.log('DB Connected'); release(); }
 });
 
-// ── EMAIL ─────────────────────────────────
-const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: SMTP_PORT === 465,
-  auth: { user: SMTP_USER, pass: SMTP_PASS },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 15000
-});
-
 // ── OTP STORE (in-memory, 10 min TTL) ────
 const otpStore = new Map();
-// key = email, value = { otp, name, passwordHash, expiresAt }
 
 function generateOtp() {
   return crypto.randomInt(100000, 999999).toString();
 }
 
+// ── SEND EMAIL via Resend HTTP API (no nodemailer, no SMTP hang) ──
 async function sendOtpEmail(email, name, otp) {
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;background:#0f0e13;color:#e2e8f0;border-radius:12px;overflow:hidden;">
@@ -69,15 +56,44 @@ async function sendOtpEmail(email, name, otp) {
       <p style="color:#475569;font-size:12px;margin:0;">If you did not request this, please ignore this email.</p>
     </div>
   </div>`;
-  const mailTimeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('SMTP timeout after 15s')), 15000)
-  );
-  await Promise.race([transporter.sendMail({
-    from: `"${APP_NAME}" <noreply@contact.jeethylabs.site>`,
-    to: email,
+
+  const payload = JSON.stringify({
+    from: `${APP_NAME} <${FROM_EMAIL}>`,
+    to: [email],
     subject: `${otp} — Your ${APP_NAME} Verification Code`,
     html
-  }), mailTimeout]);
+  });
+
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'api.resend.com',
+      port: 443,
+      path: '/emails',
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(JSON.parse(data));
+        } else {
+          reject(new Error(`Resend API error ${res.statusCode}: ${data}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => {
+      req.destroy();
+      reject(new Error('Resend API timeout'));
+    });
+    req.write(payload);
+    req.end();
+  });
 }
 
 // ── MIDDLEWARE ────────────────────────────
@@ -107,7 +123,7 @@ app.post('/api/send-otp', async (req, res) => {
 
     const otp          = generateOtp();
     const passwordHash = await bcrypt.hash(password, 10);
-    const expiresAt    = Date.now() + 10 * 60 * 1000; // 10 min
+    const expiresAt    = Date.now() + 10 * 60 * 1000;
 
     otpStore.set(email.toLowerCase(), { otp, name: name.trim(), passwordHash, expiresAt });
 
@@ -115,7 +131,7 @@ app.post('/api/send-otp', async (req, res) => {
     res.json({ ok: true, message: 'Verification code sent.' });
   } catch (e) {
     console.error('[send-otp]', e.message);
-    res.status(500).json({ error: 'Failed to send code. Check email settings.' });
+    res.status(500).json({ error: 'Failed to send code: ' + e.message });
   }
 });
 
