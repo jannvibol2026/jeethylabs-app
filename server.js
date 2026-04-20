@@ -37,7 +37,10 @@ const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
   port: SMTP_PORT,
   secure: SMTP_PORT === 465,
-  auth: { user: SMTP_USER, pass: SMTP_PASS }
+  auth: { user: SMTP_USER, pass: SMTP_PASS },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000
 });
 
 // ── OTP STORE (in-memory, 10 min TTL) ────
@@ -66,12 +69,15 @@ async function sendOtpEmail(email, name, otp) {
       <p style="color:#475569;font-size:12px;margin:0;">If you did not request this, please ignore this email.</p>
     </div>
   </div>`;
-  await transporter.sendMail({
+  const mailTimeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('SMTP timeout after 15s')), 15000)
+  );
+  await Promise.race([transporter.sendMail({
     from: `"${APP_NAME}" <noreply@contact.jeethylabs.site>`,
     to: email,
     subject: `${otp} — Your ${APP_NAME} Verification Code`,
     html
-  });
+  }), mailTimeout]);
 }
 
 // ── MIDDLEWARE ────────────────────────────
