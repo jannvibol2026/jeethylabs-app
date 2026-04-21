@@ -3,6 +3,7 @@
    Swipe · Chat · Image · Song
    Plan-based API key system (Free / Pro)
    + Auth Modal (Signup / Login → Retool DB)
+   + User Profile Dropdown
 ══════════════════════════════════════════ */
 
 'use strict';
@@ -17,8 +18,9 @@ const OWNER_KEY_PLACEHOLDER = '__OWNER_API_KEY__';
 
 // ── PLAN LIMITS ───────────────────────────
 const PLAN_LIMITS = {
-  free: { requests: 10, label: 'Free', color: '#a78bfa' },
-  pro:  { requests: 100, label: 'Pro',  color: '#06b6d4' }
+  free: { requests: 10,  label: 'Free', color: '#a78bfa' },
+  pro:  { requests: 100, label: 'Pro',  color: '#06b6d4' },
+  max:  { requests: 500, label: 'Max',  color: '#fbbf24' }
 };
 
 // ── STATE ─────────────────────────────────
@@ -34,14 +36,8 @@ let touchStartX   = 0;
 let touchStartY   = 0;
 
 // ── AUTH STATE ────────────────────────────
-let currentUser   = null;   // { id, name, email, plan } after login
-let pendingAction = null;   // 'chat' | 'image' | 'song'
-
-// ── RETOOL DB CONFIG ──────────────────────
-// Set these as Railway environment variables:
-// RETOOL_DB_URL  = https://api.retool.com/v1/retooldb/YOUR_DB_ID/query
-// RETOOL_API_KEY = your_retool_api_key
-// They are injected via /api/auth-config endpoint on the server
+let currentUser   = null;
+let pendingAction = null;
 
 // ── INIT ──────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -52,6 +48,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   await fetchOwnerKey();
   injectAuthModal();
   checkExistingSession();
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('userProfileWrap');
+    if (wrap && !wrap.contains(e.target)) {
+      closeProfileDropdown();
+    }
+  });
 });
 
 function saveState() {}
@@ -64,9 +67,7 @@ async function fetchOwnerKey() {
       const data = await res.json();
       ownerApiKey = data.key || '';
     }
-  } catch(e) {
-    ownerApiKey = '';
-  }
+  } catch(e) { ownerApiKey = ''; }
 }
 
 // ── RESOLVE ACTIVE API KEY ─────────────────
@@ -89,14 +90,73 @@ function setWelcomeTime() {
   if (el) el.textContent = formatTime(new Date());
 }
 
-// ── PLAN BADGE ────────────────────────────
+// ── PLAN BADGE (header button) ────────────
 function renderPlanBadge() {
   const badge = document.getElementById('planBadge');
   if (!badge) return;
-  const plan = PLAN_LIMITS[userPlan];
+  const plan = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
   badge.textContent = plan.label;
   badge.style.color = plan.color;
   badge.style.borderColor = plan.color + '66';
+}
+
+// ── PROFILE DROPDOWN ──────────────────────
+function toggleProfileDropdown() {
+  const dd = document.getElementById('profileDropdown');
+  if (!dd) return;
+  dd.classList.toggle('open');
+}
+
+function closeProfileDropdown() {
+  const dd = document.getElementById('profileDropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+function getPlanBadgeClass(plan) {
+  if (plan === 'pro') return 'plan-badge-pro';
+  if (plan === 'max') return 'plan-badge-max';
+  return 'plan-badge-free';
+}
+
+// ── UPDATE PROFILE UI ─────────────────────
+function updateProfileUI(user) {
+  if (!user) return;
+  const wrap    = document.getElementById('userProfileWrap');
+  const initial = (user.name || 'U').charAt(0).toUpperCase();
+  const plan    = user.plan || 'free';
+  const planInfo = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+
+  // Show avatar button
+  if (wrap) wrap.style.display = 'flex';
+
+  // Avatar initials (small)
+  const avatarInitial = document.getElementById('userAvatarInitial');
+  if (avatarInitial) avatarInitial.textContent = initial;
+
+  // Large avatar in dropdown
+  const avatarLg = document.getElementById('profileAvatarInitialLg');
+  if (avatarLg) avatarLg.textContent = initial;
+
+  // Name & Email
+  const nameEl  = document.getElementById('profileNameDisplay');
+  const emailEl = document.getElementById('profileEmailDisplay');
+  if (nameEl)  nameEl.textContent  = user.name  || '';
+  if (emailEl) emailEl.textContent = user.email || '';
+
+  // Plan badge in dropdown
+  const planBadgeEl = document.getElementById('profilePlanBadge');
+  if (planBadgeEl) {
+    planBadgeEl.textContent  = planInfo.label;
+    planBadgeEl.className    = `profile-plan-badge ${getPlanBadgeClass(plan)}`;
+  }
+
+  // If user has profile picture URL (future DB support)
+  if (user.avatar_url) {
+    const btnAvatar = document.getElementById('userAvatarBtn');
+    const lgAvatar  = document.querySelector('#profileAvatarLg');
+    if (btnAvatar) btnAvatar.innerHTML = `<img src="${user.avatar_url}" alt="${initial}" />`;
+    if (lgAvatar)  lgAvatar.innerHTML  = `<img src="${user.avatar_url}" alt="${initial}" />`;
+  }
 }
 
 // ── PANEL NAVIGATION ─────────────────────
@@ -126,7 +186,7 @@ function initSwipe() {
 }
 
 // ══════════════════════════════════════════
-//  AUTH MODAL — inject into DOM
+//  AUTH MODAL
 // ══════════════════════════════════════════
 function injectAuthModal() {
   const html = `
@@ -137,7 +197,6 @@ function injectAuthModal() {
         <button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="gap:10px">
-        <!-- Tabs -->
         <div style="display:flex;gap:6px;background:var(--surface2);border:1px solid var(--border);padding:4px;border-radius:30px;">
           <button id="authTabLogin" onclick="switchAuthTab('login')"
             style="flex:1;padding:8px;border-radius:30px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#7c3aed,var(--purple));color:#fff;">
@@ -148,10 +207,7 @@ function injectAuthModal() {
             Sign Up
           </button>
         </div>
-
         <div id="authMsg" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;"></div>
-
-        <!-- LOGIN FORM -->
         <form id="authLoginForm" onsubmit="submitLogin(event)" style="display:flex;flex-direction:column;gap:10px;">
           <div>
             <label class="form-label">Email</label>
@@ -165,8 +221,6 @@ function injectAuthModal() {
             <i class="fas fa-arrow-right-to-bracket"></i> Login
           </button>
         </form>
-
-        <!-- SIGNUP FORM (Step 1) -->
         <form id="authSignupForm" onsubmit="submitSignup(event)" style="display:none;flex-direction:column;gap:10px;">
           <div>
             <label class="form-label">Full Name</label>
@@ -184,8 +238,6 @@ function injectAuthModal() {
             <i class="fas fa-paper-plane"></i> Send Verification Code
           </button>
         </form>
-
-        <!-- OTP FORM (Step 2) -->
         <div id="authOtpForm" style="display:none;flex-direction:column;gap:12px;">
           <div style="text-align:center;padding:8px 0;">
             <i class="fas fa-envelope-circle-check" style="font-size:2rem;color:var(--purple);margin-bottom:8px;display:block;"></i>
@@ -198,7 +250,7 @@ function injectAuthModal() {
               placeholder="_ _ _ _ _ _"
               maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
               style="text-align:center;font-size:1.5rem;font-weight:700;letter-spacing:0.4em;"
-              oninput="this.value=this.value.replace(/[^0-9]/g,\'\')"/>
+              oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
           </div>
           <div style="display:flex;gap:8px;">
             <button type="button" onclick="backToSignup()" class="btn-generate" style="flex:1;margin-bottom:0;background:var(--surface2);color:var(--muted);">
@@ -216,7 +268,6 @@ function injectAuthModal() {
             <span id="resendTimer" style="font-size:12px;color:var(--muted);display:none;"></span>
           </div>
         </div>
-
       </div>
     </div>
   </div>`;
@@ -285,24 +336,12 @@ async function checkExistingSession() {
 // ── ON AUTH SUCCESS ───────────────────────
 function onAuthSuccess(user, runPending = true) {
   currentUser = user;
-  // Sync plan from DB (free/pro/max)
   if (user.plan && PLAN_LIMITS[user.plan]) {
     userPlan = user.plan;
     renderPlanBadge();
   }
-  // Show user badge in nav
-  let badge = document.getElementById('userAuthBadge');
-  if (!badge) {
-    badge = document.createElement('div');
-    badge.id = 'userAuthBadge';
-    badge.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--green);';
-    badge.innerHTML = `<span style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#059669,var(--green));display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;" id="userAvatarBadge"></span><span id="userNameBadge" style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span><button onclick="logoutUser()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:2px 6px;border-radius:8px;border:1px solid var(--border);">Out</button>`;
-    const navActions = document.querySelector('.nav-actions');
-    if (navActions) navActions.prepend(badge);
-  }
-  document.getElementById('userAvatarBadge').textContent = user.name.charAt(0).toUpperCase();
-  document.getElementById('userNameBadge').textContent   = user.name.split(' ')[0];
-
+  // Update profile UI (dropdown)
+  updateProfileUI(user);
   closeAuthModal();
   if (runPending && pendingAction) {
     const action = pendingAction;
@@ -315,14 +354,15 @@ function onAuthSuccess(user, runPending = true) {
 
 // ── LOGOUT ────────────────────────────────
 async function logoutUser() {
+  closeProfileDropdown();
   await fetch('/api/logout', { method: 'POST', credentials: 'include' });
   currentUser = null;
-  const badge = document.getElementById('userAuthBadge');
-  if (badge) badge.remove();
+  // Hide profile wrap
+  const wrap = document.getElementById('userProfileWrap');
+  if (wrap) wrap.style.display = 'none';
   showToast('Logged out', 'error');
 }
 
-// ── SUBMIT SIGNUP ─────────────────────────
 // ── OTP STATE ─────────────────────────────
 let _otpPendingData = null;
 let _resendCountdown = null;
@@ -334,19 +374,11 @@ async function submitSignup(e) {
   const name  = document.getElementById('authSignupName').value.trim();
   const email = document.getElementById('authSignupEmail').value.trim();
   const pass  = document.getElementById('authSignupPass').value;
-
-  // Email format validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return showAuthMsg('Please enter a valid email address.', 'error');
-  }
-  if (pass.length < 8) {
-    return showAuthMsg('Password must be at least 8 characters.', 'error');
-  }
-
+  if (!emailRegex.test(email)) return showAuthMsg('Please enter a valid email address.', 'error');
+  if (pass.length < 8)         return showAuthMsg('Password must be at least 8 characters.', 'error');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending code...';
-
   try {
     const res  = await fetch('/api/send-otp', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -364,9 +396,7 @@ async function submitSignup(e) {
     } else {
       showAuthMsg(data.error || 'Failed to send code. Try again.', 'error');
     }
-  } catch {
-    showAuthMsg('Network error. Check your connection.', 'error');
-  }
+  } catch { showAuthMsg('Network error. Check your connection.', 'error'); }
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Verification Code';
 }
@@ -381,8 +411,7 @@ async function submitOtp() {
   try {
     const res  = await fetch('/api/verify-otp', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      credentials:'include',
-      body: JSON.stringify({ ..._otpPendingData, otp })
+      credentials:'include', body: JSON.stringify({ ..._otpPendingData, otp })
     });
     const data = await res.json();
     if (res.ok) {
@@ -392,9 +421,7 @@ async function submitOtp() {
     } else {
       showAuthMsg(data.error || 'Invalid or expired code.', 'error');
     }
-  } catch {
-    showAuthMsg('Network error. Check your connection.', 'error');
-  }
+  } catch { showAuthMsg('Network error. Check your connection.', 'error'); }
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-check-circle"></i> Verify & Create Account';
 }
@@ -405,19 +432,12 @@ async function resendOtp() {
   try {
     const res = await fetch('/api/send-otp', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      credentials:'include',
-      body: JSON.stringify(_otpPendingData)
+      credentials:'include', body: JSON.stringify(_otpPendingData)
     });
     const data = await res.json();
-    if (res.ok) {
-      showAuthMsg('Code ថ្មីត្រូវបានផ្ញើ!', 'success');
-      startResendTimer(60);
-    } else {
-      showAuthMsg(data.error || 'Failed to resend.', 'error');
-    }
-  } catch {
-    showAuthMsg('Network error.', 'error');
-  }
+    if (res.ok) { showAuthMsg('Code ថ្មីត្រូវបានផ្ញើ!', 'success'); startResendTimer(60); }
+    else         { showAuthMsg(data.error || 'Failed to resend.', 'error'); }
+  } catch { showAuthMsg('Network error.', 'error'); }
 }
 
 function startResendTimer(seconds) {
@@ -445,7 +465,6 @@ function backToSignup() {
   if (_resendCountdown) clearInterval(_resendCountdown);
 }
 
-// ── SUBMIT LOGIN ──────────────────────────
 async function submitLogin(e) {
   e.preventDefault();
   clearAuthMsg();
@@ -466,22 +485,16 @@ async function submitLogin(e) {
     } else {
       showAuthMsg(data.error || 'Invalid email or password.', 'error');
     }
-  } catch {
-    showAuthMsg('Network error. Check your connection.', 'error');
-  }
+  } catch { showAuthMsg('Network error. Check your connection.', 'error'); }
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Login';
 }
 
-// ══════════════════════════════════════════
-//  AUTH GATE — wrap tool buttons
-// ══════════════════════════════════════════
+// ── AUTH GATE ─────────────────────────────
 function requireAuth(action, fn) {
   if (currentUser) { fn(); }
   else { openAuthModal(action); }
 }
-
-// Trigger helpers called after login success
 function triggerChat()  { sendChat(); }
 function triggerImage() { generateImage(); }
 function triggerSong()  { generateSong(); }
@@ -514,7 +527,7 @@ function confirmPlan() {
 }
 
 // ══════════════════════════════════════════
-//  SETTINGS PANEL (Pro only)
+//  SETTINGS PANEL
 // ══════════════════════════════════════════
 function openSettings() {
   if (userPlan !== 'pro') { showToast('Settings available on Pro plan', 'error'); openPlanModal(); return; }
@@ -548,24 +561,20 @@ function saveSettings() {
 // ══════════════════════════════════════════
 //  UPGRADE MODAL
 // ══════════════════════════════════════════
-function showUpgradeModal() { const m = document.getElementById('upgradeModal'); if (m) m.classList.add('open'); }
+function showUpgradeModal()  { const m = document.getElementById('upgradeModal'); if (m) m.classList.add('open'); }
 function closeUpgradeModal() { document.getElementById('upgradeModal').classList.remove('open'); }
-function upgradeNow() { closeUpgradeModal(); if (userPlan === 'free') openPlanModal(); }
+function upgradeNow()        { closeUpgradeModal(); if (userPlan === 'free') openPlanModal(); }
 function requirePro(btn, groupId) {
   if (userPlan === 'pro') { selectChip(btn, groupId); }
   else { showUpgradeModal(); showToast('1080p is available on Pro plan only', 'error'); }
 }
 
 // ══════════════════════════════════════════
-//  PANEL 1 — AI ASSISTANT (AUTH GATED)
+//  PANEL 1 — AI ASSISTANT
 // ══════════════════════════════════════════
 function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
+function handleChatKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
 
-function handleChatKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
-}
-
-// ── sendChat — gated ──────────────────────
 function sendChat() {
   if (!currentUser) { openAuthModal('chat'); return; }
   _sendChat();
@@ -612,7 +621,14 @@ function appendMessage(role, text) {
   div.className = `msg ${isUser ? 'msg-user' : 'msg-bot'}`;
   const avatar = document.createElement('div');
   avatar.className = 'msg-avatar';
-  avatar.innerHTML = isUser ? '<i class="fas fa-user"></i>' : '<i class="fas fa-brain"></i>';
+  // Use user initial as avatar in chat if logged in
+  if (isUser && currentUser) {
+    avatar.textContent = currentUser.name.charAt(0).toUpperCase();
+    avatar.style.fontSize = '13px';
+    avatar.style.fontWeight = '700';
+  } else {
+    avatar.innerHTML = isUser ? '<i class="fas fa-user"></i>' : '<i class="fas fa-brain"></i>';
+  }
   const bubble = document.createElement('div');
   bubble.className = 'msg-bubble';
   if (isUser) { bubble.textContent = text; }
@@ -657,7 +673,7 @@ function formatMarkdown(text) {
 }
 
 // ══════════════════════════════════════════
-//  PANEL 2 — IMAGE GENERATE (AUTH GATED)
+//  PANEL 2 — IMAGE GENERATE
 // ══════════════════════════════════════════
 function generateImage() {
   if (!currentUser) { openAuthModal('image'); return; }
@@ -737,7 +753,7 @@ function openImageFullscreen(src) {
 }
 
 // ══════════════════════════════════════════
-//  PANEL 3 — SONG GENERATE (AUTH GATED)
+//  PANEL 3 — SONG GENERATE
 // ══════════════════════════════════════════
 const LYRIA_MODEL = 'lyria-3-pro-preview';
 
