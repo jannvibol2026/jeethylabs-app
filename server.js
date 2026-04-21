@@ -20,6 +20,15 @@ const APP_NAME      = 'JeeThy Labs';
 const APP_URL       = process.env.APP_URL || 'https://app.jeethylabs.site';
 const FROM_EMAIL    = 'noreply@contact.jeethylabs.site';
 
+// ── STARTUP VALIDATION ───────────────────
+if (!RESEND_API_KEY || !RESEND_API_KEY.startsWith('re_')) {
+  console.error('❌ FATAL: SMTP_PASS must be a valid Resend API key (starts with re_). Current value:', RESEND_API_KEY ? 'SET but wrong format' : 'EMPTY');
+}
+if (!DATABASE_URL) {
+  console.error('❌ FATAL: DATABASE_URL is not set.');
+}
+console.log('✅ Config: RESEND_API_KEY=', RESEND_API_KEY ? RESEND_API_KEY.substring(0,8)+'...' : 'MISSING');
+
 // ── DB ────────────────────────────────────
 const pool = new Pool({
   connectionString: DATABASE_URL,
@@ -87,7 +96,7 @@ async function sendOtpEmail(email, name, otp) {
       });
     });
     req.on('error', reject);
-    req.setTimeout(15000, () => {
+    req.setTimeout(30000, () => {
       req.destroy();
       reject(new Error('Resend API timeout'));
     });
@@ -131,6 +140,7 @@ app.post('/api/send-otp', async (req, res) => {
     res.json({ ok: true, message: 'Verification code sent.' });
   } catch (e) {
     console.error('[send-otp]', e.message);
+    console.error('[send-otp] Full error:', e);
     res.status(500).json({ error: 'Failed to send code: ' + e.message });
   }
 });
