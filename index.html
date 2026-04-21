@@ -13,6 +13,9 @@
     /* ── PROFILE DROPDOWN ── */
     .user-profile-wrap {
       position: relative;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
     }
     .user-avatar-btn {
       width: 34px; height: 34px;
@@ -27,25 +30,27 @@
       transition: border-color 0.2s, transform 0.15s;
       overflow: hidden;
       padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
     .user-avatar-btn:active { transform: scale(0.93); }
-    .user-avatar-btn img {
-      width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
-    }
+    .user-avatar-btn img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
+
     .profile-dropdown {
       position: absolute;
       top: calc(100% + 10px);
       right: 0;
-      width: 230px;
+      left: auto;
+      width: 240px;
+      max-width: 92vw;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 16px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-      z-index: 500;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+      z-index: 9999;
       overflow: hidden;
       opacity: 0;
       pointer-events: none;
-      transform: translateY(-6px) scale(0.97);
+      transform: translateY(-8px) scale(0.96);
       transition: opacity 0.2s ease, transform 0.2s ease;
     }
     .profile-dropdown.open {
@@ -55,72 +60,209 @@
     }
     .profile-dropdown-header {
       padding: 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      display: flex; align-items: center; gap: 12px;
       border-bottom: 1px solid var(--border);
       background: var(--surface2);
     }
     .profile-avatar-lg {
-      width: 44px; height: 44px;
-      border-radius: 50%;
+      width: 44px; height: 44px; border-radius: 50%;
       background: linear-gradient(135deg,#7c3aed,var(--purple));
-      color: #fff;
-      font-size: 18px; font-weight: 700;
+      color: #fff; font-size: 18px; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-      overflow: hidden;
+      flex-shrink: 0; overflow: hidden;
     }
-    .profile-avatar-lg img {
-      width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
-    }
-    .profile-info { flex: 1; overflow: hidden; }
+    .profile-avatar-lg img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
+    .profile-info { flex:1; overflow:hidden; }
     .profile-name {
-      font-size: 14px; font-weight: 700;
-      color: var(--text);
+      font-size: 14px; font-weight: 700; color: var(--text);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .profile-email {
       font-size: 11px; color: var(--muted);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
     }
     .profile-plan-badge {
-      display: inline-block;
-      font-size: 9px; font-weight: 700;
-      padding: 2px 7px; border-radius: 20px;
-      margin-top: 4px;
+      display: inline-block; font-size: 9px; font-weight: 700;
+      padding: 2px 7px; border-radius: 20px; margin-top: 4px;
       text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .plan-badge-free  { background: rgba(167,139,250,0.15); color: var(--purple); border: 1px solid rgba(167,139,250,0.4); }
-    .plan-badge-pro   { background: rgba(6,182,212,0.15);   color: var(--cyan);   border: 1px solid rgba(6,182,212,0.4); }
-    .plan-badge-max   { background: rgba(251,191,36,0.15);  color: #fbbf24;       border: 1px solid rgba(251,191,36,0.4); }
-    .profile-dropdown-body { padding: 8px; }
-    .profile-signout-btn {
-      width: 100%; padding: 10px 12px;
-      border-radius: 10px; border: none;
-      background: rgba(239,68,68,0.08);
-      border: 1px solid rgba(239,68,68,0.2);
-      color: #f87171;
-      font-family: var(--font); font-size: 13px; font-weight: 600;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
+    .plan-badge-free  { background:rgba(167,139,250,0.15);color:var(--purple);border:1px solid rgba(167,139,250,0.4); }
+    .plan-badge-pro   { background:rgba(6,182,212,0.15);color:var(--cyan);border:1px solid rgba(6,182,212,0.4); }
+    .plan-badge-max   { background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.4); }
+
+    .profile-dropdown-body { padding: 8px; display:flex; flex-direction:column; gap:6px; }
+    .profile-menu-btn {
+      width:100%; padding:10px 12px; border-radius:10px; border:none;
+      font-family:var(--font); font-size:13px; font-weight:600; cursor:pointer;
+      display:flex; align-items:center; gap:8px;
       transition: background 0.2s;
     }
-    .profile-signout-btn:hover { background: rgba(239,68,68,0.15); }
+    .profile-menu-btn.profile-btn-cyan {
+      background:rgba(6,182,212,0.08); border:1px solid rgba(6,182,212,0.2); color:#22d3ee;
+    }
+    .profile-menu-btn.profile-btn-cyan:hover { background:rgba(6,182,212,0.16); }
+    .profile-signout-btn {
+      width:100%; padding:10px 12px; border-radius:10px; border:none;
+      background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2);
+      color:#f87171; font-family:var(--font); font-size:13px; font-weight:600;
+      cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+      transition:background 0.2s;
+    }
+    .profile-signout-btn:hover { background:rgba(239,68,68,0.15); }
 
-    /* ── PLAN BADGE in header (next to name) ── */
-    .nav-plan-inline {
-      font-size: 9px; font-weight: 700;
-      padding: 2px 7px; border-radius: 20px;
+    /* ── PROFILE PAGE MODAL ── */
+    .profile-page-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      z-index: 300;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .profile-page-overlay.open {
+      opacity: 1; pointer-events: all;
+    }
+    .profile-page-sheet {
+      width: 100%; max-width: 480px;
+      background: var(--surface);
+      border-radius: 24px 24px 0 0;
+      border-top: 1px solid var(--border);
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(32px);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+      -webkit-overflow-scrolling: touch;
+    }
+    .profile-page-sheet::-webkit-scrollbar { display:none; }
+    .profile-page-overlay.open .profile-page-sheet {
+      transform: translateY(0);
+    }
+    .profile-page-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: var(--border); margin: 12px auto 0; display: block;
+    }
+    .profile-page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .profile-page-header h3 {
+      font-size: 16px; font-weight: 700; color: var(--purple);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .profile-page-close {
+      width: 28px; height: 28px; border-radius: 50%; border: none;
+      background: var(--surface2); color: var(--muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 13px;
+    }
+    .profile-page-body { padding: 20px; display:flex; flex-direction:column; gap:18px; }
+
+    .profile-hero {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      padding: 20px; background: var(--surface2); border-radius: 16px;
+      border: 1px solid var(--border);
+    }
+    .profile-hero-avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: linear-gradient(135deg,#7c3aed,var(--purple));
+      color: #fff; font-size: 32px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; border: 3px solid rgba(167,139,250,0.4);
+      position: relative;
+    }
+    .profile-hero-avatar img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
+    .profile-avatar-upload-hint {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.55); color: #fff;
+      font-size: 9px; font-weight: 700; text-align: center;
+      padding: 3px; border-radius: 0 0 50px 50px;
+      letter-spacing: 0.3px;
+    }
+    .profile-hero-name {
+      font-size: 20px; font-weight: 700; color: var(--text); text-align: center;
+    }
+    .profile-hero-email {
+      font-size: 13px; color: var(--muted); text-align: center; margin-top: -6px;
+    }
+    .profile-hero-plan {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700; padding: 4px 12px;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .profile-info-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+    }
+    .profile-info-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 13px 16px; border-bottom: 1px solid var(--border);
+    }
+    .profile-info-row:last-child { border-bottom: none; }
+    .profile-info-label {
+      font-size: 12px; font-weight: 600; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.5px;
-      border: 1px solid;
-      flex-shrink: 0;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .profile-info-value {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      max-width: 55%; text-align: right; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .profile-usage-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px;
+    }
+    .profile-usage-title {
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .usage-bar-wrap { display:flex; flex-direction:column; gap:10px; }
+    .usage-bar-row { display:flex; flex-direction:column; gap:5px; }
+    .usage-bar-label {
+      display:flex; justify-content:space-between;
+      font-size: 12px; color: var(--muted);
+    }
+    .usage-bar-label span:last-child { color: var(--text); font-weight: 600; }
+    .usage-bar-track {
+      height: 6px; border-radius: 3px;
+      background: var(--border); overflow: hidden;
+    }
+    .usage-bar-fill {
+      height: 100%; border-radius: 3px;
+      transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .profile-upgrade-banner {
+      display: flex; align-items: center; gap: 14px;
+      background: linear-gradient(135deg,rgba(167,139,250,0.1),rgba(6,182,212,0.1));
+      border: 1px solid rgba(167,139,250,0.3); border-radius: 14px; padding: 16px;
+    }
+    .profile-upgrade-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg,var(--purple),var(--cyan));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: #fff; flex-shrink: 0;
+    }
+    .profile-upgrade-text { flex:1; }
+    .profile-upgrade-text strong { font-size:14px; font-weight:700; display:block; }
+    .profile-upgrade-text span { font-size:12px; color:var(--muted); }
+
+    @media (min-width:768px) {
+      .profile-page-overlay { align-items: center; }
+      .profile-page-sheet {
+        border-radius: 20px; max-height: 85vh;
+        border: 1px solid var(--border); margin: 20px;
+      }
     }
   </style>
 </head>
 <body>
 
+<!-- ══ NAV ══ -->
 <header class="app-nav">
   <a href="https://jeethylabs.site" class="nav-home" title="Back to Home">
     <i class="fas fa-arrow-left"></i>
@@ -134,9 +276,10 @@
     <button class="nav-settings-btn" onclick="openSettings()" title="Settings">
       <i class="fas fa-gear"></i>
     </button>
-    <!-- Profile avatar — shown after login -->
+
+    <!-- ── User Profile Avatar + Dropdown ── -->
     <div class="user-profile-wrap" id="userProfileWrap" style="display:none">
-      <button class="user-avatar-btn" id="userAvatarBtn" onclick="toggleProfileDropdown()" title="Profile">
+      <button class="user-avatar-btn" id="userAvatarBtn" type="button" aria-label="Profile menu">
         <span id="userAvatarInitial"></span>
       </button>
       <div class="profile-dropdown" id="profileDropdown">
@@ -150,8 +293,11 @@
             <span class="profile-plan-badge plan-badge-free" id="profilePlanBadge">Free</span>
           </div>
         </div>
-        <div class="profile-dropdown-body">
-          <button class="profile-signout-btn" onclick="logoutUser()">
+        <div class="profile-dropdown-body" id="profileDropdownBody">
+          <button class="profile-menu-btn profile-btn-cyan" id="profileOpenBtn" type="button">
+            <i class="fas fa-user"></i> Profile
+          </button>
+          <button class="profile-signout-btn" id="profileSignOutBtn" type="button">
             <i class="fas fa-right-from-bracket"></i> Sign Out
           </button>
         </div>
@@ -160,6 +306,7 @@
   </div>
 </header>
 
+<!-- ══ TAB BAR ══ -->
 <nav class="tab-bar">
   <button class="tab active" onclick="goToPanel(0)" id="tab0">
     <i class="fas fa-brain"></i><span>AI Assistant</span>
@@ -172,6 +319,7 @@
   </button>
 </nav>
 
+<!-- ══ PANELS ══ -->
 <main class="panels-wrap" id="panelsWrap">
   <div class="panels-track" id="panelsTrack">
 
@@ -191,7 +339,7 @@
         <div class="chat-input-wrap">
           <div class="chat-input-box">
             <textarea id="chatInput" class="chat-textarea" placeholder="Type your message..." rows="1"
-              onInput="autoResize(this)" onKeyDown="handleChatKey(event)"></textarea>
+              oninput="autoResize(this)" onkeydown="handleChatKey(event)"></textarea>
             <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">
               <i class="fas fa-paper-plane"></i>
             </button>
@@ -296,7 +444,7 @@
   </div>
 </main>
 
-<!-- PLAN MODAL -->
+<!-- ══ PLAN MODAL ══ -->
 <div class="modal-overlay" id="planModal">
   <div class="modal-box modal-wide">
     <div class="modal-header">
@@ -342,7 +490,7 @@
   </div>
 </div>
 
-<!-- SETTINGS MODAL -->
+<!-- ══ SETTINGS MODAL ══ -->
 <div class="modal-overlay" id="settingsModal">
   <div class="modal-box">
     <div class="modal-header">
@@ -376,7 +524,7 @@
   </div>
 </div>
 
-<!-- UPGRADE MODAL -->
+<!-- ══ UPGRADE MODAL ══ -->
 <div class="modal-overlay" id="upgradeModal">
   <div class="modal-box">
     <div class="modal-header">
@@ -400,6 +548,216 @@
   </div>
 </div>
 
+<!-- ══ PROFILE PAGE (bottom sheet) ══ -->
+<div class="profile-page-overlay" id="profilePageOverlay">
+  <div class="profile-page-sheet" id="profilePageSheet">
+    <span class="profile-page-handle"></span>
+    <div class="profile-page-header">
+      <h3><i class="fas fa-user-circle"></i> My Profile</h3>
+      <button class="profile-page-close" id="profilePageCloseBtn" type="button" aria-label="Close">
+        <i class="fas fa-xmark"></i>
+      </button>
+    </div>
+    <div class="profile-page-body">
+
+      <!-- Hero -->
+      <div class="profile-hero">
+        <div class="profile-hero-avatar" id="profileHeroAvatar">
+          <span id="profileHeroInitial">?</span>
+          <span class="profile-avatar-upload-hint">PHOTO</span>
+        </div>
+        <div class="profile-hero-name" id="profileHeroName">—</div>
+        <div class="profile-hero-email" id="profileHeroEmail">—</div>
+        <span class="profile-hero-plan plan-badge-free" id="profileHeroPlan">
+          <i class="fas fa-star"></i> Free Plan
+        </span>
+      </div>
+
+      <!-- Info rows -->
+      <div class="profile-info-card">
+        <div class="profile-info-row">
+          <span class="profile-info-label"><i class="fas fa-user"></i> Name</span>
+          <span class="profile-info-value" id="profileInfoName">—</span>
+        </div>
+        <div class="profile-info-row">
+          <span class="profile-info-label"><i class="fas fa-envelope"></i> Email</span>
+          <span class="profile-info-value" id="profileInfoEmail">—</span>
+        </div>
+        <div class="profile-info-row">
+          <span class="profile-info-label"><i class="fas fa-crown"></i> Plan</span>
+          <span class="profile-info-value" id="profileInfoPlan">Free</span>
+        </div>
+        <div class="profile-info-row">
+          <span class="profile-info-label"><i class="fas fa-calendar"></i> Member Since</span>
+          <span class="profile-info-value" id="profileInfoJoined">—</span>
+        </div>
+      </div>
+
+      <!-- Usage -->
+      <div class="profile-usage-card">
+        <div class="profile-usage-title"><i class="fas fa-chart-bar"></i> Session Usage</div>
+        <div class="usage-bar-wrap">
+          <div class="usage-bar-row">
+            <div class="usage-bar-label">
+              <span>Requests Used</span>
+              <span id="usageCount">0 / 10</span>
+            </div>
+            <div class="usage-bar-track">
+              <div class="usage-bar-fill" id="usageBarFill" style="width:0%;background:var(--purple);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upgrade banner (only for free users) -->
+      <div class="profile-upgrade-banner" id="profileUpgradeBanner">
+        <div class="profile-upgrade-icon"><i class="fas fa-crown"></i></div>
+        <div class="profile-upgrade-text">
+          <strong>Upgrade to Pro</strong>
+          <span>100 req/session · Custom API key · Priority access</span>
+        </div>
+      </div>
+      <button class="btn-generate btn-purple" onclick="openPlanFromProfile()" style="margin-top:-4px">
+        <i class="fas fa-crown"></i> Upgrade to Pro — $9.99/mo
+      </button>
+
+      <!-- Sign out -->
+      <button class="profile-signout-btn" onclick="logoutUser()" style="margin-top:4px">
+        <i class="fas fa-right-from-bracket"></i> Sign Out
+      </button>
+
+    </div>
+  </div>
+</div>
+
 <script src="script.js"></script>
+<script>
+/* ── Profile Page Bridge ── */
+(function () {
+  function openProfilePage() {
+    closeProfileDropdown();
+    const limit = (window.PLAN_LIMITS && window.userPlan) ? (window.PLAN_LIMITS[window.userPlan]?.requests ?? 10) : 10;
+    const used = window.requestCount || 0;
+    const pct = Math.min(100, Math.round((used / limit) * 100));
+
+    // Sync hero
+    if (window.currentUser) {
+      const u = window.currentUser;
+      const initial = (u.name || 'U').charAt(0).toUpperCase();
+      const plan = u.plan || window.userPlan || 'free';
+      const planInfo = (window.PLAN_LIMITS && window.PLAN_LIMITS[plan]) || { label: 'Free' };
+
+      _setText('profileHeroName', u.name || '');
+      _setText('profileHeroEmail', u.email || '');
+      _setText('profileHeroInitial', initial);
+      _setText('profileInfoName', u.name || '—');
+      _setText('profileInfoEmail', u.email || '—');
+      _setText('profileInfoPlan', planInfo.label);
+
+      if (u.created_at) {
+        const d = new Date(u.created_at);
+        _setText('profileInfoJoined', d.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }));
+      } else {
+        _setText('profileInfoJoined', 'Today');
+      }
+
+      if (u.avatar_url) {
+        const heroAvatar = document.getElementById('profileHeroAvatar');
+        if (heroAvatar) heroAvatar.innerHTML = `<img src="${u.avatar_url}" alt="${initial}" /><span class="profile-avatar-upload-hint">PHOTO</span>`;
+      }
+
+      const heroPlanned = document.getElementById('profileHeroPlan');
+      if (heroPlanned) {
+        heroPlanned.textContent = '';
+        heroPlanned.innerHTML = `<i class="fas fa-star"></i> ${planInfo.label} Plan`;
+        heroPlanned.className = `profile-hero-plan plan-badge-${plan}`;
+      }
+
+      const upgradeBanner = document.getElementById('profileUpgradeBanner');
+      const upgradeBtn = document.querySelector('.profile-page-body .btn-purple');
+      if (plan === 'pro' || plan === 'max') {
+        if (upgradeBanner) upgradeBanner.style.display = 'none';
+        if (upgradeBtn) upgradeBtn.style.display = 'none';
+      } else {
+        if (upgradeBanner) upgradeBanner.style.display = 'flex';
+        if (upgradeBtn) upgradeBtn.style.display = 'flex';
+      }
+    }
+
+    // Usage bar
+    _setText('usageCount', `${used} / ${limit}`);
+    const fill = document.getElementById('usageBarFill');
+    if (fill) {
+      fill.style.width = pct + '%';
+      fill.style.background = pct >= 80 ? '#f87171' : pct >= 50 ? '#fbbf24' : 'var(--purple)';
+    }
+
+    const overlay = document.getElementById('profilePageOverlay');
+    if (overlay) overlay.classList.add('open');
+  }
+
+  function closeProfilePage() {
+    const overlay = document.getElementById('profilePageOverlay');
+    if (overlay) overlay.classList.remove('open');
+  }
+
+  function openPlanFromProfile() {
+    closeProfilePage();
+    if (typeof openPlanModal === 'function') openPlanModal();
+  }
+
+  function _setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  // Expose globally
+  window.openProfilePage = openProfilePage;
+  window.closeProfilePage = closeProfilePage;
+  window.openPlanFromProfile = openPlanFromProfile;
+
+  // Wire up close button
+  document.addEventListener('DOMContentLoaded', function () {
+    const closeBtn = document.getElementById('profilePageCloseBtn');
+    if (closeBtn) closeBtn.onclick = closeProfilePage;
+
+    const overlay = document.getElementById('profilePageOverlay');
+    if (overlay) {
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeProfilePage();
+      });
+    }
+
+    // Wire avatar btn properly after DOMContentLoaded
+    const avatarBtn = document.getElementById('userAvatarBtn');
+    if (avatarBtn) {
+      avatarBtn.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof toggleProfileDropdown === 'function') toggleProfileDropdown(e);
+      };
+    }
+
+    // Wire "Profile" button in dropdown
+    const profileOpenBtn = document.getElementById('profileOpenBtn');
+    if (profileOpenBtn) {
+      profileOpenBtn.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openProfilePage();
+      };
+    }
+
+    // Wire sign out in dropdown
+    const signOutBtn = document.getElementById('profileSignOutBtn');
+    if (signOutBtn) {
+      signOutBtn.onclick = function (e) {
+        e.stopPropagation();
+        if (typeof logoutUser === 'function') logoutUser();
+      };
+    }
+  });
+})();
+</script>
 </body>
 </html>
