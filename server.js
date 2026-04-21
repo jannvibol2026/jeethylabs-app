@@ -2,9 +2,9 @@ const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const cors = require('cors');
 const path = require('path');
-const { execFile } = require('child_process');
 
 const app = express();
 app.use(express.json());
@@ -14,13 +14,31 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ── ENV ───────────────────────────────────
 const DATABASE_URL = process.env.DATABASE_URL;
 const JWT_SECRET   = process.env.JWT_SECRET || 'secret123';
-const RESEND_KEY   = process.env.SMTP_PASS || '';
-const FROM_EMAIL   = process.env.FROM_EMAIL || 'noreply@contact.jeethylabs.site';
+const SMTP_USER    = process.env.SMTP_USER || '';
+const SMTP_PASS    = process.env.SMTP_PASS || '';
+const FROM_EMAIL   = process.env.FROM_EMAIL || SMTP_USER;
 const PORT         = process.env.PORT || 8080;
 
 console.log('=== JeeThy Labs Starting ===');
-console.log('RESEND KEY:', RESEND_KEY ? RESEND_KEY.substring(0,8)+'...' : '❌ MISSING');
+console.log('SMTP_USER:', SMTP_USER || '❌ MISSING');
+console.log('SMTP_PASS:', SMTP_PASS ? '✅ set' : '❌ MISSING');
 console.log('FROM_EMAIL:', FROM_EMAIL);
+
+// ── GMAIL SMTP ────────────────────────────
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // SSL
+  auth: {
+    user: SMTP_USER,
+    pass: SMTP_PASS,
+  },
+});
+
+transporter.verify((err) => {
+  if (err) console.error('❌ SMTP Error:', err.message);
+  else console.log('✅ Gmail SMTP Ready');
+});
 
 // ── DB ────────────────────────────────────
 const pool = new Pool({
@@ -37,49 +55,20 @@ function genOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// ── SEND EMAIL via curl (bypasses Node.js TLS/network issues) ──
-function sendEmailCurl(to, subject, html) {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({
-      from: `JeeThy Labs <${FROM_EMAIL}>`,
-      to: [to],
-      subject: subject,
-      html: html,
-    });
-
-    const args = [
-      '-s', '-w', '%{http_code}',
-      '-X', 'POST',
-      'https://api.resend.com/emails',
-      '-H', 'Content-Type: application/json',
-      '-H', `Authorization: Bearer ${RESEND_KEY}`,
-      '-d', body,
-      '--max-time', '20',
-      '--connect-timeout', '10',
-    ];
-
-    execFile('curl', args, { timeout: 25000 }, (err, stdout, stderr) => {
-      if (err) {
-        console.error('[curl] error:', err.message);
-        return reject(new Error('curl failed: ' + err.message));
-      }
-      // stdout = response body + http_code at end
-      const httpCode = stdout.slice(-3);
-      const respBody = stdout.slice(0, -3);
-      console.log('[curl] HTTP', httpCode, '|', respBody.substring(0, 100));
-      if (httpCode === '200' || httpCode === '201') {
-        resolve(true);
-      } else {
-        reject(new Error('Resend API error ' + httpCode + ': ' + respBody));
-      }
-    });
+// ── SEND EMAIL ────────────────────────────
+async function sendEmail(to, subject, html) {
+  await transporter.sendMail({
+    from: `"JeeThy Labs" <${FROM_EMAIL}>`,
+    to,
+    subject,
+    html,
   });
 }
 
 // ── ROUTES ───────────────────────────────
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', resend: RESEND_KEY ? 'configured' : 'missing' });
+  res.json({ status: 'ok', smtp_user: SMTP_USER || 'missing' });
 });
 
 app.get('/api/key', (req, res) => {
@@ -95,22 +84,22 @@ app.post('/api/send-otp', async (req, res) => {
   otpStore[email] = { otp, expires: Date.now() + 10 * 60 * 1000 };
   console.log('[send-otp] Sending to:', email, '| OTP:', otp);
 
-  const html = `
-    <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px;">
-      <h2 style="color:#7c3aed;">JeeThy Labs</h2>
-      <p>Hi ${name || 'there'},</p>
-      <p>Your verification code is:</p>
-      <div style="font-size:40px;font-weight:bold;letter-spacing:8px;color:#7c3aed;padding:16px 0;">${otp}</div>
-      <p style="color:#888;">This code expires in 10 minutes.</p>
-    </div>
-  `;
-
   try {
-    await sendEmailCurl(email, 'Your Verification Code', html);
+    await sendEmail(email, 'Your Verification Code - JeeThy Labs', `
+      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px;">
+        <h2 style="color:#7c3aed;">JeeThy Labs</h2>
+        <p>Hi <strong>${name || 'there'}</strong>,</p>
+        <p>Your verification code is:</p>
+        <div style="font-size:42px;font-weight:bold;letter-spacing:10px;color:#7c3aed;padding:20px 0;text-align:center;">${otp}</div>
+        <p style="color:#888;font-size:14px;">This code expires in <strong>10 minutes</strong>.</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+        <p style="color:#aaa;font-size:12px;">If you did not request this, please ignore this email.</p>
+      </div>
+    `);
     console.log('[send-otp] ✅ Sent to:', email);
     res.json({ success: true });
   } catch (e) {
-    console.error('[send-otp] ❌', e.message);
+    console.error('[send-otp] ❌ Error:', e.message);
     res.status(500).json({ error: 'Failed to send code: ' + e.message });
   }
 });
@@ -158,7 +147,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Forgot password - send OTP
+// Forgot password
 app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body;
   try {
@@ -171,17 +160,15 @@ app.post('/api/forgot-password', async (req, res) => {
   const otp = genOTP();
   otpStore[email] = { otp, expires: Date.now() + 10 * 60 * 1000, type: 'reset' };
 
-  const html = `
-    <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px;">
-      <h2 style="color:#7c3aed;">Reset Your Password</h2>
-      <p>Your reset code:</p>
-      <div style="font-size:40px;font-weight:bold;letter-spacing:8px;color:#7c3aed;padding:16px 0;">${otp}</div>
-      <p style="color:#888;">Expires in 10 minutes.</p>
-    </div>
-  `;
-
   try {
-    await sendEmailCurl(email, 'Password Reset Code', html);
+    await sendEmail(email, 'Password Reset Code - JeeThy Labs', `
+      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px;">
+        <h2 style="color:#7c3aed;">Reset Your Password</h2>
+        <p>Your reset code:</p>
+        <div style="font-size:42px;font-weight:bold;letter-spacing:10px;color:#7c3aed;padding:20px 0;text-align:center;">${otp}</div>
+        <p style="color:#888;font-size:14px;">Expires in <strong>10 minutes</strong>.</p>
+      </div>
+    `);
     res.json({ success: true });
   } catch (e) {
     console.error('[forgot-password]', e.message);
