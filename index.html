@@ -1,329 +1,121 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>JeeThy Labs — App</title>
-  <link rel="icon" href="https://jeethylabs.site/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    /* ── PROFILE DROPDOWN ── */
-    .user-profile-wrap {
-      position: relative;
-      display: flex;
-      align-items: center;
-      flex-shrink: 0;
-    }
-    .user-avatar-btn {
-      width: 34px; height: 34px;
-      border-radius: 50%;
-      border: 2px solid rgba(167,139,250,0.5);
-      background: linear-gradient(135deg,#7c3aed,var(--purple));
-      color: #fff;
-      font-size: 13px; font-weight: 700;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--font);
-      transition: border-color 0.2s, transform 0.15s;
-      overflow: hidden;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .user-avatar-btn:active { transform: scale(0.93); }
-    .user-avatar-btn img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>JeeThy Labs — App</title>
+<link rel="icon" href="https://jeethylabs.site/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="style.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+/* ── PROFILE DROPDOWN ── */
+.user-profile-wrap{position:relative;display:flex;align-items:center;flex-shrink:0}
+.user-avatar-btn{width:34px;height:34px;border-radius:50%;border:2px solid rgba(167,139,250,.5);background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:border-color .2s,transform .15s;overflow:hidden;padding:0;-webkit-tap-highlight-color:transparent}
+.user-avatar-btn:active{transform:scale(.93)}
+.user-avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;left:auto;width:240px;max-width:92vw;background:var(--surface,#111827);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.6);z-index:9999;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(-8px) scale(.96);transition:opacity .2s ease,transform .2s ease}
+.profile-dropdown.open{opacity:1;pointer-events:all;transform:translateY(0) scale(1)}
+.profile-dropdown-header{padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border,rgba(255,255,255,.08));background:var(--surface2,#1f2937)}
+.profile-avatar-lg{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.profile-avatar-lg img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.profile-info{flex:1;overflow:hidden}
+.profile-name{font-size:14px;font-weight:700;color:var(--text,#fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-email{font-size:11px;color:var(--muted,#9ca3af);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.profile-plan-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+.plan-badge-free{background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.4)}
+.plan-badge-pro{background:rgba(6,182,212,.15);color:#22d3ee;border:1px solid rgba(6,182,212,.4)}
+.plan-badge-max{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.4)}
+.profile-dropdown-body{padding:8px;display:flex;flex-direction:column;gap:6px}
+.pd-btn{width:100%;padding:10px 12px;border-radius:10px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#22d3ee;transition:background .2s}
+.pd-btn:hover{background:rgba(6,182,212,.16)}
+.pd-signout{background:rgba(239,68,68,.08)!important;border:1px solid rgba(239,68,68,.2)!important;color:#f87171!important;width:100%;padding:10px 12px;border-radius:10px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s}
+.pd-signout:hover{background:rgba(239,68,68,.15)!important}
 
-    .profile-dropdown {
-      position: absolute;
-      top: calc(100% + 10px);
-      right: 0;
-      left: auto;
-      width: 240px;
-      max-width: 92vw;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      box-shadow: 0 16px 48px rgba(0,0,0,0.6);
-      z-index: 9999;
-      overflow: hidden;
-      opacity: 0;
-      pointer-events: none;
-      transform: translateY(-8px) scale(0.96);
-      transition: opacity 0.2s ease, transform 0.2s ease;
-    }
-    .profile-dropdown.open {
-      opacity: 1;
-      pointer-events: all;
-      transform: translateY(0) scale(1);
-    }
-    .profile-dropdown-header {
-      padding: 16px;
-      display: flex; align-items: center; gap: 12px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface2);
-    }
-    .profile-avatar-lg {
-      width: 44px; height: 44px; border-radius: 50%;
-      background: linear-gradient(135deg,#7c3aed,var(--purple));
-      color: #fff; font-size: 18px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; overflow: hidden;
-    }
-    .profile-avatar-lg img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
-    .profile-info { flex:1; overflow:hidden; }
-    .profile-name {
-      font-size: 14px; font-weight: 700; color: var(--text);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .profile-email {
-      font-size: 11px; color: var(--muted);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
-    }
-    .profile-plan-badge {
-      display: inline-block; font-size: 9px; font-weight: 700;
-      padding: 2px 7px; border-radius: 20px; margin-top: 4px;
-      text-transform: uppercase; letter-spacing: 0.5px;
-    }
-    .plan-badge-free  { background:rgba(167,139,250,0.15);color:var(--purple);border:1px solid rgba(167,139,250,0.4); }
-    .plan-badge-pro   { background:rgba(6,182,212,0.15);color:var(--cyan);border:1px solid rgba(6,182,212,0.4); }
-    .plan-badge-max   { background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.4); }
-
-    .profile-dropdown-body { padding: 8px; display:flex; flex-direction:column; gap:6px; }
-    .profile-menu-btn {
-      width:100%; padding:10px 12px; border-radius:10px; border:none;
-      font-family:var(--font); font-size:13px; font-weight:600; cursor:pointer;
-      display:flex; align-items:center; gap:8px;
-      transition: background 0.2s;
-    }
-    .profile-menu-btn.profile-btn-cyan {
-      background:rgba(6,182,212,0.08); border:1px solid rgba(6,182,212,0.2); color:#22d3ee;
-    }
-    .profile-menu-btn.profile-btn-cyan:hover { background:rgba(6,182,212,0.16); }
-    .profile-signout-btn {
-      width:100%; padding:10px 12px; border-radius:10px; border:none;
-      background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2);
-      color:#f87171; font-family:var(--font); font-size:13px; font-weight:600;
-      cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
-      transition:background 0.2s;
-    }
-    .profile-signout-btn:hover { background:rgba(239,68,68,0.15); }
-
-    /* ── PROFILE PAGE MODAL ── */
-    .profile-page-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(8px);
-      z-index: 300;
-      display: flex; align-items: flex-end; justify-content: center;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.25s;
-    }
-    .profile-page-overlay.open {
-      opacity: 1; pointer-events: all;
-    }
-    .profile-page-sheet {
-      width: 100%; max-width: 480px;
-      background: var(--surface);
-      border-radius: 24px 24px 0 0;
-      border-top: 1px solid var(--border);
-      max-height: 90vh;
-      overflow-y: auto;
-      transform: translateY(32px);
-      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-      -webkit-overflow-scrolling: touch;
-    }
-    .profile-page-sheet::-webkit-scrollbar { display:none; }
-    .profile-page-overlay.open .profile-page-sheet {
-      transform: translateY(0);
-    }
-    .profile-page-handle {
-      width: 36px; height: 4px; border-radius: 2px;
-      background: var(--border); margin: 12px auto 0; display: block;
-    }
-    .profile-page-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 20px 12px;
-      border-bottom: 1px solid var(--border);
-    }
-    .profile-page-header h3 {
-      font-size: 16px; font-weight: 700; color: var(--purple);
-      display: flex; align-items: center; gap: 8px;
-    }
-    .profile-page-close {
-      width: 28px; height: 28px; border-radius: 50%; border: none;
-      background: var(--surface2); color: var(--muted); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 13px;
-    }
-    .profile-page-body { padding: 20px; display:flex; flex-direction:column; gap:18px; }
-
-    .profile-hero {
-      display: flex; flex-direction: column; align-items: center; gap: 12px;
-      padding: 20px; background: var(--surface2); border-radius: 16px;
-      border: 1px solid var(--border);
-    }
-    .profile-hero-avatar {
-      width: 80px; height: 80px; border-radius: 50%;
-      background: linear-gradient(135deg,#7c3aed,var(--purple));
-      color: #fff; font-size: 32px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-      overflow: hidden; border: 3px solid rgba(167,139,250,0.4);
-      position: relative;
-    }
-    .profile-hero-avatar img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
-    .profile-avatar-upload-hint {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      background: rgba(0,0,0,0.55); color: #fff;
-      font-size: 9px; font-weight: 700; text-align: center;
-      padding: 3px; border-radius: 0 0 50px 50px;
-      letter-spacing: 0.3px;
-    }
-    .profile-hero-name {
-      font-size: 20px; font-weight: 700; color: var(--text); text-align: center;
-    }
-    .profile-hero-email {
-      font-size: 13px; color: var(--muted); text-align: center; margin-top: -6px;
-    }
-    .profile-hero-plan {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: 11px; font-weight: 700; padding: 4px 12px;
-      border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;
-    }
-
-    .profile-info-card {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 14px; overflow: hidden;
-    }
-    .profile-info-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 13px 16px; border-bottom: 1px solid var(--border);
-    }
-    .profile-info-row:last-child { border-bottom: none; }
-    .profile-info-label {
-      font-size: 12px; font-weight: 600; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.5px;
-      display: flex; align-items: center; gap: 7px;
-    }
-    .profile-info-value {
-      font-size: 13px; font-weight: 600; color: var(--text);
-      max-width: 55%; text-align: right; overflow: hidden;
-      text-overflow: ellipsis; white-space: nowrap;
-    }
-
-    .profile-usage-card {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 14px; padding: 16px;
-    }
-    .profile-usage-title {
-      font-size: 12px; font-weight: 700; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
-      display: flex; align-items: center; gap: 7px;
-    }
-    .usage-bar-wrap { display:flex; flex-direction:column; gap:10px; }
-    .usage-bar-row { display:flex; flex-direction:column; gap:5px; }
-    .usage-bar-label {
-      display:flex; justify-content:space-between;
-      font-size: 12px; color: var(--muted);
-    }
-    .usage-bar-label span:last-child { color: var(--text); font-weight: 600; }
-    .usage-bar-track {
-      height: 6px; border-radius: 3px;
-      background: var(--border); overflow: hidden;
-    }
-    .usage-bar-fill {
-      height: 100%; border-radius: 3px;
-      transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
-    }
-
-    .profile-upgrade-banner {
-      display: flex; align-items: center; gap: 14px;
-      background: linear-gradient(135deg,rgba(167,139,250,0.1),rgba(6,182,212,0.1));
-      border: 1px solid rgba(167,139,250,0.3); border-radius: 14px; padding: 16px;
-    }
-    .profile-upgrade-icon {
-      width: 44px; height: 44px; border-radius: 12px;
-      background: linear-gradient(135deg,var(--purple),var(--cyan));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; color: #fff; flex-shrink: 0;
-    }
-    .profile-upgrade-text { flex:1; }
-    .profile-upgrade-text strong { font-size:14px; font-weight:700; display:block; }
-    .profile-upgrade-text span { font-size:12px; color:var(--muted); }
-
-    @media (min-width:768px) {
-      .profile-page-overlay { align-items: center; }
-      .profile-page-sheet {
-        border-radius: 20px; max-height: 85vh;
-        border: 1px solid var(--border); margin: 20px;
-      }
-    }
-  </style>
+/* ── PROFILE PAGE OVERLAY ── */
+.pp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:9000;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.pp-overlay.open{opacity:1;pointer-events:all}
+.pp-sheet{width:100%;max-width:480px;background:var(--surface,#111827);border-radius:24px 24px 0 0;border-top:1px solid var(--border,rgba(255,255,255,.08));max-height:90vh;overflow-y:auto;transform:translateY(40px);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.pp-overlay.open .pp-sheet{transform:translateY(0)}
+.pp-sheet::-webkit-scrollbar{display:none}
+.pp-handle{width:36px;height:4px;border-radius:2px;background:var(--border,rgba(255,255,255,.14));margin:12px auto 0;display:block}
+.pp-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid var(--border,rgba(255,255,255,.08))}
+.pp-header h3{font-size:16px;font-weight:700;color:#a855f7;display:flex;align-items:center;gap:8px;margin:0}
+.pp-close{width:28px;height:28px;border-radius:50%;border:none;background:var(--surface2,#1f2937);color:var(--muted,#9ca3af);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px}
+.pp-body{padding:20px;display:flex;flex-direction:column;gap:16px}
+.pp-hero{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px;background:var(--surface2,#1f2937);border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08))}
+.pp-avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:32px;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid rgba(167,139,250,.4);position:relative;flex-shrink:0}
+.pp-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.pp-avatar-hint{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:9px;font-weight:700;text-align:center;padding:3px;border-radius:0 0 50px 50px}
+.pp-hero-name{font-size:20px;font-weight:700;color:var(--text,#fff);text-align:center}
+.pp-hero-email{font-size:13px;color:var(--muted,#9ca3af);text-align:center;margin-top:-4px}
+.pp-hero-plan{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+.pp-infocard{background:var(--surface2,#1f2937);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;overflow:hidden}
+.pp-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border,rgba(255,255,255,.08))}
+.pp-row:last-child{border-bottom:none}
+.pp-label{font-size:12px;font-weight:600;color:var(--muted,#9ca3af);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:7px}
+.pp-value{font-size:13px;font-weight:600;color:var(--text,#fff);max-width:55%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-usagecard{background:var(--surface2,#1f2937);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:16px}
+.pp-usage-title{font-size:12px;font-weight:700;color:var(--muted,#9ca3af);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.pp-bar-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted,#9ca3af);margin-bottom:5px}
+.pp-bar-label span:last-child{color:var(--text,#fff);font-weight:600}
+.pp-bar-track{height:6px;border-radius:3px;background:var(--border,rgba(255,255,255,.08));overflow:hidden}
+.pp-bar-fill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.pp-upgrade{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(167,139,250,.1),rgba(6,182,212,.1));border:1px solid rgba(167,139,250,.3);border-radius:14px;padding:16px}
+.pp-upgrade-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#a855f7,#22d3ee);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0}
+.pp-upgrade-text strong{font-size:14px;font-weight:700;display:block}
+.pp-upgrade-text span{font-size:12px;color:var(--muted,#9ca3af)}
+@media(min-width:768px){.pp-overlay{align-items:center}.pp-sheet{border-radius:20px;max-height:85vh;border:1px solid var(--border,rgba(255,255,255,.08));margin:20px}}
+</style>
 </head>
 <body>
 
-<!-- ══ NAV ══ -->
+<!-- NAV -->
 <header class="app-nav">
-  <a href="https://jeethylabs.site" class="nav-home" title="Back to Home">
-    <i class="fas fa-arrow-left"></i>
-  </a>
+  <a href="https://jeethylabs.site" class="nav-home" title="Back to Home"><i class="fas fa-arrow-left"></i></a>
   <div class="nav-brand">
     <span class="brand-jee">JeeThy</span><span class="brand-labs">Labs</span>
     <span class="brand-tag">App</span>
   </div>
   <div class="nav-actions">
     <button class="plan-badge-btn" id="planBadge" onclick="openPlanModal()" title="Change Plan">Free</button>
-    <button class="nav-settings-btn" onclick="openSettings()" title="Settings">
-      <i class="fas fa-gear"></i>
-    </button>
-
-    <!-- ── User Profile Avatar + Dropdown ── -->
+    <button class="nav-settings-btn" onclick="openSettings()" title="Settings"><i class="fas fa-gear"></i></button>
+    <!-- User Profile -->
     <div class="user-profile-wrap" id="userProfileWrap" style="display:none">
       <button class="user-avatar-btn" id="userAvatarBtn" type="button" aria-label="Profile menu">
         <span id="userAvatarInitial"></span>
       </button>
       <div class="profile-dropdown" id="profileDropdown">
         <div class="profile-dropdown-header">
-          <div class="profile-avatar-lg" id="profileAvatarLg">
-            <span id="profileAvatarInitialLg"></span>
-          </div>
+          <div class="profile-avatar-lg" id="profileAvatarLg"><span id="profileAvatarInitialLg"></span></div>
           <div class="profile-info">
             <div class="profile-name" id="profileNameDisplay"></div>
             <div class="profile-email" id="profileEmailDisplay"></div>
             <span class="profile-plan-badge plan-badge-free" id="profilePlanBadge">Free</span>
           </div>
         </div>
-        <div class="profile-dropdown-body" id="profileDropdownBody">
-          <button class="profile-menu-btn profile-btn-cyan" id="profileOpenBtn" type="button">
-            <i class="fas fa-user"></i> Profile
-          </button>
-          <button class="profile-signout-btn" id="profileSignOutBtn" type="button">
-            <i class="fas fa-right-from-bracket"></i> Sign Out
-          </button>
+        <div class="profile-dropdown-body">
+          <button class="pd-btn" id="pdProfileBtn" type="button"><i class="fas fa-user"></i> Profile</button>
+          <button class="pd-signout" id="pdSignOutBtn" type="button"><i class="fas fa-right-from-bracket"></i> Sign Out</button>
         </div>
       </div>
     </div>
   </div>
 </header>
 
-<!-- ══ TAB BAR ══ -->
+<!-- TAB BAR -->
 <nav class="tab-bar">
-  <button class="tab active" onclick="goToPanel(0)" id="tab0">
-    <i class="fas fa-brain"></i><span>AI Assistant</span>
-  </button>
-  <button class="tab" onclick="goToPanel(1)" id="tab1">
-    <i class="fas fa-palette"></i><span>Image</span>
-  </button>
-  <button class="tab" onclick="goToPanel(2)" id="tab2">
-    <i class="fas fa-music"></i><span>Song</span>
-  </button>
+  <button class="tab active" onclick="goToPanel(0)" id="tab0"><i class="fas fa-brain"></i><span>AI Assistant</span></button>
+  <button class="tab" onclick="goToPanel(1)" id="tab1"><i class="fas fa-palette"></i><span>Image</span></button>
+  <button class="tab" onclick="goToPanel(2)" id="tab2"><i class="fas fa-music"></i><span>Song</span></button>
 </nav>
 
-<!-- ══ PANELS ══ -->
+<!-- PANELS -->
 <main class="panels-wrap" id="panelsWrap">
   <div class="panels-track" id="panelsTrack">
 
-    <!-- PANEL 1 — AI ASSISTANT -->
+    <!-- PANEL 1: CHAT -->
     <section class="panel panel-chat" id="panelChat">
       <div class="panel-inner">
         <div class="chat-messages" id="chatMessages">
@@ -340,24 +132,19 @@
           <div class="chat-input-box">
             <textarea id="chatInput" class="chat-textarea" placeholder="Type your message..." rows="1"
               oninput="autoResize(this)" onkeydown="handleChatKey(event)"></textarea>
-            <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">
-              <i class="fas fa-paper-plane"></i>
-            </button>
+            <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
           </div>
           <p class="chat-hint">Powered by Google Gemini · JeeThy Labs</p>
         </div>
       </div>
     </section>
 
-    <!-- PANEL 2 — IMAGE GENERATE -->
+    <!-- PANEL 2: IMAGE -->
     <section class="panel panel-image" id="panelImage">
       <div class="panel-inner panel-inner-scroll">
         <div class="panel-header">
           <div class="panel-icon cyan"><i class="fas fa-palette"></i></div>
-          <div>
-            <h2 class="panel-title">Image Generate</h2>
-            <p class="panel-subtitle">Turn text into stunning visuals</p>
-          </div>
+          <div><h2 class="panel-title">Image Generate</h2><p class="panel-subtitle">Turn text into stunning visuals</p></div>
         </div>
         <div class="form-group">
           <label class="form-label">Prompt</label>
@@ -397,22 +184,17 @@
             </div>
           </div>
         </div>
-        <button class="btn-generate btn-cyan" id="imgGenBtn" onclick="generateImage()">
-          <i class="fas fa-wand-magic-sparkles"></i> Generate Image
-        </button>
+        <button class="btn-generate btn-cyan" id="imgGenBtn" onclick="generateImage()"><i class="fas fa-wand-magic-sparkles"></i> Generate Image</button>
         <div class="results-wrap" id="imgResults"></div>
       </div>
     </section>
 
-    <!-- PANEL 3 — SONG GENERATE -->
+    <!-- PANEL 3: SONG -->
     <section class="panel panel-song" id="panelSong">
       <div class="panel-inner panel-inner-scroll">
         <div class="panel-header">
           <div class="panel-icon green"><i class="fas fa-music"></i></div>
-          <div>
-            <h2 class="panel-title">Song Generate</h2>
-            <p class="panel-subtitle">Create original music from text</p>
-          </div>
+          <div><h2 class="panel-title">Song Generate</h2><p class="panel-subtitle">Create original music from text</p></div>
         </div>
         <div class="form-group">
           <label class="form-label">Song Description</label>
@@ -434,9 +216,7 @@
             <button class="chip" onclick="selectChip(this,'songVoiceGroup')"><i class="fas fa-mars"></i> Male</button>
           </div>
         </div>
-        <button class="btn-generate btn-green" id="songGenBtn" onclick="generateSong()">
-          <i class="fas fa-wand-magic-sparkles"></i> Generate Song
-        </button>
+        <button class="btn-generate btn-green" id="songGenBtn" onclick="generateSong()"><i class="fas fa-wand-magic-sparkles"></i> Generate Song</button>
         <div class="results-wrap" id="songResults"></div>
       </div>
     </section>
@@ -444,7 +224,7 @@
   </div>
 </main>
 
-<!-- ══ PLAN MODAL ══ -->
+<!-- PLAN MODAL -->
 <div class="modal-overlay" id="planModal">
   <div class="modal-box modal-wide">
     <div class="modal-header">
@@ -459,9 +239,7 @@
           <ul class="plan-features">
             <li><i class="fas fa-check"></i> 10 requests / session</li>
             <li><i class="fas fa-check"></i> All 3 AI tools</li>
-            <li><i class="fas fa-check"></i> Owner API key included</li>
             <li><i class="fas fa-xmark muted"></i> Custom API key</li>
-            <li><i class="fas fa-xmark muted"></i> Priority access</li>
           </ul>
           <div class="plan-check"><i class="fas fa-circle-check"></i></div>
         </div>
@@ -471,26 +249,20 @@
           <ul class="plan-features">
             <li><i class="fas fa-check"></i> 100 requests / session</li>
             <li><i class="fas fa-check"></i> All 3 AI tools</li>
-            <li><i class="fas fa-check"></i> Owner API key included</li>
             <li><i class="fas fa-check"></i> Add your own API key</li>
-            <li><i class="fas fa-check"></i> Priority access</li>
           </ul>
           <div class="plan-check"><i class="fas fa-circle-check"></i></div>
         </div>
       </div>
       <div id="proSettingsInModal" style="display:none">
-        <div class="settings-section-title"><i class="fas fa-key"></i> Pro API Key Settings</div>
         <a href="https://aistudio.google.com/app/apikey" target="_blank" class="modal-link">Get a free Google AI key →</a>
       </div>
-      <button class="btn-generate btn-purple" onclick="confirmPlan()" style="margin-top:16px">
-        <i class="fas fa-check"></i> Confirm Plan
-      </button>
-      <p class="modal-note" style="margin-top:8px">For billing, visit <a href="https://jeethylabs.site" target="_blank">jeethylabs.site</a></p>
+      <button class="btn-generate btn-purple" onclick="confirmPlan()" style="margin-top:16px"><i class="fas fa-check"></i> Confirm Plan</button>
     </div>
   </div>
 </div>
 
-<!-- ══ SETTINGS MODAL ══ -->
+<!-- SETTINGS MODAL -->
 <div class="modal-overlay" id="settingsModal">
   <div class="modal-box">
     <div class="modal-header">
@@ -502,29 +274,23 @@
       <div class="settings-toggle-row">
         <label class="settings-label"><i class="fas fa-key"></i> Use my own API key</label>
         <label class="toggle-switch">
-          <input type="checkbox" id="useOwnKeyToggle" onchange="updateSettingsUI()" />
+          <input type="checkbox" id="useOwnKeyToggle" onchange="updateSettingsUI()"/>
           <span class="toggle-slider"></span>
         </label>
       </div>
       <div id="customKeySection" style="display:none">
         <div class="form-group" style="margin-top:12px">
           <label class="form-label">Your Google AI API Key</label>
-          <input type="password" id="customKeyInput" class="form-input" placeholder="AIza..." autocomplete="off" />
+          <input type="password" id="customKeyInput" class="form-input" placeholder="AIza..." autocomplete="off"/>
         </div>
         <a href="https://aistudio.google.com/app/apikey" target="_blank" class="modal-link">Get a free key at Google AI Studio →</a>
       </div>
-      <div class="settings-info-box">
-        <i class="fas fa-circle-info"></i>
-        <span>When using owner key: JeeThy Labs' Google Cloud credits cover your usage.</span>
-      </div>
-      <button class="btn-generate btn-cyan" onclick="saveSettings()" style="margin-top:16px">
-        <i class="fas fa-check"></i> Save Settings
-      </button>
+      <button class="btn-generate btn-cyan" onclick="saveSettings()" style="margin-top:16px"><i class="fas fa-check"></i> Save Settings</button>
     </div>
   </div>
 </div>
 
-<!-- ══ UPGRADE MODAL ══ -->
+<!-- UPGRADE MODAL -->
 <div class="modal-overlay" id="upgradeModal">
   <div class="modal-box">
     <div class="modal-header">
@@ -535,228 +301,175 @@
       <p class="modal-desc">You've used all your requests on the <strong>Free plan</strong>.</p>
       <div class="upgrade-card">
         <div class="upgrade-icon"><i class="fas fa-crown"></i></div>
-        <div class="upgrade-text">
-          <strong>Upgrade to Pro</strong>
-          <span>100 requests/session · Use your own API key · $9.99/mo</span>
-        </div>
+        <div class="upgrade-text"><strong>Upgrade to Pro</strong><span>100 requests/session · $9.99/mo</span></div>
       </div>
-      <button class="btn-generate btn-purple" onclick="upgradeNow()" style="margin-top:16px">
-        <i class="fas fa-crown"></i> Upgrade to Pro
-      </button>
+      <button class="btn-generate btn-purple" onclick="upgradeNow()" style="margin-top:16px"><i class="fas fa-crown"></i> Upgrade to Pro</button>
       <button class="btn-outline" onclick="closeUpgradeModal()" style="margin-top:8px">Maybe later</button>
     </div>
   </div>
 </div>
 
-<!-- ══ PROFILE PAGE (bottom sheet) ══ -->
-<div class="profile-page-overlay" id="profilePageOverlay">
-  <div class="profile-page-sheet" id="profilePageSheet">
-    <span class="profile-page-handle"></span>
-    <div class="profile-page-header">
+<!-- ══ PROFILE PAGE (Bottom Sheet) ══ -->
+<div class="pp-overlay" id="ppOverlay">
+  <div class="pp-sheet" id="ppSheet">
+    <span class="pp-handle"></span>
+    <div class="pp-header">
       <h3><i class="fas fa-user-circle"></i> My Profile</h3>
-      <button class="profile-page-close" id="profilePageCloseBtn" type="button" aria-label="Close">
-        <i class="fas fa-xmark"></i>
-      </button>
+      <button class="pp-close" id="ppCloseBtn" type="button"><i class="fas fa-xmark"></i></button>
     </div>
-    <div class="profile-page-body">
-
+    <div class="pp-body">
       <!-- Hero -->
-      <div class="profile-hero">
-        <div class="profile-hero-avatar" id="profileHeroAvatar">
-          <span id="profileHeroInitial">?</span>
-          <span class="profile-avatar-upload-hint">PHOTO</span>
+      <div class="pp-hero">
+        <div class="pp-avatar" id="ppAvatar">
+          <span id="ppInitial">?</span>
+          <span class="pp-avatar-hint">PHOTO</span>
         </div>
-        <div class="profile-hero-name" id="profileHeroName">—</div>
-        <div class="profile-hero-email" id="profileHeroEmail">—</div>
-        <span class="profile-hero-plan plan-badge-free" id="profileHeroPlan">
-          <i class="fas fa-star"></i> Free Plan
-        </span>
+        <div class="pp-hero-name" id="ppName">—</div>
+        <div class="pp-hero-email" id="ppEmail">—</div>
+        <span class="pp-hero-plan plan-badge-free" id="ppPlan"><i class="fas fa-star"></i> Free Plan</span>
       </div>
-
-      <!-- Info rows -->
-      <div class="profile-info-card">
-        <div class="profile-info-row">
-          <span class="profile-info-label"><i class="fas fa-user"></i> Name</span>
-          <span class="profile-info-value" id="profileInfoName">—</span>
-        </div>
-        <div class="profile-info-row">
-          <span class="profile-info-label"><i class="fas fa-envelope"></i> Email</span>
-          <span class="profile-info-value" id="profileInfoEmail">—</span>
-        </div>
-        <div class="profile-info-row">
-          <span class="profile-info-label"><i class="fas fa-crown"></i> Plan</span>
-          <span class="profile-info-value" id="profileInfoPlan">Free</span>
-        </div>
-        <div class="profile-info-row">
-          <span class="profile-info-label"><i class="fas fa-calendar"></i> Member Since</span>
-          <span class="profile-info-value" id="profileInfoJoined">—</span>
-        </div>
+      <!-- Info -->
+      <div class="pp-infocard">
+        <div class="pp-row"><span class="pp-label"><i class="fas fa-user"></i> Name</span><span class="pp-value" id="ppInfoName">—</span></div>
+        <div class="pp-row"><span class="pp-label"><i class="fas fa-envelope"></i> Email</span><span class="pp-value" id="ppInfoEmail">—</span></div>
+        <div class="pp-row"><span class="pp-label"><i class="fas fa-crown"></i> Plan</span><span class="pp-value" id="ppInfoPlan">Free</span></div>
+        <div class="pp-row"><span class="pp-label"><i class="fas fa-calendar"></i> Member Since</span><span class="pp-value" id="ppInfoJoined">—</span></div>
       </div>
-
       <!-- Usage -->
-      <div class="profile-usage-card">
-        <div class="profile-usage-title"><i class="fas fa-chart-bar"></i> Session Usage</div>
-        <div class="usage-bar-wrap">
-          <div class="usage-bar-row">
-            <div class="usage-bar-label">
-              <span>Requests Used</span>
-              <span id="usageCount">0 / 10</span>
-            </div>
-            <div class="usage-bar-track">
-              <div class="usage-bar-fill" id="usageBarFill" style="width:0%;background:var(--purple);"></div>
-            </div>
-          </div>
-        </div>
+      <div class="pp-usagecard">
+        <div class="pp-usage-title"><i class="fas fa-chart-bar"></i> Session Usage</div>
+        <div class="pp-bar-label"><span>Requests Used</span><span id="ppUsageCount">0 / 10</span></div>
+        <div class="pp-bar-track"><div class="pp-bar-fill" id="ppUsageBar" style="width:0%;background:#a855f7"></div></div>
       </div>
-
-      <!-- Upgrade banner (only for free users) -->
-      <div class="profile-upgrade-banner" id="profileUpgradeBanner">
-        <div class="profile-upgrade-icon"><i class="fas fa-crown"></i></div>
-        <div class="profile-upgrade-text">
-          <strong>Upgrade to Pro</strong>
-          <span>100 req/session · Custom API key · Priority access</span>
-        </div>
+      <!-- Upgrade -->
+      <div class="pp-upgrade" id="ppUpgradeBanner">
+        <div class="pp-upgrade-icon"><i class="fas fa-crown"></i></div>
+        <div class="pp-upgrade-text"><strong>Upgrade to Pro</strong><span>100 req/session · Custom API key</span></div>
       </div>
-      <button class="btn-generate btn-purple" onclick="openPlanFromProfile()" style="margin-top:-4px">
-        <i class="fas fa-crown"></i> Upgrade to Pro — $9.99/mo
-      </button>
-
-      <!-- Sign out -->
-      <button class="profile-signout-btn" onclick="logoutUser()" style="margin-top:4px">
-        <i class="fas fa-right-from-bracket"></i> Sign Out
-      </button>
-
+      <button class="btn-generate btn-purple" id="ppUpgradeBtn" onclick="ppOpenPlan()"><i class="fas fa-crown"></i> Upgrade to Pro — $9.99/mo</button>
+      <button class="pd-signout" id="ppLogoutBtn" type="button" style="margin-top:4px"><i class="fas fa-right-from-bracket"></i> Sign Out</button>
     </div>
   </div>
 </div>
 
 <script src="script.js"></script>
 <script>
-/* ── Profile Page Bridge ── */
-(function () {
-  function openProfilePage() {
-    closeProfileDropdown();
-    const limit = (window.PLAN_LIMITS && window.userPlan) ? (window.PLAN_LIMITS[window.userPlan]?.requests ?? 10) : 10;
-    const used = window.requestCount || 0;
-    const pct = Math.min(100, Math.round((used / limit) * 100));
+/* ══════════════════════════════
+   PROFILE PAGE — standalone fix
+   Works with original script.js
+══════════════════════════════ */
+(function(){
+  var overlay  = document.getElementById('ppOverlay');
+  var sheet    = document.getElementById('ppSheet');
+  var closeBtn = document.getElementById('ppCloseBtn');
+  var logoutBtn= document.getElementById('ppLogoutBtn');
+  var upgradeBtn = document.getElementById('ppUpgradeBtn');
 
-    // Sync hero
-    if (window.currentUser) {
-      const u = window.currentUser;
-      const initial = (u.name || 'U').charAt(0).toUpperCase();
-      const plan = u.plan || window.userPlan || 'free';
-      const planInfo = (window.PLAN_LIMITS && window.PLAN_LIMITS[plan]) || { label: 'Free' };
+  function eid(id){ return document.getElementById(id); }
+  function txt(id,v){ var e=eid(id); if(e) e.textContent=v||'—'; }
 
-      _setText('profileHeroName', u.name || '');
-      _setText('profileHeroEmail', u.email || '');
-      _setText('profileHeroInitial', initial);
-      _setText('profileInfoName', u.name || '—');
-      _setText('profileInfoEmail', u.email || '—');
-      _setText('profileInfoPlan', planInfo.label);
-
-      if (u.created_at) {
-        const d = new Date(u.created_at);
-        _setText('profileInfoJoined', d.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }));
-      } else {
-        _setText('profileInfoJoined', 'Today');
-      }
-
-      if (u.avatar_url) {
-        const heroAvatar = document.getElementById('profileHeroAvatar');
-        if (heroAvatar) heroAvatar.innerHTML = `<img src="${u.avatar_url}" alt="${initial}" /><span class="profile-avatar-upload-hint">PHOTO</span>`;
-      }
-
-      const heroPlanned = document.getElementById('profileHeroPlan');
-      if (heroPlanned) {
-        heroPlanned.textContent = '';
-        heroPlanned.innerHTML = `<i class="fas fa-star"></i> ${planInfo.label} Plan`;
-        heroPlanned.className = `profile-hero-plan plan-badge-${plan}`;
-      }
-
-      const upgradeBanner = document.getElementById('profileUpgradeBanner');
-      const upgradeBtn = document.querySelector('.profile-page-body .btn-purple');
-      if (plan === 'pro' || plan === 'max') {
-        if (upgradeBanner) upgradeBanner.style.display = 'none';
-        if (upgradeBtn) upgradeBtn.style.display = 'none';
-      } else {
-        if (upgradeBanner) upgradeBanner.style.display = 'flex';
-        if (upgradeBtn) upgradeBtn.style.display = 'flex';
-      }
-    }
-
-    // Usage bar
-    _setText('usageCount', `${used} / ${limit}`);
-    const fill = document.getElementById('usageBarFill');
-    if (fill) {
-      fill.style.width = pct + '%';
-      fill.style.background = pct >= 80 ? '#f87171' : pct >= 50 ? '#fbbf24' : 'var(--purple)';
-    }
-
-    const overlay = document.getElementById('profilePageOverlay');
-    if (overlay) overlay.classList.add('open');
+  function openProfilePage(e){
+    if(e){ e.preventDefault(); e.stopPropagation(); }
+    if(typeof closeProfileDropdown==='function') closeProfileDropdown();
+    syncProfilePage();
+    overlay.classList.add('open');
   }
-
-  function closeProfilePage() {
-    const overlay = document.getElementById('profilePageOverlay');
-    if (overlay) overlay.classList.remove('open');
+  function closeProfilePage(){
+    overlay.classList.remove('open');
   }
-
-  function openPlanFromProfile() {
+  function ppOpenPlan(){
     closeProfilePage();
-    if (typeof openPlanModal === 'function') openPlanModal();
+    if(typeof openPlanModal==='function') openPlanModal();
   }
 
-  function _setText(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
+  function getPlanBadgeClass(p){
+    if(p==='pro') return 'pp-hero-plan plan-badge-pro';
+    if(p==='max') return 'pp-hero-plan plan-badge-max';
+    return 'pp-hero-plan plan-badge-free';
   }
 
-  // Expose globally
+  function syncProfilePage(){
+    var u = (typeof currentUser!=='undefined') ? currentUser : null;
+    var plan = (typeof userPlan!=='undefined') ? userPlan : 'free';
+    var limits = (typeof PLAN_LIMITS!=='undefined') ? PLAN_LIMITS : {free:{requests:10,label:'Free'},pro:{requests:100,label:'Pro'},max:{requests:500,label:'Max'}};
+    var limit = (limits[plan]||limits.free).requests;
+    var used  = (typeof requestCount!=='undefined') ? requestCount : 0;
+    var pct   = Math.min(100, Math.round(used/limit*100));
+
+    if(u){
+      var init = (u.name||'U').charAt(0).toUpperCase();
+      var uplan = u.plan||plan;
+      var planLabel = (limits[uplan]||limits.free).label;
+
+      txt('ppName', u.name);
+      txt('ppEmail', u.email);
+      txt('ppInfoName', u.name);
+      txt('ppInfoEmail', u.email);
+      txt('ppInfoPlan', planLabel);
+
+      var joined = u.created_at ? new Date(u.created_at).toLocaleDateString([],{year:'numeric',month:'short',day:'numeric'}) : 'Today';
+      txt('ppInfoJoined', joined);
+
+      var ppInit = eid('ppInitial');
+      var ppAv = eid('ppAvatar');
+      if(u.avatar_url){
+        if(ppAv) ppAv.innerHTML = '<img src="'+u.avatar_url+'" alt="'+init+'" /><span class="pp-avatar-hint">PHOTO</span>';
+      } else {
+        if(ppInit) ppInit.textContent = init;
+      }
+
+      var ppP = eid('ppPlan');
+      if(ppP){ ppP.className = getPlanBadgeClass(uplan); ppP.innerHTML = '<i class="fas fa-star"></i> '+planLabel+' Plan'; }
+
+      var ub = eid('ppUpgradeBanner');
+      var ubtn = eid('ppUpgradeBtn');
+      if(uplan==='pro'||uplan==='max'){
+        if(ub) ub.style.display='none';
+        if(ubtn) ubtn.style.display='none';
+      } else {
+        if(ub) ub.style.display='flex';
+        if(ubtn) ubtn.style.display='block';
+      }
+    }
+
+    txt('ppUsageCount', used+' / '+limit);
+    var fill = eid('ppUsageBar');
+    if(fill){
+      fill.style.width = pct+'%';
+      fill.style.background = pct>=80 ? '#f87171' : pct>=50 ? '#fbbf24' : '#a855f7';
+    }
+  }
+
+  /* Wire close */
+  if(closeBtn) closeBtn.onclick = closeProfilePage;
+  if(overlay) overlay.onclick = function(e){ if(e.target===overlay) closeProfilePage(); };
+  if(logoutBtn) logoutBtn.onclick = function(){ if(typeof logoutUser==='function') logoutUser(); };
+  if(upgradeBtn) upgradeBtn.onclick = ppOpenPlan;
+
+  /* Wire dropdown Profile button */
+  function wireDropdownBtn(){
+    var btn = document.getElementById('pdProfileBtn');
+    if(btn) btn.onclick = openProfilePage;
+    var so = document.getElementById('pdSignOutBtn');
+    if(so) so.onclick = function(){ if(typeof logoutUser==='function') logoutUser(); };
+    var av = document.getElementById('userAvatarBtn');
+    if(av) av.onclick = function(e){
+      e.preventDefault(); e.stopPropagation();
+      if(typeof toggleProfileDropdown==='function') toggleProfileDropdown(e);
+    };
+  }
+
+  /* Override openProfilePage globally */
   window.openProfilePage = openProfilePage;
   window.closeProfilePage = closeProfilePage;
-  window.openPlanFromProfile = openPlanFromProfile;
+  window.ppOpenPlan = ppOpenPlan;
+  window.syncProfilePage = syncProfilePage;
 
-  // Wire up close button
-  document.addEventListener('DOMContentLoaded', function () {
-    const closeBtn = document.getElementById('profilePageCloseBtn');
-    if (closeBtn) closeBtn.onclick = closeProfilePage;
-
-    const overlay = document.getElementById('profilePageOverlay');
-    if (overlay) {
-      overlay.addEventListener('click', function (e) {
-        if (e.target === overlay) closeProfilePage();
-      });
-    }
-
-    // Wire avatar btn properly after DOMContentLoaded
-    const avatarBtn = document.getElementById('userAvatarBtn');
-    if (avatarBtn) {
-      avatarBtn.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (typeof toggleProfileDropdown === 'function') toggleProfileDropdown(e);
-      };
-    }
-
-    // Wire "Profile" button in dropdown
-    const profileOpenBtn = document.getElementById('profileOpenBtn');
-    if (profileOpenBtn) {
-      profileOpenBtn.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        openProfilePage();
-      };
-    }
-
-    // Wire sign out in dropdown
-    const signOutBtn = document.getElementById('profileSignOutBtn');
-    if (signOutBtn) {
-      signOutBtn.onclick = function (e) {
-        e.stopPropagation();
-        if (typeof logoutUser === 'function') logoutUser();
-      };
-    }
-  });
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', wireDropdownBtn);
+  } else {
+    wireDropdownBtn();
+  }
 })();
 </script>
 </body>
