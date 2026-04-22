@@ -10,18 +10,15 @@ const cookieParser = require('cookie-parser');
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── ENV ───────────────────────────────────
 const DATABASE_URL = process.env.DATABASE_URL;
 const JWT_SECRET   = process.env.JWT_SECRET || 'jeethy_secret_2026';
-const SMTP_USER    = process.env.SMTP_USER || '';
-const SMTP_PASS    = process.env.SMTP_PASS || '';
-const FROM_EMAIL   = process.env.FROM_EMAIL || SMTP_USER;
+const SMTP_USER    = process.env.SMTP_USER || '';   // Brevo login: a8c959001@smtp-brevo.com
+const SMTP_PASS    = process.env.SMTP_PASS || '';   // Brevo SMTP key
+const FROM_EMAIL   = process.env.FROM_EMAIL || '';  // Your sender email
 const PORT         = process.env.PORT || 8080;
 
 console.log('=== JeeThy Labs Starting ===');
@@ -29,11 +26,11 @@ console.log('SMTP_USER:', SMTP_USER || '❌ MISSING');
 console.log('SMTP_PASS:', SMTP_PASS ? '✅ set' : '❌ MISSING');
 console.log('FROM_EMAIL:', FROM_EMAIL || '❌ MISSING');
 
-// ── GMAIL SMTP ────────────────────────────
+// ── BREVO SMTP ────────────────────────────
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false,
   auth: {
     user: SMTP_USER,
     pass: SMTP_PASS,
@@ -42,7 +39,7 @@ const transporter = nodemailer.createTransport({
 
 transporter.verify((err) => {
   if (err) console.error('❌ SMTP Error:', err.message);
-  else console.log('✅ Gmail SMTP Ready');
+  else console.log('✅ Brevo SMTP Ready');
 });
 
 // ── DB ────────────────────────────────────
@@ -68,7 +65,7 @@ async function sendEmail(to, subject, html) {
     subject,
     html,
   });
-  console.log('[sendEmail] messageId:', info.messageId);
+  console.log('[sendEmail] ✅ messageId:', info.messageId);
   return info;
 }
 
@@ -78,13 +75,12 @@ function setAuthCookie(res, token) {
     httpOnly: true,
     secure: true,
     sameSite: 'none',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
 
 // ── AUTH MIDDLEWARE ───────────────────────
 function authMiddleware(req, res, next) {
-  // Support both cookie and Authorization header
   let token = req.cookies?.auth_token;
   if (!token) {
     const header = req.headers.authorization;
@@ -103,14 +99,18 @@ function authMiddleware(req, res, next) {
 // ROUTES
 // ════════════════════════════════════════
 
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
+    smtp_host: 'smtp-relay.brevo.com',
     smtp_user: SMTP_USER || 'MISSING',
-    smtp_ready: !!SMTP_USER && !!SMTP_PASS
+    smtp_ready: !!SMTP_USER && !!SMTP_PASS,
+    from_email: FROM_EMAIL || 'MISSING',
   });
 });
 
+// Google API Key
 app.get('/api/key', (req, res) => {
   res.json({ key: process.env.GOOGLE_API_KEY || '' });
 });
@@ -134,7 +134,7 @@ app.post('/api/logout', (req, res) => {
   res.clearCookie('auth_token', {
     httpOnly: true,
     secure: true,
-    sameSite: 'none'
+    sameSite: 'none',
   });
   res.json({ success: true });
 });
@@ -145,11 +145,11 @@ app.post('/api/send-otp', async (req, res) => {
   if (!email) return res.status(400).json({ error: 'Email required' });
 
   if (!SMTP_USER || !SMTP_PASS) {
-    console.error('[send-otp] ❌ SMTP credentials missing!');
+    console.error('[send-otp] ❌ Brevo SMTP credentials missing!');
     return res.status(500).json({ error: 'Email service not configured. Contact admin.' });
   }
 
-  // Check if email already registered
+  // Check existing email
   try {
     const existing = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
     if (existing.rows.length) {
@@ -170,7 +170,7 @@ app.post('/api/send-otp', async (req, res) => {
       `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#0f172a;border-radius:16px;border:1px solid rgba(124,58,237,0.3);">
         <div style="text-align:center;margin-bottom:24px;">
-          <span style="font-size:28px;font-weight:900;background:linear-gradient(135deg,#7c3aed,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">JeeThy Labs</span>
+          <span style="font-size:28px;font-weight:900;color:#a855f7;">JeeThy Labs</span>
         </div>
         <p style="color:#e2e8f0;font-size:16px;">Hi <strong style="color:#a855f7;">${name || 'there'}</strong>,</p>
         <p style="color:#94a3b8;">Your verification code is:</p>
@@ -178,11 +178,13 @@ app.post('/api/send-otp', async (req, res) => {
           <span style="font-size:48px;font-weight:900;letter-spacing:12px;color:#a855f7;">${otp}</span>
         </div>
         <p style="color:#64748b;font-size:13px;">⏰ Code expires in <strong>10 minutes</strong>.</p>
-        <p style="color:#475569;font-size:12px;margin-top:20px;border-top:1px solid rgba(255,255,255,0.05);padding-top:16px;">If you did not sign up for JeeThy Labs, ignore this email.</p>
+        <p style="color:#475569;font-size:12px;margin-top:20px;border-top:1px solid rgba(255,255,255,0.05);padding-top:16px;">
+          If you did not sign up for JeeThy Labs, please ignore this email.
+        </p>
       </div>
       `
     );
-    console.log('[send-otp] ✅ Email sent to:', email);
+    console.log('[send-otp] ✅ Sent to:', email);
     res.json({ success: true, message: 'OTP sent successfully' });
   } catch (e) {
     console.error('[send-otp] ❌ Send failed:', e.message);
@@ -222,7 +224,11 @@ app.post('/api/verify-otp', async (req, res) => {
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     setAuthCookie(res, token);
     console.log('[verify-otp] ✅ Registered:', email);
-    res.json({ success: true, token, user: { id: user.id, name: user.name, email: user.email, plan: user.plan, created_at: user.created_at } });
+    res.json({
+      success: true,
+      token,
+      user: { id: user.id, name: user.name, email: user.email, plan: user.plan, created_at: user.created_at }
+    });
   } catch (e) {
     console.error('[verify-otp] ❌', e.message);
     res.status(500).json({ error: 'Registration failed: ' + e.message });
