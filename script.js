@@ -248,12 +248,9 @@ function updateProfileSheet(user = currentUser){
 function openProfilePage(event) {
   if (event) { event.preventDefault(); event.stopPropagation(); }
   closeProfileDropdown();
-  ensureProfilePageElements();
-  updateProfileSheet(currentUser);
-  const overlay = $('profilePageOverlay');
-  const sheet = $('profilePageSheet');
-  if (overlay) { overlay.classList.add('open'); overlay.style.opacity='1'; overlay.style.pointerEvents='all'; }
-  if (sheet) sheet.style.transform = 'translateY(0)';
+  var ov = document.getElementById('ppOverlay');
+  if (ov) ov.classList.add('open');
+  if (typeof syncProfilePage === 'function') syncProfilePage();
 }
 function closeProfilePage() {
   const overlay = $('profilePageOverlay');
@@ -262,24 +259,6 @@ function closeProfilePage() {
   if (sheet) sheet.style.transform = 'translateY(32px)';
 }
 function openPlanFromProfile(){ closeProfilePage(); openPlanModal(); }
-function injectProfileActionButton() {
-  const dd = $('profileDropdown');
-  if (!dd || $('profileOpenAccountBtn')) return;
-  const body = dd.querySelector('.profile-dropdown-body');
-  if (!body) return;
-  const existing = $('profileOpenBtn');
-  if (existing) { existing.onclick = openProfilePage; return; }
-  const btn = document.createElement('button');
-  btn.id = 'profileOpenAccountBtn';
-  btn.className = 'profile-signout-btn';
-  btn.style.marginBottom = '8px';
-  btn.style.background = 'rgba(6,182,212,0.08)';
-  btn.style.border = '1px solid rgba(6,182,212,0.2)';
-  btn.style.color = '#22d3ee';
-  btn.innerHTML = '<i class="fas fa-user"></i> Profile';
-  btn.onclick = openProfilePage;
-  body.prepend(btn);
-}
 
 function goToPanel(index) {
   currentPanel = index;
