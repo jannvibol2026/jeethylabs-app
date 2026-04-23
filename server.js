@@ -39,6 +39,7 @@ const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
+
 pool.connect()
   .then(c => { console.log('✅ DB Connected'); c.release(); })
   .catch(e => console.error('❌ DB Error:', e.message));
@@ -58,7 +59,6 @@ async function sendEmail(to, subject, html) {
   return info;
 }
 
-/* ── Health ── */
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -69,25 +69,26 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-/* ── API Key ── */
 app.get('/api/key', (req, res) => {
   res.json({ key: process.env.GOOGLE_API_KEY || '' });
 });
 
-/* ── Send OTP ── */
 app.post('/api/send-otp', async (req, res) => {
   const { email, name } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
+
   const otp = genOTP();
-  /* store name + password_hash for later use in verify-otp */
   const password_hash = req.body.password_hash || req.body.password || '';
+
   otpStore[email] = {
     otp,
     name: name || '',
     password_hash,
     expires: Date.now() + 10 * 60 * 1000,
   };
+
   console.log('[send-otp] Sending to:', email, '| OTP:', otp);
+
   try {
     await sendEmail(
       email,
@@ -110,10 +111,8 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
-/* ── Verify OTP & Register ── */
 app.post('/api/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
-  /* accept password from either field name */
   const rawPassword = req.body.password_hash || req.body.password || '';
   const record = otpStore[email];
 
@@ -126,7 +125,6 @@ app.post('/api/verify-otp', async (req, res) => {
     return res.status(400).json({ error: 'Invalid OTP.' });
   }
 
-  /* use password stored at send-otp time, fallback to what was sent now */
   const passwordToHash = rawPassword || record.password_hash || '';
   if (!passwordToHash) {
     return res.status(400).json({ error: 'Password missing. Please sign up again.' });
@@ -139,18 +137,26 @@ app.post('/api/verify-otp', async (req, res) => {
     const uname = req.body.name || record.name || 'User';
 
     const result = await pool.query(
-      `INSERT INTO users (name, email, password_hash)
-       VALUES ($1, $2, $3)
+      `INSERT INTO users (name, email, password_hash, plan)
+       VALUES ($1, $2, $3, $4)
        ON CONFLICT (email) DO UPDATE SET name=$1, password_hash=$3
        RETURNING id, name, email, plan, created_at`,
-      [uname, email, hash]
+      [uname, email, hash, 'free']
     );
+
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+
     res.json({
       success: true,
       token,
-      user: { id: user.id, name: user.name, email: user.email, plan: user.plan || 'free', created_at: user.created_at },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        plan: user.plan || 'free',
+        created_at: user.created_at
+      },
     });
   } catch (e) {
     console.error('[verify-otp]', e.message);
@@ -158,21 +164,20 @@ app.post('/api/verify-otp', async (req, res) => {
   }
 });
 
-/* ── Login ── */
 app.post('/api/login', async (req, res) => {
   const { email } = req.body;
-  const rawPassword = req.body.password_hash || req.body.password || '';
-  try {
-    const result = await pool.query(
-      'SELECT * FROM users WHERE email=$1',
-      [email]
-    );
-    if (!result.rows.length) return res.status(401).json({ error: 'Email not found.' });
-    const user = result.rows[0];
+  const rawPassword = req.body.password || req.body.password_hash || '';
 
-    /* support both column names */
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
+    if (!result.rows.length) return res.status(401).json({ error: 'Email not found.' });
+
+    const user = result.rows[0];
     const storedHash = user.password_hash || user.password || '';
-    if (!storedHash) return res.status(401).json({ error: 'Account has no password set. Please sign up again.' });
+
+    if (!storedHash) {
+      return res.status(401).json({ error: 'Account has no password set. Please sign up again.' });
+    }
 
     const match = await bcrypt.compare(rawPassword, storedHash);
     if (!match) return res.status(401).json({ error: 'Wrong password.' });
@@ -181,14 +186,19 @@ app.post('/api/login', async (req, res) => {
     res.json({
       success: true,
       token,
-      user: { id: user.id, name: user.name, email: user.email, plan: user.plan || 'free', created_at: user.created_at },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        plan: user.plan || 'free',
+        created_at: user.created_at
+      },
     });
   } catch (e) {
     res.status(500).json({ error: 'Login failed: ' + e.message });
   }
 });
 
-/* ── Forgot Password ── */
 app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body;
   try {
@@ -197,8 +207,10 @@ app.post('/api/forgot-password', async (req, res) => {
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
+
   const otp = genOTP();
   otpStore[email] = { otp, expires: Date.now() + 10 * 60 * 1000, type: 'reset' };
+
   try {
     await sendEmail(
       email,
@@ -217,10 +229,10 @@ app.post('/api/forgot-password', async (req, res) => {
   }
 });
 
-/* ── Reset Password ── */
 app.post('/api/reset-password', async (req, res) => {
   const { email, otp, newPassword } = req.body;
   const record = otpStore[email];
+
   if (!record || record.otp !== String(otp).trim()) {
     return res.status(400).json({ error: 'Invalid or expired OTP.' });
   }
@@ -228,7 +240,9 @@ app.post('/api/reset-password', async (req, res) => {
     delete otpStore[email];
     return res.status(400).json({ error: 'OTP expired.' });
   }
+
   delete otpStore[email];
+
   try {
     const hash = await bcrypt.hash(newPassword, 10);
     await pool.query('UPDATE users SET password_hash=$1 WHERE email=$2', [hash, email]);
@@ -238,10 +252,10 @@ app.post('/api/reset-password', async (req, res) => {
   }
 });
 
-/* ── Auth Middleware ── */
 function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token' });
+
   try {
     req.user = jwt.verify(token, JWT_SECRET);
     next();
@@ -250,7 +264,6 @@ function authMiddleware(req, res, next) {
   }
 }
 
-/* ── Get Profile ── */
 app.get('/api/profile', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
@@ -264,7 +277,6 @@ app.get('/api/profile', authMiddleware, async (req, res) => {
   }
 });
 
-/* ── Update Profile (avatar) ── */
 app.post('/api/profile', authMiddleware, async (req, res) => {
   const { avatar_url } = req.body;
   try {
@@ -278,12 +290,10 @@ app.post('/api/profile', authMiddleware, async (req, res) => {
   }
 });
 
-/* ── Logout (client-side token drop, server just acks) ── */
 app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-/* ── Catch-all ── */
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
