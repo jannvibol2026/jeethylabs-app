@@ -10,67 +10,52 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
-/* ── PROFILE DROPDOWN ── */
+/* ── NAV AVATAR ── */
 .user-profile-wrap{position:relative;display:flex;align-items:center;flex-shrink:0}
 .user-avatar-btn{width:34px;height:34px;border-radius:50%;border:2px solid rgba(167,139,250,.5);background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:border-color .2s,transform .15s;overflow:hidden;padding:0;-webkit-tap-highlight-color:transparent}
 .user-avatar-btn:active{transform:scale(.93)}
 .user-avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-.profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;left:auto;width:240px;max-width:92vw;background:var(--surface,#111827);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.6);z-index:9999;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(-8px) scale(.96);transition:opacity .2s ease,transform .2s ease}
+/* ── DROPDOWN ── */
+.profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;left:auto;width:240px;max-width:92vw;background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.6);z-index:9999;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(-8px) scale(.96);transition:opacity .2s,transform .2s}
 .profile-dropdown.open{opacity:1;pointer-events:all;transform:translateY(0) scale(1)}
-.profile-dropdown-header{padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border,rgba(255,255,255,.08));background:var(--surface2,#1f2937)}
-.profile-avatar-lg{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-.profile-avatar-lg img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-.profile-info{flex:1;overflow:hidden}
-.profile-name{font-size:14px;font-weight:700;color:var(--text,#fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.profile-email{font-size:11px;color:var(--muted,#9ca3af);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.profile-plan-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
-.plan-badge-free{background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.4)}
-.plan-badge-pro{background:rgba(6,182,212,.15);color:#22d3ee;border:1px solid rgba(6,182,212,.4)}
-.plan-badge-max{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.4)}
-.profile-dropdown-body{padding:8px;display:flex;flex-direction:column;gap:6px}
-.pd-btn{width:100%;padding:10px 12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#22d3ee;transition:background .2s}
-.pd-btn:hover{background:rgba(6,182,212,.16)}
-.pd-signout{background:rgba(239,68,68,.08)!important;border:1px solid rgba(239,68,68,.2)!important;color:#f87171!important;width:100%;padding:10px 12px;border-radius:10px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s}
-.pd-signout:hover{background:rgba(239,68,68,.15)!important}
-/* ── PROFILE PAGE OVERLAY ── */
-.pp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
-.pp-overlay.open{opacity:1;pointer-events:all}
-.pp-sheet{width:100%;max-width:480px;background:var(--surface,#111827);border-radius:24px 24px 0 0;border-top:1px solid var(--border,rgba(255,255,255,.08));max-height:90vh;overflow-y:auto;transform:translateY(40px);transition:transform .3s cubic-bezier(.4,0,.2,1)}
-.pp-overlay.open .pp-sheet{transform:translateY(0)}
-.pp-sheet::-webkit-scrollbar{display:none}
-.pp-handle{width:36px;height:4px;border-radius:2px;background:var(--border,rgba(255,255,255,.14));margin:12px auto 0;display:block}
-.pp-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid var(--border,rgba(255,255,255,.08))}
-.pp-header h3{font-size:16px;font-weight:700;color:#a855f7;display:flex;align-items:center;gap:8px;margin:0}
-.pp-close{width:28px;height:28px;border-radius:50%;border:none;background:var(--surface2,#1f2937);color:var(--muted,#9ca3af);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px}
-.pp-body{padding:20px;display:flex;flex-direction:column;gap:16px}
-.pp-hero{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px;background:var(--surface2,#1f2937);border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08))}
-.pp-avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:32px;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid rgba(167,139,250,.4);position:relative;flex-shrink:0}
-.pp-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-.pp-avatar-hint{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:9px;font-weight:700;text-align:center;padding:3px;border-radius:0 0 50px 50px}
-.pp-hero-name{font-size:20px;font-weight:700;color:var(--text,#fff);text-align:center}
-.pp-hero-email{font-size:13px;color:var(--muted,#9ca3af);text-align:center;margin-top:-4px}
-.pp-hero-plan{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
-.pp-infocard{background:var(--surface2,#1f2937);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;overflow:hidden}
-.pp-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border,rgba(255,255,255,.08))}
+.pd-header{padding:14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);background:#1f2937}
+.pd-av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.pd-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.pd-info{flex:1;overflow:hidden}
+.pd-name{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pd-email{font-size:11px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.pd-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-top:3px;text-transform:uppercase;letter-spacing:.5px;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.4)}
+.pd-body{padding:8px;display:flex;flex-direction:column;gap:5px}
+.pd-btn{width:100%;padding:9px 12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#22d3ee;transition:background .2s}
+.pd-signout{background:rgba(239,68,68,.08)!important;border:1px solid rgba(239,68,68,.2)!important;color:#f87171!important;width:100%;padding:9px 12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+/* ── PROFILE SHEET ── */
+#ppOverlay{position:fixed;inset:0;background:rgba(0,0,0,.80);backdrop-filter:blur(10px);z-index:10500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+#ppOverlay.open{opacity:1;pointer-events:all}
+#ppSheet{width:100%;max-width:480px;background:#111827;border-radius:24px 24px 0 0;border-top:1px solid rgba(255,255,255,.08);max-height:92vh;overflow-y:auto;transform:translateY(48px);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+#ppOverlay.open #ppSheet{transform:translateY(0)}
+#ppSheet::-webkit-scrollbar{display:none}
+.pp-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.14);margin:12px auto 0;display:block}
+.pp-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 10px;border-bottom:1px solid rgba(255,255,255,.08)}
+.pp-hdr h3{margin:0;font-size:15px;font-weight:700;color:#a855f7;display:flex;align-items:center;gap:8px}
+.pp-closebtn{width:28px;height:28px;border-radius:50%;background:#1f2937;border:none;color:#9ca3af;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px}
+.pp-body2{padding:16px;display:flex;flex-direction:column;gap:12px}
+.pp-hero{display:flex;flex-direction:column;align-items:center;gap:10px;background:#1f2937;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
+#ppAvatarEl{width:82px;height:82px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:30px;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid rgba(167,139,250,.4);cursor:pointer;position:relative}
+#ppAvatarEl img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.pp-cam{position:absolute;bottom:2px;right:2px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);border:2px solid #111827;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;pointer-events:none}
+.pp-infocard{background:#1f2937;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden}
+.pp-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
 .pp-row:last-child{border-bottom:none}
-.pp-label{font-size:12px;font-weight:600;color:var(--muted,#9ca3af);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:7px}
-.pp-value{font-size:13px;font-weight:600;color:var(--text,#fff);max-width:55%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pp-usagecard{background:var(--surface2,#1f2937);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:16px}
-.pp-usage-title{font-size:12px;font-weight:700;color:var(--muted,#9ca3af);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;display:flex;align-items:center;gap:7px}
-.pp-bar-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted,#9ca3af);margin-bottom:5px}
-.pp-bar-label span:last-child{color:var(--text,#fff);font-weight:600}
-.pp-bar-track{height:6px;border-radius:3px;background:var(--border,rgba(255,255,255,.08));overflow:hidden}
-.pp-bar-fill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)}
-.pp-upgrade{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(167,139,250,.1),rgba(6,182,212,.1));border:1px solid rgba(167,139,250,.3);border-radius:14px;padding:16px}
-.pp-upgrade-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#a855f7,#22d3ee);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0}
-.pp-upgrade-text strong{font-size:14px;font-weight:700;display:block}
-.pp-upgrade-text span{font-size:12px;color:var(--muted,#9ca3af)}
-@media(min-width:768px){.pp-overlay{align-items:center}.pp-sheet{border-radius:20px;max-height:85vh;border:1px solid var(--border,rgba(255,255,255,.08));margin:20px}}
+.pp-lbl{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:7px}
+.pp-val{font-size:13px;font-weight:600;color:#fff;max-width:55%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-usagecard{background:#1f2937;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px}
+.pp-upgrade-banner{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(167,139,250,.1),rgba(6,182,212,.1));border:1px solid rgba(167,139,250,.3);border-radius:14px;padding:14px;cursor:pointer}
+@media(min-width:768px){#ppOverlay{align-items:center}#ppSheet{border-radius:20px;border:1px solid rgba(255,255,255,.08);max-height:88vh;width:calc(100% - 32px)}}
 </style>
 </head>
 <body>
 
-<!-- NAV -->
+<!-- ══ NAV ══ -->
 <header class="app-nav">
   <a href="https://jeethylabs.site" class="nav-home" title="Back to Home"><i class="fas fa-arrow-left"></i></a>
   <div class="nav-brand">
@@ -80,41 +65,41 @@
   <div class="nav-actions">
     <button class="plan-badge-btn" id="planBadge" onclick="openPlanModal()" title="Change Plan">Free</button>
     <button class="nav-settings-btn" onclick="openSettings()" title="Settings"><i class="fas fa-gear"></i></button>
-    <!-- User Profile — hidden until login -->
+    <!-- hidden until login -->
     <div class="user-profile-wrap" id="userProfileWrap" style="display:none">
-      <button class="user-avatar-btn" id="userAvatarBtn" type="button" aria-label="Profile menu">
+      <button class="user-avatar-btn" id="userAvatarBtn" type="button" aria-label="Profile menu" onclick="toggleDropdown(event)">
         <span id="userAvatarInitial"></span>
       </button>
       <div class="profile-dropdown" id="profileDropdown">
-        <div class="profile-dropdown-header">
-          <div class="profile-avatar-lg" id="profileAvatarLg"><span id="profileAvatarInitialLg"></span></div>
-          <div class="profile-info">
-            <div class="profile-name" id="profileNameDisplay"></div>
-            <div class="profile-email" id="profileEmailDisplay"></div>
-            <span class="profile-plan-badge plan-badge-free" id="profilePlanBadge">Free</span>
+        <div class="pd-header">
+          <div class="pd-av" id="pdAv"><span id="pdAvInitial"></span></div>
+          <div class="pd-info">
+            <div class="pd-name" id="pdName"></div>
+            <div class="pd-email" id="pdEmail"></div>
+            <span class="pd-badge" id="pdBadge">Free</span>
           </div>
         </div>
-        <div class="profile-dropdown-body">
-          <button class="pd-btn" id="pdProfileBtn" type="button"><i class="fas fa-user"></i> Profile</button>
-          <button class="pd-signout" id="pdSignOutBtn" type="button"><i class="fas fa-right-from-bracket"></i> Sign Out</button>
+        <div class="pd-body">
+          <button class="pd-btn" onclick="closeDd();openProfileSheet()"><i class="fas fa-user"></i> Profile</button>
+          <button class="pd-signout" onclick="closeDd();doLogout()"><i class="fas fa-right-from-bracket"></i> Sign Out</button>
         </div>
       </div>
     </div>
   </div>
 </header>
 
-<!-- TAB BAR -->
+<!-- ══ TABS ══ -->
 <nav class="tab-bar">
   <button class="tab active" onclick="goToPanel(0)" id="tab0"><i class="fas fa-brain"></i><span>AI Assistant</span></button>
   <button class="tab" onclick="goToPanel(1)" id="tab1"><i class="fas fa-palette"></i><span>Image</span></button>
   <button class="tab" onclick="goToPanel(2)" id="tab2"><i class="fas fa-music"></i><span>Song</span></button>
 </nav>
 
-<!-- PANELS -->
+<!-- ══ PANELS ══ -->
 <main class="panels-wrap" id="panelsWrap">
   <div class="panels-track" id="panelsTrack">
 
-    <!-- PANEL 1: CHAT -->
+    <!-- CHAT -->
     <section class="panel panel-chat" id="panelChat">
       <div class="panel-inner">
         <div class="chat-messages" id="chatMessages">
@@ -138,7 +123,7 @@
       </div>
     </section>
 
-    <!-- PANEL 2: IMAGE -->
+    <!-- IMAGE -->
     <section class="panel panel-image" id="panelImage">
       <div class="panel-inner panel-inner-scroll">
         <div class="panel-header">
@@ -147,7 +132,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Prompt</label>
-          <textarea id="imgPrompt" class="form-textarea" placeholder="Describe the image you want to create..." rows="3"></textarea>
+          <textarea id="imgPrompt" class="form-textarea" placeholder="Describe the image..." rows="3"></textarea>
         </div>
         <div class="form-group">
           <label class="form-label">Style</label>
@@ -188,7 +173,7 @@
       </div>
     </section>
 
-    <!-- PANEL 3: SONG -->
+    <!-- SONG -->
     <section class="panel panel-song" id="panelSong">
       <div class="panel-inner panel-inner-scroll">
         <div class="panel-header">
@@ -223,7 +208,7 @@
   </div>
 </main>
 
-<!-- PLAN MODAL -->
+<!-- ══ PLAN MODAL ══ -->
 <div class="modal-overlay" id="planModal">
   <div class="modal-box modal-wide">
     <div class="modal-header">
@@ -261,7 +246,7 @@
   </div>
 </div>
 
-<!-- SETTINGS MODAL -->
+<!-- ══ SETTINGS MODAL ══ -->
 <div class="modal-overlay" id="settingsModal">
   <div class="modal-box">
     <div class="modal-header">
@@ -289,7 +274,7 @@
   </div>
 </div>
 
-<!-- UPGRADE MODAL -->
+<!-- ══ UPGRADE MODAL ══ -->
 <div class="modal-overlay" id="upgradeModal">
   <div class="modal-box">
     <div class="modal-header">
@@ -308,244 +293,562 @@
   </div>
 </div>
 
-<!-- ══ PROFILE PAGE (Bottom Sheet) ══ -->
-<div class="pp-overlay" id="ppOverlay">
-  <div class="pp-sheet" id="ppSheet">
-    <span class="pp-handle"></span>
-    <div class="pp-header">
-      <h3><i class="fas fa-user-circle"></i> My Profile</h3>
-      <button class="pp-close" id="ppCloseBtn" type="button"><i class="fas fa-xmark"></i></button>
+<!-- ══ AUTH MODAL ══ -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header">
+      <h3><i class="fas fa-lock"></i> <span id="authModalTitle">Sign in to continue</span></h3>
+      <button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-xmark"></i></button>
     </div>
-    <div class="pp-body">
-      <div class="pp-hero">
-        <div class="pp-avatar" id="ppAvatar">
-          <span id="ppInitial">?</span>
-          <span class="pp-avatar-hint">PHOTO</span>
+    <div class="modal-body" style="gap:10px">
+      <!-- tabs -->
+      <div style="display:flex;gap:6px;background:var(--surface2,#1f2937);border:1px solid var(--border,rgba(255,255,255,.08));padding:4px;border-radius:30px;">
+        <button id="authTabLogin" onclick="switchAuthTab('login')"
+          style="flex:1;padding:8px;border-radius:30px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;">
+          Login
+        </button>
+        <button id="authTabSignup" onclick="switchAuthTab('signup')"
+          style="flex:1;padding:8px;border-radius:30px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#9ca3af;">
+          Sign Up
+        </button>
+      </div>
+      <!-- message -->
+      <div id="authMsg" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;"></div>
+      <!-- login form -->
+      <form id="authLoginForm" onsubmit="submitLogin(event)" style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label class="form-label">Email</label>
+          <input type="email" id="authLoginEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
         </div>
-        <div class="pp-hero-name" id="ppName">—</div>
-        <div class="pp-hero-email" id="ppEmail">—</div>
-        <span class="pp-hero-plan plan-badge-free" id="ppPlan"><i class="fas fa-star"></i> Free Plan</span>
+        <div>
+          <label class="form-label">Password</label>
+          <input type="password" id="authLoginPass" class="form-input" placeholder="Your password" required autocomplete="current-password"/>
+        </div>
+        <button type="submit" id="authLoginBtn" class="btn-generate btn-purple" style="margin-bottom:0">
+          <i class="fas fa-arrow-right-to-bracket"></i> Login
+        </button>
+      </form>
+      <!-- signup form -->
+      <form id="authSignupForm" onsubmit="submitSignup(event)" style="display:none;flex-direction:column;gap:10px;">
+        <div>
+          <label class="form-label">Full Name</label>
+          <input type="text" id="authSignupName" class="form-input" placeholder="Your name" required autocomplete="name"/>
+        </div>
+        <div>
+          <label class="form-label">Email</label>
+          <input type="email" id="authSignupEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
+        </div>
+        <div>
+          <label class="form-label">Password</label>
+          <input type="password" id="authSignupPass" class="form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password"/>
+        </div>
+        <button type="submit" id="authSignupBtn" class="btn-generate btn-purple" style="margin-bottom:0">
+          <i class="fas fa-paper-plane"></i> Send Verification Code
+        </button>
+      </form>
+      <!-- OTP form -->
+      <div id="authOtpForm" style="display:none;flex-direction:column;gap:12px;">
+        <div style="text-align:center;padding:8px 0;">
+          <i class="fas fa-envelope-circle-check" style="font-size:2rem;color:#a855f7;margin-bottom:8px;display:block;"></i>
+          <p style="font-size:13px;color:#9ca3af;margin:0;">Code បានផ្ញើទៅ</p>
+          <p id="otpEmailDisplay" style="font-size:14px;font-weight:700;color:#fff;margin:4px 0 0;"></p>
+        </div>
+        <div>
+          <label class="form-label">Verification Code (6 digits)</label>
+          <input type="text" id="authOtpInput" class="form-input"
+            placeholder="_ _ _ _ _ _" maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
+            style="text-align:center;font-size:1.5rem;font-weight:700;letter-spacing:0.4em;"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" onclick="backToSignup()" class="btn-generate" style="flex:1;margin-bottom:0;background:var(--surface2,#1f2937);color:#9ca3af;">
+            <i class="fas fa-arrow-left"></i> Back
+          </button>
+          <button type="button" onclick="submitOtp()" id="authOtpBtn" class="btn-generate btn-purple" style="flex:2;margin-bottom:0">
+            <i class="fas fa-check-circle"></i> Verify & Create Account
+          </button>
+        </div>
+        <div style="text-align:center;">
+          <button type="button" onclick="resendOtp()" id="resendOtpBtn"
+            style="background:none;border:none;color:#a855f7;font-size:12px;cursor:pointer;text-decoration:underline;">
+            Resend code
+          </button>
+          <span id="resendTimer" style="font-size:12px;color:#9ca3af;display:none;"></span>
+        </div>
       </div>
-      <div class="pp-infocard">
-        <div class="pp-row"><span class="pp-label"><i class="fas fa-user"></i> Name</span><span class="pp-value" id="ppInfoName">—</span></div>
-        <div class="pp-row"><span class="pp-label"><i class="fas fa-envelope"></i> Email</span><span class="pp-value" id="ppInfoEmail">—</span></div>
-        <div class="pp-row"><span class="pp-label"><i class="fas fa-crown"></i> Plan</span><span class="pp-value" id="ppInfoPlan">Free</span></div>
-        <div class="pp-row"><span class="pp-label"><i class="fas fa-calendar"></i> Member Since</span><span class="pp-value" id="ppInfoJoined">—</span></div>
-      </div>
-      <div class="pp-usagecard">
-        <div class="pp-usage-title"><i class="fas fa-chart-bar"></i> Session Usage</div>
-        <div class="pp-bar-label"><span>Requests Used</span><span id="ppUsageCount">0 / 10</span></div>
-        <div class="pp-bar-track"><div class="pp-bar-fill" id="ppUsageBar" style="width:0%;background:#a855f7"></div></div>
-      </div>
-      <div class="pp-upgrade" id="ppUpgradeBanner">
-        <div class="pp-upgrade-icon"><i class="fas fa-crown"></i></div>
-        <div class="pp-upgrade-text"><strong>Upgrade to Pro</strong><span>100 req/session · Custom API key</span></div>
-      </div>
-      <button class="btn-generate btn-purple" id="ppUpgradeBtn"><i class="fas fa-crown"></i> Upgrade to Pro — $9.99/mo</button>
-      <button class="pd-signout" id="ppLogoutBtn" type="button" style="margin-top:4px"><i class="fas fa-right-from-bracket"></i> Sign Out</button>
     </div>
   </div>
 </div>
-<script src="pre-patch.js"></script>
+
+<!-- ══ PROFILE SHEET ══ -->
+<div id="ppOverlay" onclick="closePPif(event)">
+  <div id="ppSheet">
+    <span class="pp-handle"></span>
+    <div class="pp-hdr">
+      <h3><i class="fas fa-user-circle"></i> My Profile</h3>
+      <button class="pp-closebtn" onclick="closeProfileSheet()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="pp-body2">
+      <!-- hero -->
+      <div class="pp-hero">
+        <div style="position:relative;width:82px;height:82px;">
+          <div id="ppAvatarEl" onclick="document.getElementById('ppFileInput').click()" title="Click to change photo">
+            <span id="ppInitial">?</span>
+          </div>
+          <div class="pp-cam"><i class="fas fa-camera"></i></div>
+        </div>
+        <input type="file" id="ppFileInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)"/>
+        <div id="ppHeroName" style="font-size:19px;font-weight:700;color:#fff;text-align:center;"></div>
+        <div id="ppHeroEmail" style="font-size:12px;color:#9ca3af;margin-top:-6px;text-align:center;"></div>
+        <span id="ppPlanBadge" style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.4);">
+          <i class="fas fa-star"></i> Free Plan
+        </span>
+      </div>
+      <!-- info -->
+      <div class="pp-infocard">
+        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-user"></i> Name</span><span class="pp-val" id="ppInfoName">—</span></div>
+        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-envelope"></i> Email</span><span class="pp-val" id="ppInfoEmail">—</span></div>
+        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-crown"></i> Plan</span><span class="pp-val" id="ppInfoPlan">Free</span></div>
+        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-calendar"></i> Member Since</span><span class="pp-val" id="ppInfoJoined">—</span></div>
+      </div>
+      <!-- usage -->
+      <div class="pp-usagecard">
+        <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="fas fa-chart-bar"></i> Session Usage</div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#9ca3af;margin-bottom:5px;"><span>Requests Used</span><span id="ppUsageCount" style="color:#fff;font-weight:600;">0 / 10</span></div>
+        <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;"><div id="ppUsageBar" style="height:100%;border-radius:3px;width:0%;background:#a855f7;transition:width .6s;"></div></div>
+      </div>
+      <!-- upgrade -->
+      <div class="pp-upgrade-banner" id="ppUpgradeBanner" onclick="closeProfileSheet();setTimeout(()=>openPlanModal(),200)">
+        <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#a855f7,#22d3ee);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0;"><i class="fas fa-crown"></i></div>
+        <div><strong style="font-size:13px;display:block;color:#fff;">Upgrade to Pro</strong><span style="font-size:11px;color:#9ca3af;">100 requests · $9.99/mo</span></div>
+      </div>
+      <!-- avatar status -->
+      <div id="ppAvatarStatus" style="display:none;font-size:12px;text-align:center;padding:6px 10px;border-radius:8px;"></div>
+      <!-- sign out -->
+      <button onclick="closeProfileSheet();doLogout()" style="width:100%;padding:11px;border-radius:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#f87171;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+        <i class="fas fa-right-from-bracket"></i> Sign Out
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCRIPT.JS (external — handles chat/image/song API calls) ══ -->
 <script src="script.js"></script>
+
+<!-- ══ APP LOGIC — AUTH + PROFILE (inline, runs after script.js) ══ -->
 <script>
-/* ══════════════════════════════════════════════════════
-   PROFILE PAGE — Complete Fix
-   Bugs fixed:
-   1. openProfilePage() was calling openSettings() — FIXED
-   2. injectProfileActionButton() duplicated buttons — DISABLED
-   3. Avatar button visible before login — FIXED (only shown after login)
-   4. Dropdown "Profile" btn now correctly opens profile sheet
-   5. Auth guard: if user clicks avatar & NOT logged in → open auth modal
-══════════════════════════════════════════════════════ */
-(function () {
-  'use strict';
+'use strict';
 
-  /* helpers */
-  function eid(id) { return document.getElementById(id); }
-  function txt(id, v) { var e = eid(id); if (e) e.textContent = (v != null ? v : '—'); }
+/* ─── 1. KILL checkExistingSession immediately after script.js loads ─── */
+window.checkExistingSession = async function () { /* blocked — user must login manually */ };
 
-  /* ── open/close profile sheet ── */
-  function openProfilePage(e) {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
-    /* guard: must be logged in */
-    if (typeof currentUser === 'undefined' || !currentUser) {
-      if (typeof closeProfileDropdown === 'function') closeProfileDropdown();
-      if (typeof openAuthModal === 'function') openAuthModal(null);
-      return;
-    }
-    if (typeof closeProfileDropdown === 'function') closeProfileDropdown();
-    syncProfilePage();
-    var o = eid('ppOverlay');
-    if (o) o.classList.add('open');
-  }
+/* ─── 2. STATE ─── */
+var _currentUser   = null;   /* single source of truth */
+var _pendingAction = null;
+var _otpData       = null;
+var _resendTimer   = null;
 
-  function closeProfilePage() {
-    var o = eid('ppOverlay');
-    if (o) o.classList.remove('open');
-  }
+/* ─── 3. DROPDOWN ─── */
+function toggleDropdown(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  var dd = document.getElementById('profileDropdown');
+  if (!dd) return;
+  dd.classList.toggle('open');
+}
+function closeDd() {
+  var dd = document.getElementById('profileDropdown');
+  if (dd) dd.classList.remove('open');
+}
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('userProfileWrap');
+  if (wrap && !wrap.contains(e.target)) closeDd();
+}, true);
 
-  function ppOpenPlan() {
-    closeProfilePage();
-    if (typeof openPlanModal === 'function') openPlanModal();
-  }
-
-  /* ── sync user data into profile sheet ── */
-  function getPlanBadgeClass(p) {
-    if (p === 'pro') return 'pp-hero-plan plan-badge-pro';
-    if (p === 'max') return 'pp-hero-plan plan-badge-max';
-    return 'pp-hero-plan plan-badge-free';
-  }
-
-  function syncProfilePage() {
-    var u     = (typeof currentUser !== 'undefined') ? currentUser : null;
-    var plan  = (typeof userPlan !== 'undefined') ? userPlan : 'free';
-    var limits = (typeof PLAN_LIMITS !== 'undefined') ? PLAN_LIMITS : {
-      free: { requests: 10,  label: 'Free' },
-      pro:  { requests: 100, label: 'Pro'  },
-      max:  { requests: 500, label: 'Max'  }
-    };
-    var limit = (limits[plan] || limits.free).requests;
-    var used  = (typeof requestCount !== 'undefined') ? requestCount : 0;
-    var pct   = Math.min(100, Math.round(used / limit * 100));
-
-    if (u) {
-      var init      = (u.name || 'U').charAt(0).toUpperCase();
-      var uplan     = u.plan || plan;
-      var planLabel = (limits[uplan] || limits.free).label;
-
-      txt('ppName',      u.name);
-      txt('ppEmail',     u.email);
-      txt('ppInfoName',  u.name);
-      txt('ppInfoEmail', u.email);
-      txt('ppInfoPlan',  planLabel);
-
-      var joined = u.created_at
-        ? new Date(u.created_at).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })
-        : 'Today';
-      txt('ppInfoJoined', joined);
-
-      /* avatar */
-      var ppAv = eid('ppAvatar');
-      if (u.avatar_url && ppAv) {
-        ppAv.innerHTML = '<img src="' + u.avatar_url + '" alt="' + init + '"/><span class="pp-avatar-hint">PHOTO</span>';
-      } else {
-        var ppInit = eid('ppInitial');
-        if (ppInit) ppInit.textContent = init;
-      }
-
-      /* plan badge */
-      var ppP = eid('ppPlan');
-      if (ppP) {
-        ppP.className = getPlanBadgeClass(uplan);
-        ppP.innerHTML = '<i class="fas fa-star"></i> ' + planLabel + ' Plan';
-      }
-
-      /* hide upgrade if already pro/max */
-      var isPro = (uplan === 'pro' || uplan === 'max');
-      var ub   = eid('ppUpgradeBanner');
-      var ubtn = eid('ppUpgradeBtn');
-      if (ub)   ub.style.display   = isPro ? 'none' : 'flex';
-      if (ubtn) ubtn.style.display = isPro ? 'none' : 'block';
-    }
-
-    /* usage bar */
-    txt('ppUsageCount', used + ' / ' + limit);
-    var fill = eid('ppUsageBar');
-    if (fill) {
-      fill.style.width      = pct + '%';
-      fill.style.background = pct >= 80 ? '#f87171' : pct >= 50 ? '#fbbf24' : '#a855f7';
-    }
-  }
-
-  /* ── wire static sheet buttons ── */
-  var ppClose   = eid('ppCloseBtn');
-  var ppOverlay = eid('ppOverlay');
-  var ppLogout  = eid('ppLogoutBtn');
-  var ppUpgrade = eid('ppUpgradeBtn');
-
-  if (ppClose)   ppClose.onclick   = closeProfilePage;
-  if (ppUpgrade) ppUpgrade.onclick = ppOpenPlan;
-  if (ppLogout) ppLogout.onclick = function () {
-    closeProfilePage();
-    if (typeof logoutUser === 'function') logoutUser();
-  };
-  if (ppOverlay) ppOverlay.onclick = function (e) {
-    if (e.target === ppOverlay) closeProfilePage();
-  };
-
-  /* ── wire dropdown buttons (after DOM ready) ── */
-  function wireDropdown() {
-    /* Profile button in dropdown */
-    var profileBtn = eid('pdProfileBtn');
-    if (profileBtn) {
-      profileBtn.onclick = function (e) { openProfilePage(e); };
-    }
-
-    /* Sign Out button in dropdown */
-    var signOutBtn = eid('pdSignOutBtn');
-    if (signOutBtn) {
-      signOutBtn.onclick = function () {
-        if (typeof closeProfileDropdown === 'function') closeProfileDropdown();
-        if (typeof logoutUser === 'function') logoutUser();
-      };
-    }
-
-    /* Avatar button — guard: only show after login, open dropdown */
-    var avatarBtn = eid('userAvatarBtn');
-    if (avatarBtn) {
-      avatarBtn.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        /* if somehow visible before login, open auth instead */
-        if (typeof currentUser === 'undefined' || !currentUser) {
-          if (typeof openAuthModal === 'function') openAuthModal(null);
-          return;
-        }
-        if (typeof toggleProfileDropdown === 'function') toggleProfileDropdown(e);
-      };
-    }
-  }
-
-  /* ══ OVERRIDE broken script.js functions ══ */
-
-  /* FIX 1: openProfilePage in script.js wrongly calls openSettings() */
-  window.openProfilePage = openProfilePage;
-
-  /* FIX 2: injectProfileActionButton duplicates the Profile button */
-  window.injectProfileActionButton = function () { /* no-op: button already in HTML */ };
-
-  /* FIX 3: Override updateProfileUI to ensure wrap is ONLY shown when logged in */
-  var _originalUpdateProfileUI = window.updateProfileUI;
-  window.updateProfileUI = function (user) {
-    if (!user) {
-      /* hide avatar wrap if no user */
-      var wrap = eid('userProfileWrap');
-      if (wrap) wrap.style.display = 'none';
-      return;
-    }
-    /* call original script.js logic */
-    if (typeof _originalUpdateProfileUI === 'function') {
-      _originalUpdateProfileUI(user);
-    }
-    /* ensure wrap is visible only now */
-    var wrap = eid('userProfileWrap');
-    if (wrap) wrap.style.display = 'flex';
-  };
-
-  /* expose globals */
-  window.closeProfilePage = closeProfilePage;
-  window.syncProfilePage  = syncProfilePage;
-  window.ppOpenPlan       = ppOpenPlan;
-
-  /* init */
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', wireDropdown);
+/* ─── 4. AUTH MODAL ─── */
+function openAuthModal(action) {
+  _pendingAction = action || null;
+  var m = document.getElementById('authModal');
+  if (m) m.classList.add('open');
+  clearAuthMsg();
+  switchAuthTab('login');
+}
+function closeAuthModal() {
+  var m = document.getElementById('authModal');
+  if (m) m.classList.remove('open');
+  _pendingAction = null;
+}
+function switchAuthTab(tab) {
+  var lf = document.getElementById('authLoginForm');
+  var sf = document.getElementById('authSignupForm');
+  var of = document.getElementById('authOtpForm');
+  var tl = document.getElementById('authTabLogin');
+  var ts = document.getElementById('authTabSignup');
+  clearAuthMsg();
+  if (of) of.style.display = 'none';
+  var actStyle = 'background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;';
+  var inactStyle = 'background:transparent;color:#9ca3af;';
+  if (tab === 'login') {
+    if (lf) lf.style.display = 'flex';
+    if (sf) sf.style.display = 'none';
+    if (tl) tl.setAttribute('style', tl.getAttribute('style').replace(/background[^;]+;|color[^;]+;/g,'') + actStyle);
+    if (ts) ts.setAttribute('style', ts.getAttribute('style').replace(/background[^;]+;|color[^;]+;/g,'') + inactStyle);
   } else {
-    wireDropdown();
+    if (lf) lf.style.display = 'none';
+    if (sf) sf.style.display = 'flex';
+    if (ts) ts.setAttribute('style', ts.getAttribute('style').replace(/background[^;]+;|color[^;]+;/g,'') + actStyle);
+    if (tl) tl.setAttribute('style', tl.getAttribute('style').replace(/background[^;]+;|color[^;]+;/g,'') + inactStyle);
   }
-})();
+}
+function showAuthMsg(msg, type) {
+  var el = document.getElementById('authMsg');
+  if (!el) return;
+  el.style.display = 'block';
+  el.style.background = type === 'error' ? 'rgba(239,68,68,.12)' : 'rgba(16,185,129,.12)';
+  el.style.color = type === 'error' ? '#f87171' : '#34d399';
+  el.style.border = '1px solid ' + (type === 'error' ? 'rgba(239,68,68,.3)' : 'rgba(16,185,129,.3)');
+  el.textContent = msg;
+}
+function clearAuthMsg() {
+  var el = document.getElementById('authMsg');
+  if (el) { el.style.display = 'none'; el.textContent = ''; }
+}
+
+/* ─── 5. SIGNUP → OTP ─── */
+async function submitSignup(e) {
+  e.preventDefault();
+  clearAuthMsg();
+  var btn   = document.getElementById('authSignupBtn');
+  var name  = document.getElementById('authSignupName').value.trim();
+  var email = document.getElementById('authSignupEmail').value.trim();
+  var pass  = document.getElementById('authSignupPass').value;
+  if (!name)          return showAuthMsg('Please enter your name.', 'error');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAuthMsg('Please enter a valid email.', 'error');
+  if (pass.length < 8) return showAuthMsg('Password must be at least 8 characters.', 'error');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending code...';
+  try {
+    var res  = await fetch('/api/send-otp', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({name, email, password: pass}) });
+    var data = await res.json();
+    if (res.ok) {
+      _otpData = { name, email, password: pass };
+      document.getElementById('otpEmailDisplay').textContent = email;
+      document.getElementById('authSignupForm').style.display = 'none';
+      var of = document.getElementById('authOtpForm');
+      of.style.display = 'flex';
+      document.getElementById('authOtpInput').value = '';
+      startResendTimer(60);
+      showAuthMsg('Code ត្រូវបានផ្ញើ! សូមពិនិត្យ Email.', 'success');
+    } else {
+      showAuthMsg(data.error || 'Failed to send code.', 'error');
+    }
+  } catch(ex) {
+    showAuthMsg('Network error. Check connection.', 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Verification Code';
+}
+
+async function submitOtp() {
+  clearAuthMsg();
+  var otp = document.getElementById('authOtpInput').value.trim();
+  var btn = document.getElementById('authOtpBtn');
+  if (!otp || otp.length !== 6) return showAuthMsg('Please enter the 6-digit code.', 'error');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+  try {
+    var res  = await fetch('/api/verify-otp', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({..._otpData, otp}) });
+    var data = await res.json();
+    if (res.ok) {
+      _otpData = null;
+      showAuthMsg('Welcome, ' + data.user.name + '! 🎉 Account created!', 'success');
+      setTimeout(function(){ onLoginSuccess(data.user); }, 900);
+    } else {
+      showAuthMsg(data.error || 'Invalid or expired code.', 'error');
+    }
+  } catch(ex) {
+    showAuthMsg('Network error.', 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-check-circle"></i> Verify & Create Account';
+}
+
+async function resendOtp() {
+  if (!_otpData) return;
+  clearAuthMsg();
+  try {
+    var res  = await fetch('/api/send-otp', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(_otpData) });
+    var data = await res.json();
+    if (res.ok) { showAuthMsg('Code ថ្មីត្រូវបានផ្ញើ!', 'success'); startResendTimer(60); }
+    else showAuthMsg(data.error || 'Failed to resend.', 'error');
+  } catch(ex) { showAuthMsg('Network error.', 'error'); }
+}
+
+function backToSignup() {
+  document.getElementById('authOtpForm').style.display = 'none';
+  document.getElementById('authSignupForm').style.display = 'flex';
+  clearAuthMsg();
+  if (_resendTimer) clearInterval(_resendTimer);
+}
+
+function startResendTimer(sec) {
+  var btn   = document.getElementById('resendOtpBtn');
+  var timer = document.getElementById('resendTimer');
+  if (!btn || !timer) return;
+  btn.style.display = 'none';
+  timer.style.display = 'inline';
+  var s = sec;
+  if (_resendTimer) clearInterval(_resendTimer);
+  _resendTimer = setInterval(function() {
+    timer.textContent = 'Resend in ' + s + 's';
+    s--;
+    if (s < 0) { clearInterval(_resendTimer); btn.style.display = 'inline'; timer.style.display = 'none'; }
+  }, 1000);
+}
+
+/* ─── 6. LOGIN ─── */
+async function submitLogin(e) {
+  e.preventDefault();
+  clearAuthMsg();
+  var btn   = document.getElementById('authLoginBtn');
+  var email = document.getElementById('authLoginEmail').value.trim();
+  var pass  = document.getElementById('authLoginPass').value;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+  try {
+    var res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({email, password: pass}) });
+    var data = await res.json();
+    if (res.ok) {
+      showAuthMsg('Welcome back, ' + data.user.name + '! ✅', 'success');
+      setTimeout(function(){ onLoginSuccess(data.user); }, 800);
+    } else {
+      showAuthMsg(data.error || 'Invalid email or password.', 'error');
+    }
+  } catch(ex) {
+    showAuthMsg('Network error. Check connection.', 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Login';
+}
+
+/* ─── 7. onLoginSuccess (replaces onAuthSuccess) ─── */
+function onLoginSuccess(user) {
+  _currentUser = user;
+  /* sync script.js globals */
+  window.currentUser = user;
+  if (user.plan && window.PLAN_LIMITS && window.PLAN_LIMITS[user.plan]) {
+    window.userPlan = user.plan;
+    if (typeof window.renderPlanBadge === 'function') window.renderPlanBadge();
+  }
+  /* show avatar */
+  updateNavAvatar(user);
+  closeAuthModal();
+  /* run pending action */
+  var action = _pendingAction;
+  _pendingAction = null;
+  if (action === 'chat')  setTimeout(function(){ if(typeof sendChat==='function') sendChat(); }, 100);
+  if (action === 'image') setTimeout(function(){ if(typeof generateImage==='function') generateImage(); }, 100);
+  if (action === 'song')  setTimeout(function(){ if(typeof generateSong==='function') generateSong(); }, 100);
+}
+
+/* ─── 8. LOGOUT ─── */
+async function doLogout() {
+  _currentUser = null;
+  window.currentUser = null;
+  var wrap = document.getElementById('userProfileWrap');
+  if (wrap) wrap.style.display = 'none';
+  closeDd();
+  try { await fetch('/api/logout', { method:'POST', credentials:'include' }); } catch(ex){}
+  if (typeof window.showToast === 'function') window.showToast('Signed out', 'error');
+}
+
+/* ─── 9. NAV AVATAR ─── */
+function updateNavAvatar(user) {
+  var wrap    = document.getElementById('userProfileWrap');
+  var navBtn  = document.getElementById('userAvatarBtn');
+  var initial = (user.name || 'U').charAt(0).toUpperCase();
+  var plan    = user.plan || 'free';
+  var limits  = window.PLAN_LIMITS || { free:{label:'Free'}, pro:{label:'Pro'}, max:{label:'Max'} };
+  var planLbl = (limits[plan] || limits.free).label;
+
+  if (wrap)   wrap.style.display = 'flex';
+  if (navBtn) {
+    navBtn.innerHTML = user.avatar_url
+      ? '<img src="' + user.avatar_url + '" alt="' + initial + '"/>'
+      : '<span id="userAvatarInitial">' + initial + '</span>';
+  }
+  /* dropdown header */
+  var pdAv = document.getElementById('pdAv');
+  if (pdAv) pdAv.innerHTML = user.avatar_url
+    ? '<img src="' + user.avatar_url + '" alt="' + initial + '"/>'
+    : '<span id="pdAvInitial">' + initial + '</span>';
+  var el;
+  el = document.getElementById('pdName');  if(el) el.textContent = user.name  || '';
+  el = document.getElementById('pdEmail'); if(el) el.textContent = user.email || '';
+  el = document.getElementById('pdBadge'); if(el) { el.textContent = planLbl; }
+}
+
+/* ─── 10. PROFILE SHEET ─── */
+function openProfileSheet() {
+  syncProfileSheet();
+  document.getElementById('ppOverlay').classList.add('open');
+}
+function closeProfileSheet() {
+  document.getElementById('ppOverlay').classList.remove('open');
+}
+function closePPif(e) {
+  if (e.target === document.getElementById('ppOverlay')) closeProfileSheet();
+}
+
+function syncProfileSheet() {
+  var u      = _currentUser;
+  var plan   = (u && u.plan) || window.userPlan || 'free';
+  var limits = window.PLAN_LIMITS || { free:{requests:10,label:'Free'}, pro:{requests:100,label:'Pro'}, max:{requests:500,label:'Max'} };
+  var limit  = (limits[plan] || limits.free).requests;
+  var used   = window.requestCount || 0;
+  var pct    = Math.min(100, Math.round(used / limit * 100));
+  var planLbl= (limits[plan] || limits.free).label;
+
+  if (u) {
+    var init = (u.name || 'U').charAt(0).toUpperCase();
+    var set  = function(id,v){ var e=document.getElementById(id); if(e) e.textContent = v||'—'; };
+    set('ppHeroName',  u.name);
+    set('ppHeroEmail', u.email);
+    set('ppInfoName',  u.name);
+    set('ppInfoEmail', u.email);
+    set('ppInfoPlan',  planLbl);
+    set('ppInfoJoined', u.created_at
+      ? new Date(u.created_at).toLocaleDateString([],{year:'numeric',month:'short',day:'numeric'})
+      : 'Today');
+
+    /* avatar */
+    var av = document.getElementById('ppAvatarEl');
+    if (av) av.innerHTML = u.avatar_url
+      ? '<img src="' + u.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="' + init + '"/>'
+      : '<span id="ppInitial">' + init + '</span>';
+
+    /* plan badge */
+    var badge = document.getElementById('ppPlanBadge');
+    if (badge) {
+      var bs = { free:'rgba(167,139,250,.15);color:#a78bfa;border-color:rgba(167,139,250,.4)',
+                 pro: 'rgba(6,182,212,.15);color:#22d3ee;border-color:rgba(6,182,212,.4)',
+                 max: 'rgba(251,191,36,.15);color:#fbbf24;border-color:rgba(251,191,36,.4)' };
+      badge.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;background:' + (bs[plan]||bs.free);
+      badge.innerHTML = '<i class="fas fa-star"></i> ' + planLbl + ' Plan';
+    }
+
+    /* upgrade banner */
+    var ub = document.getElementById('ppUpgradeBanner');
+    if (ub) ub.style.display = (plan==='pro'||plan==='max') ? 'none' : 'flex';
+  }
+
+  /* usage bar */
+  var uc = document.getElementById('ppUsageCount'); if(uc) uc.textContent = used + ' / ' + limit;
+  var ub2 = document.getElementById('ppUsageBar');
+  if (ub2) {
+    ub2.style.width = pct + '%';
+    ub2.style.background = pct>=80 ? '#f87171' : pct>=50 ? '#fbbf24' : '#a855f7';
+  }
+}
+
+/* ─── 11. AVATAR UPLOAD ─── */
+async function handleAvatarUpload(e) {
+  var file = e.target.files && e.target.files[0];
+  if (!file) return;
+  if (file.size > 2*1024*1024) { showAvatarStatus('Image too large (max 2 MB)', 'error'); return; }
+  showAvatarStatus('Uploading...', 'info');
+  var reader = new FileReader();
+  reader.onload = async function(ev) {
+    var dataUrl = ev.target.result;
+    /* optimistic UI update */
+    var av = document.getElementById('ppAvatarEl');
+    if (av) av.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
+    var nb = document.getElementById('userAvatarBtn');
+    if (nb) nb.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
+    var pd = document.getElementById('pdAv');
+    if (pd) pd.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
+    try {
+      var res  = await fetch('/api/profile', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({avatar_url: dataUrl}) });
+      if (res.ok) { if(_currentUser) _currentUser.avatar_url = dataUrl; showAvatarStatus('Photo updated! ✅','success'); }
+      else { var d=await res.json(); showAvatarStatus(d.error||'Upload failed','error'); }
+    } catch(ex) {
+      if(_currentUser) _currentUser.avatar_url = dataUrl;
+      showAvatarStatus('Saved locally ✅','success');
+    }
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+function showAvatarStatus(msg, type) {
+  var el = document.getElementById('ppAvatarStatus');
+  if (!el) return;
+  el.style.display = 'block';
+  el.style.background = type==='error'?'rgba(239,68,68,.12)':type==='success'?'rgba(16,185,129,.12)':'rgba(99,102,241,.12)';
+  el.style.color = type==='error'?'#f87171':type==='success'?'#34d399':'#818cf8';
+  el.textContent = msg;
+  if (type!=='info') setTimeout(function(){ el.style.display='none'; }, 3000);
+}
+
+/* ─── 12. PATCH script.js globals so sendChat/generateImage/generateSong work ─── */
+/* Override sendChat / generateImage / generateSong guards */
+var _origSendChat = window.sendChat;
+window.sendChat = function() {
+  if (!_currentUser) { openAuthModal('chat'); return; }
+  if (typeof _origSendChat === 'function') _origSendChat.call(this);
+  else if (typeof window._sendChat === 'function') window._sendChat();
+};
+
+var _origGenImg = window.generateImage;
+window.generateImage = function() {
+  if (!_currentUser) { openAuthModal('image'); return; }
+  if (typeof _origGenImg === 'function') _origGenImg.call(this);
+  else if (typeof window._generateImage === 'function') window._generateImage();
+};
+
+var _origGenSong = window.generateSong;
+window.generateSong = function() {
+  if (!_currentUser) { openAuthModal('song'); return; }
+  if (typeof _origGenSong === 'function') _origGenSong.call(this);
+  else if (typeof window._generateSong === 'function') window._generateSong();
+};
+
+/* patch currentUser so script.js internal checks also work */
+Object.defineProperty(window, 'currentUser', {
+  get: function() { return _currentUser; },
+  set: function(v) { _currentUser = v; },
+  configurable: true
+});
+
+/* ─── 13. EXPOSE globals script.js may call ─── */
+window.openAuthModal     = openAuthModal;
+window.closeAuthModal    = closeAuthModal;
+window.onAuthSuccess     = onLoginSuccess;   /* alias */
+window.logoutUser        = doLogout;
+window.openProfilePage   = openProfileSheet;
+window.syncProfilePage   = syncProfileSheet;
+window.injectProfileActionButton = function(){};
+window.toggleProfileDropdown     = toggleDropdown;
+window.closeProfileDropdown      = closeDd;
+window.bindGlobalProfileClose    = function(){};
+
+/* ─── 14. INIT ─── */
+document.addEventListener('DOMContentLoaded', function() {
+  /* ensure avatar wrap hidden */
+  var wrap = document.getElementById('userProfileWrap');
+  if (wrap) wrap.style.display = 'none';
+  /* wire dropdown sign-out (safety) */
+  var soBtn = document.getElementById('pdSignOutBtn');
+  if (soBtn) soBtn.onclick = function(){ closeDd(); doLogout(); };
+  /* welcome time */
+  var wt = document.getElementById('welcomeTime');
+  if (wt) {
+    var now = new Date();
+    var h = now.getHours(), m = now.getMinutes();
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    wt.textContent = h + ':' + (m<10?'0'+m:m) + ' ' + ampm;
+  }
+});
 </script>
-<script src="auth-patch.js"></script>
+
 </body>
 </html>
