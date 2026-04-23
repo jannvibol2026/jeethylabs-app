@@ -530,7 +530,7 @@ async function submitSignup(e) {
     var res  = await fetch('/api/send-otp', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({name, email, password: pass}) });
     var data = await res.json();
     if (res.ok) {
-      _otpData = { name, email, password_hash: pass };
+      _otpData = { name, email, password: pass, password_hash: pass };
       document.getElementById('otpEmailDisplay').textContent = email;
       document.getElementById('authSignupForm').style.display = 'none';
       var of = document.getElementById('authOtpForm');
@@ -615,7 +615,7 @@ async function submitLogin(e) {
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
   try {
-    var res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({email, password_hash: pass}) });
+    var res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({email, password: pass, password_hash: pass}) });
     var data = await res.json();
     if (res.ok) {
       showAuthMsg('Welcome back, ' + data.user.name + '! ✅', 'success');
