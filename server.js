@@ -19,9 +19,9 @@ const FROM_EMAIL   = process.env.FROM_EMAIL || SMTP_USER;
 const PORT         = process.env.PORT || 8080;
 
 console.log('=== JeeThy Labs Starting ===');
-console.log('SMTP_USER:', SMTP_USER || '❌ MISSING');
-console.log('SMTP_PASS:', SMTP_PASS ? '✅ set' : '❌ MISSING');
-console.log('FROM_EMAIL:', FROM_EMAIL || '❌ MISSING');
+console.log('SMTP_USER:', SMTP_USER || 'MISSING');
+console.log('SMTP_PASS:', SMTP_PASS ? 'set' : 'MISSING');
+console.log('FROM_EMAIL:', FROM_EMAIL || 'MISSING');
 
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
@@ -31,8 +31,8 @@ const transporter = nodemailer.createTransport({
 });
 
 transporter.verify((err) => {
-  if (err) console.error('❌ SMTP Error:', err.message);
-  else console.log('✅ Brevo SMTP Ready');
+  if (err) console.error('SMTP Error:', err.message);
+  else console.log('Brevo SMTP Ready');
 });
 
 const pool = new Pool({
@@ -41,8 +41,8 @@ const pool = new Pool({
 });
 
 pool.connect()
-  .then(c => { console.log('✅ DB Connected'); c.release(); })
-  .catch(e => console.error('❌ DB Error:', e.message));
+  .then(c => { console.log('DB Connected'); c.release(); })
+  .catch(e => console.error('DB Error:', e.message));
 
 const otpStore = {};
 
@@ -55,14 +55,13 @@ async function sendEmail(to, subject, html) {
     from: `"JeeThy Labs" <${FROM_EMAIL}>`,
     to, subject, html,
   });
-  console.log('[sendEmail] ✅ messageId:', info.messageId);
+  console.log('[sendEmail] messageId:', info.messageId);
   return info;
 }
 
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    smtp_host: 'smtp-relay.brevo.com',
     smtp_user: SMTP_USER || 'MISSING',
     smtp_ready: !!SMTP_USER && !!SMTP_PASS,
     from_email: FROM_EMAIL || 'MISSING',
@@ -103,10 +102,10 @@ app.post('/api/send-otp', async (req, res) => {
         <p style="color:#aaa;font-size:12px;">If you did not request this, please ignore this email.</p>
       </div>`
     );
-    console.log('[send-otp] ✅ Sent to:', email);
+    console.log('[send-otp] Sent to:', email);
     res.json({ success: true });
   } catch (e) {
-    console.error('[send-otp] ❌ Error:', e.message);
+    console.error('[send-otp] Error:', e.message);
     res.status(500).json({ error: 'Failed to send code: ' + e.message });
   }
 });
@@ -135,13 +134,16 @@ app.post('/api/verify-otp', async (req, res) => {
   try {
     const hash = await bcrypt.hash(passwordToHash, 10);
     const uname = req.body.name || record.name || 'User';
+    const now = new Date();
 
     const result = await pool.query(
-      `INSERT INTO users (name, email, password_hash, plan)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (email) DO UPDATE SET name=$1, password_hash=$3
-       RETURNING id, name, email, plan, created_at`,
-      [uname, email, hash, 'free']
+      `INSERT INTO users
+         (name, email, password_hash, plan, status, email_verified, avatar_url, country, created_at, last_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (email) DO UPDATE
+         SET name=$1, password_hash=$3, last_active=$10
+       RETURNING id, user_id, name, email, plan, status, avatar_url, country, email_verified, created_at, last_active`,
+      [uname, email, hash, 'free', 'active', true, null, null, now, now]
     );
 
     const user = result.rows[0];
@@ -155,7 +157,9 @@ app.post('/api/verify-otp', async (req, res) => {
         name: user.name,
         email: user.email,
         plan: user.plan || 'free',
-        created_at: user.created_at
+        status: user.status || 'active',
+        avatar_url: user.avatar_url || null,
+        created_at: user.created_at,
       },
     });
   } catch (e) {
@@ -182,6 +186,8 @@ app.post('/api/login', async (req, res) => {
     const match = await bcrypt.compare(rawPassword, storedHash);
     if (!match) return res.status(401).json({ error: 'Wrong password.' });
 
+    await pool.query('UPDATE users SET last_active=$1 WHERE id=$2', [new Date(), user.id]);
+
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     res.json({
       success: true,
@@ -191,7 +197,9 @@ app.post('/api/login', async (req, res) => {
         name: user.name,
         email: user.email,
         plan: user.plan || 'free',
-        created_at: user.created_at
+        status: user.status || 'active',
+        avatar_url: user.avatar_url || null,
+        created_at: user.created_at,
       },
     });
   } catch (e) {
@@ -255,7 +263,6 @@ app.post('/api/reset-password', async (req, res) => {
 function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token' });
-
   try {
     req.user = jwt.verify(token, JWT_SECRET);
     next();
@@ -267,7 +274,7 @@ function authMiddleware(req, res, next) {
 app.get('/api/profile', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, avatar_url, plan, created_at FROM users WHERE id=$1',
+      'SELECT id, user_id, name, email, avatar_url, plan, status, country, email_verified, created_at, last_active FROM users WHERE id=$1',
       [req.user.id]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
@@ -278,11 +285,17 @@ app.get('/api/profile', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/profile', authMiddleware, async (req, res) => {
-  const { avatar_url } = req.body;
+  const { avatar_url, country, name } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE users SET avatar_url=$1 WHERE id=$2 RETURNING id, name, email, avatar_url, plan, created_at',
-      [avatar_url, req.user.id]
+      `UPDATE users
+       SET avatar_url=COALESCE($1, avatar_url),
+           country=COALESCE($2, country),
+           name=COALESCE($3, name),
+           last_active=$4
+       WHERE id=$5
+       RETURNING id, user_id, name, email, avatar_url, plan, status, country, email_verified, created_at, last_active`,
+      [avatar_url || null, country || null, name || null, new Date(), req.user.id]
     );
     res.json({ success: true, user: result.rows[0] });
   } catch (e) {
@@ -298,4 +311,4 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => console.log(`✅ JeeThy Labs running on port ${PORT}`));
+app.listen(PORT, () => console.log('JeeThy Labs running on port ' + PORT));
