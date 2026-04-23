@@ -2,853 +2,671 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>JeeThy Labs — App</title>
-<link rel="icon" href="https://jeethylabs.site/favicon.svg" type="image/svg+xml"/>
-<link rel="stylesheet" href="style.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>JeeThy Labs — AI Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
-/* ── NAV AVATAR ── */
-.user-profile-wrap{position:relative;display:flex;align-items:center;flex-shrink:0}
-.user-avatar-btn{width:34px;height:34px;border-radius:50%;border:2px solid rgba(167,139,250,.5);background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:border-color .2s,transform .15s;overflow:hidden;padding:0;-webkit-tap-highlight-color:transparent}
-.user-avatar-btn:active{transform:scale(.93)}
-.user-avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+/* ── RESET + TOKENS ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f13;--surface:#18181f;--surface2:#1e1e28;--border:rgba(255,255,255,.08);
+  --text:#e8e8f0;--muted:#8888a4;--faint:#44445a;
+  --primary:#a855f7;--primary-hover:#9333ea;--cyan:#06b6d4;
+  --success:#10b981;--error:#ef4444;--gold:#fbbf24;
+  --radius:14px;--radius-sm:8px;--radius-lg:20px;
+  --transition:180ms cubic-bezier(.16,1,.3,1);
+  --font:'DM Sans',sans-serif;
+}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
+input,textarea{font:inherit;color:inherit}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--faint);border-radius:4px}
+
+/* ══════════════ TOP NAV ══════════════ */
+.nav{position:fixed;top:0;left:0;right:0;height:56px;background:rgba(15,15,19,.85);
+  backdrop-filter:blur(20px);border-bottom:1px solid var(--border);z-index:100;
+  display:flex;align-items:center;padding:0 16px;gap:12px}
+.nav-logo{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--text)}
+.nav-logo svg{width:28px;height:28px}
+.nav-spacer{flex:1}
+#planBadge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
+  letter-spacing:.5px;text-transform:uppercase;border:1px solid;color:#a78bfa;
+  border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.1)}
+.nav-icon-btn{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;color:var(--muted);transition:all var(--transition)}
+.nav-icon-btn:hover{color:var(--text);background:rgba(255,255,255,.06)}
+
+/* ── USER AVATAR ── */
+#userProfileWrap{display:none;align-items:center;gap:8px;position:relative}
+#userAvatarBtn{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+  color:#fff;cursor:pointer;overflow:hidden;border:2px solid rgba(168,85,247,.4);
+  transition:all var(--transition)}
+#userAvatarBtn:hover{transform:scale(1.05);border-color:var(--primary)}
+#userAvatarBtn img{width:100%;height:100%;object-fit:cover}
+
 /* ── DROPDOWN ── */
-.profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;left:auto;width:240px;max-width:92vw;background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.6);z-index:9999;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(-8px) scale(.96);transition:opacity .2s,transform .2s}
-.profile-dropdown.open{opacity:1;pointer-events:all;transform:translateY(0) scale(1)}
-.pd-header{padding:14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);background:#1f2937}
-.pd-av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-.pd-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-.pd-info{flex:1;overflow:hidden}
-.pd-name{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pd-email{font-size:11px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.pd-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-top:3px;text-transform:uppercase;letter-spacing:.5px;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.4)}
-.pd-body{padding:8px;display:flex;flex-direction:column;gap:5px}
-.pd-btn{width:100%;padding:9px 12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#22d3ee;transition:background .2s}
-.pd-signout{background:rgba(239,68,68,.08)!important;border:1px solid rgba(239,68,68,.2)!important;color:#f87171!important;width:100%;padding:9px 12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
-/* ── PROFILE SHEET ── */
-#ppOverlay{position:fixed;inset:0;background:rgba(0,0,0,.80);backdrop-filter:blur(10px);z-index:10500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+#profileDropdown{position:absolute;top:42px;right:0;width:200px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 16px 40px rgba(0,0,0,.5);
+  padding:6px;z-index:200;display:none;animation:fadeSlide .15s ease}
+#profileDropdown.open{display:block}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.dd-header{padding:10px 12px 8px;border-bottom:1px solid var(--border);margin-bottom:4px}
+#pdAv{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;
+  color:#fff;overflow:hidden;margin-bottom:6px}
+#pdAv img{width:100%;height:100%;object-fit:cover}
+#pdName{font-size:13px;font-weight:600;color:var(--text)}
+#pdEmail{font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pdBadge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;
+  letter-spacing:.5px;border:1px solid;display:inline-flex;align-items:center;gap:4px;margin-top:4px}
+.dd-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;
+  font-size:13px;cursor:pointer;color:var(--muted);transition:all var(--transition)}
+.dd-item:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.dd-item i{width:16px;text-align:center}
+.dd-item.danger:hover{background:rgba(239,68,68,.1);color:#f87171}
+.dd-divider{height:1px;background:var(--border);margin:4px 0}
+
+/* ══════════════ PANELS ══════════════ */
+.main{padding-top:56px;padding-bottom:64px}
+#panelsWrap{overflow:hidden}
+#panelsTrack{display:flex;transition:transform .35s cubic-bezier(.25,.46,.45,.94)}
+.panel{width:33.333%;flex-shrink:0;min-height:calc(100dvh - 120px);padding:16px}
+
+/* ══════════════ BOTTOM NAV ══════════════ */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(15,15,19,.9);
+  backdrop-filter:blur(20px);border-top:1px solid var(--border);z-index:100;
+  display:flex;align-items:center;justify-content:space-around}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 20px;
+  color:var(--faint);font-size:10px;font-weight:600;letter-spacing:.3px;cursor:pointer;
+  transition:color var(--transition);border-radius:10px;text-transform:uppercase}
+.tab i{font-size:18px}
+.tab.active{color:var(--primary)}
+.tab.active i{text-shadow:0 0 12px var(--primary)}
+
+/* ══════════════ CARDS / COMMON ══════════════ */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.section-title{font-size:18px;font-weight:700;margin-bottom:4px}
+.section-sub{font-size:13px;color:var(--muted);margin-bottom:16px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
+  padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;border:1px solid}
+.badge-purple{color:#a78bfa;border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.1)}
+.badge-cyan{color:#22d3ee;border-color:rgba(6,182,212,.4);background:rgba(6,182,212,.1)}
+.badge-gold{color:#fbbf24;border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.1)}
+label.lbl{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+textarea.field,input.field{width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:10px 12px;font-size:14px;color:var(--text);resize:vertical;
+  outline:none;transition:border-color var(--transition)}
+textarea.field:focus,input.field:focus{border-color:var(--primary)}
+.btn-primary{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  padding:12px;border-radius:var(--radius-sm);background:linear-gradient(135deg,#7c3aed,#a855f7);
+  color:#fff;font-size:14px;font-weight:600;transition:all var(--transition)}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 8px 24px rgba(168,85,247,.3)}
+.btn-primary:disabled{opacity:.5;transform:none;cursor:not-allowed}
+.btn-cyan{background:linear-gradient(135deg,#0891b2,#06b6d4)}
+.btn-green{background:linear-gradient(135deg,#059669,#10b981)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
+  background:var(--surface2);border:1px solid var(--border);color:var(--muted);
+  transition:all var(--transition)}
+.chip:hover{border-color:var(--primary);color:var(--text)}
+.chip.active{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.5);color:var(--primary)}
+.chip-pro{position:relative}
+.chip-pro::after{content:'PRO';font-size:8px;font-weight:700;background:#06b6d4;color:#fff;
+  padding:1px 4px;border-radius:4px;margin-left:4px;vertical-align:middle}
+
+/* ══════════════ CHAT ══════════════ */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100dvh - 160px)}
+#chatMessages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 0 12px}
+.msg{display:flex;gap:10px;align-items:flex-end}
+.msg-user{flex-direction:row-reverse}
+.msg-avatar{width:28px;height:28px;border-radius:50%;background:var(--surface2);
+  display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;color:var(--muted)}
+.msg-user .msg-avatar{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff}
+.msg-bubble{max-width:82%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.55;
+  background:var(--surface2);border:1px solid var(--border);position:relative}
+.msg-user .msg-bubble{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.3)}
+.msg-time{display:block;font-size:10px;color:var(--faint);margin-top:4px;text-align:right}
+.chat-input-row{display:flex;gap:8px;align-items:flex-end;padding-top:10px;border-top:1px solid var(--border)}
+#chatInput{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:10px 14px;font-size:14px;resize:none;min-height:44px;max-height:100px;
+  outline:none;transition:border-color var(--transition)}
+#chatInput:focus{border-color:var(--primary)}
+.send-btn{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#a855f7);
+  display:flex;align-items:center;justify-content:center;color:#fff;transition:all var(--transition)}
+.send-btn:hover{opacity:.9;transform:scale(1.05)}
+.typing-dots{display:inline-flex;gap:4px;padding:2px 0}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--muted);
+  animation:bounce 1.2s infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.prose-response code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:4px;font-size:12px}
+
+/* ══════════════ IMAGE RESULTS ══════════════ */
+.image-result-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-top:12px}
+.image-result-card img{width:100%;display:block}
+.image-actions{padding:10px;display:flex;gap:8px}
+.btn-action{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;
+  font-size:12px;font-weight:600;background:rgba(255,255,255,.07);color:var(--text);
+  border:1px solid var(--border);cursor:pointer;transition:all var(--transition)}
+.btn-action:hover{background:rgba(255,255,255,.12)}
+.song-result-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:12px}
+.song-card-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;color:var(--cyan)}
+.loading-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:32px;display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:12px}
+.loading-spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--primary);
+  border-radius:50%;animation:spin .8s linear infinite}
+.loading-spinner.cyan{border-top-color:var(--cyan)}
+.loading-spinner.green{border-top-color:var(--success)}
+.loading-label{font-size:13px;color:var(--muted)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-card{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius);
+  padding:14px;color:#f87171;font-size:13px;margin-top:12px;text-align:center}
+
+/* ══════════════ AUTH MODAL ══════════════ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;
+  display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;
+  transition:opacity .3s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal-sheet{background:var(--surface);border-radius:24px 24px 0 0;width:100%;max-width:500px;
+  padding:24px 20px 32px;transform:translateY(100%);transition:transform .35s cubic-bezier(.25,.46,.45,.94)}
+.modal-overlay.open .modal-sheet{transform:translateY(0)}
+.modal-handle{width:36px;height:4px;background:var(--faint);border-radius:4px;margin:0 auto 20px}
+.modal-title{font-size:20px;font-weight:700;text-align:center;margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px}
+.auth-tabs{display:flex;gap:4px;background:var(--surface2);padding:4px;border-radius:10px;margin-bottom:20px}
+.auth-tab{flex:1;padding:9px;border-radius:8px;font-size:14px;font-weight:600;text-align:center;cursor:pointer;
+  color:var(--muted);transition:all var(--transition)}
+.auth-tab.active-tab{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff}
+.auth-form{display:flex;flex-direction:column;gap:12px}
+.auth-form input.field{padding:12px 14px;font-size:15px}
+#authMsg{display:none;padding:10px 14px;border-radius:8px;font-size:13px;margin-top:4px}
+.otp-display{text-align:center;margin-bottom:12px}
+.otp-email{font-size:13px;color:var(--muted)}
+.otp-email strong{color:var(--primary)}
+.otp-input{text-align:center;font-size:22px;font-weight:700;letter-spacing:8px;padding:14px!important}
+.otp-actions{display:flex;justify-content:center;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
+#resendOtpBtn{color:var(--primary);font-weight:600;cursor:pointer;background:none;border:none;font-size:13px}
+#resendOtpBtn:hover{text-decoration:underline}
+.back-btn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px}
+.back-btn:hover{color:var(--text)}
+
+/* ══════════════ PROFILE SHEET ══════════════ */
+#ppOverlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;
+  opacity:0;pointer-events:none;transition:opacity .3s;display:flex;align-items:flex-end;justify-content:center}
 #ppOverlay.open{opacity:1;pointer-events:all}
-#ppSheet{width:100%;max-width:480px;background:#111827;border-radius:24px 24px 0 0;border-top:1px solid rgba(255,255,255,.08);max-height:92vh;overflow-y:auto;transform:translateY(48px);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+#ppSheet{background:var(--surface);border-radius:24px 24px 0 0;width:100%;max-width:500px;
+  max-height:90dvh;overflow-y:auto;transform:translateY(100%);
+  transition:transform .35s cubic-bezier(.25,.46,.45,.94)}
 #ppOverlay.open #ppSheet{transform:translateY(0)}
-#ppSheet::-webkit-scrollbar{display:none}
-.pp-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.14);margin:12px auto 0;display:block}
-.pp-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 10px;border-bottom:1px solid rgba(255,255,255,.08)}
-.pp-hdr h3{margin:0;font-size:15px;font-weight:700;color:#a855f7;display:flex;align-items:center;gap:8px}
-.pp-closebtn{width:28px;height:28px;border-radius:50%;background:#1f2937;border:none;color:#9ca3af;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px}
-.pp-body2{padding:16px;display:flex;flex-direction:column;gap:12px}
-.pp-hero{display:flex;flex-direction:column;align-items:center;gap:10px;background:#1f2937;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
-#ppAvatarEl{width:82px;height:82px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:30px;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid rgba(167,139,250,.4);cursor:pointer;position:relative}
-#ppAvatarEl img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-.pp-cam{position:absolute;bottom:2px;right:2px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);border:2px solid #111827;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;pointer-events:none}
-.pp-infocard{background:#1f2937;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden}
-.pp-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
-.pp-row:last-child{border-bottom:none}
-.pp-lbl{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:7px}
-.pp-val{font-size:13px;font-weight:600;color:#fff;max-width:55%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pp-usagecard{background:#1f2937;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px}
-.pp-upgrade-banner{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(167,139,250,.1),rgba(6,182,212,.1));border:1px solid rgba(167,139,250,.3);border-radius:14px;padding:14px;cursor:pointer}
-@media(min-width:768px){#ppOverlay{align-items:center}#ppSheet{border-radius:20px;border:1px solid rgba(255,255,255,.08);max-height:88vh;width:calc(100% - 32px)}}
+.pp-handle{width:36px;height:4px;background:var(--faint);border-radius:4px;margin:16px auto 0}
+.pp-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0}
+.pp-header-title{font-size:16px;font-weight:700}
+.pp-close{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);background:rgba(255,255,255,.05);cursor:pointer;transition:all var(--transition)}
+.pp-close:hover{color:var(--text);background:rgba(255,255,255,.1)}
+
+/* hero */
+.pp-hero{display:flex;flex-direction:column;align-items:center;padding:24px 20px 16px;gap:12px}
+.pp-avatar-wrap{position:relative}
+#ppAvatarEl{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);
+  display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff;
+  border:3px solid rgba(168,85,247,.4);overflow:hidden}
+.pp-avatar-upload-btn{position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;
+  background:var(--primary);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:11px;color:#fff;border:2px solid var(--surface);transition:all var(--transition)}
+.pp-avatar-upload-btn:hover{transform:scale(1.1);background:var(--primary-hover)}
+#ppAvatarInput{display:none}
+#ppAvatarStatus{display:none;padding:6px 12px;border-radius:8px;font-size:12px;margin-top:8px;text-align:center}
+#ppHeroName{font-size:20px;font-weight:700}
+#ppHeroEmail{font-size:13px;color:var(--muted);margin-top:2px}
+#ppPlanBadge{margin-top:4px}
+
+/* info rows */
+.pp-section{padding:0 20px 16px}
+.pp-section-label{font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.pp-info-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface2);
+  border-radius:10px;margin-bottom:6px;border:1px solid var(--border)}
+.pp-info-icon{width:32px;height:32px;border-radius:8px;background:rgba(168,85,247,.1);
+  display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:13px;flex-shrink:0}
+.pp-info-label{font-size:11px;color:var(--muted);margin-bottom:2px}
+.pp-info-value{font-size:14px;font-weight:500;color:var(--text)}
+
+/* usage */
+.pp-usage{padding:0 20px 16px}
+.pp-usage-header{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px}
+#ppUsageCount{font-weight:600;color:var(--primary)}
+.pp-usage-bar-bg{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:6px}
+#ppUsageBar{height:100%;border-radius:4px;background:var(--primary);width:0%;transition:width .4s ease}
+.pp-usage-hint{font-size:11px;color:var(--faint)}
+
+/* upgrade banner */
+#ppUpgradeBanner{margin:0 20px 16px;padding:14px 16px;background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(168,85,247,.15));
+  border:1px solid rgba(168,85,247,.3);border-radius:12px;display:flex;align-items:center;gap:12px}
+.pp-upgrade-icon{font-size:20px}
+.pp-upgrade-text{flex:1}
+.pp-upgrade-text strong{font-size:13px;display:block;margin-bottom:2px}
+.pp-upgrade-text span{font-size:12px;color:var(--muted)}
+.pp-upgrade-btn{padding:7px 14px;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#a855f7);
+  color:#fff;font-size:12px;font-weight:600;white-space:nowrap;transition:all var(--transition)}
+.pp-upgrade-btn:hover{opacity:.9}
+
+/* actions */
+.pp-actions{padding:0 20px 28px;display:flex;flex-direction:column;gap:8px}
+.pp-action-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);
+  border-radius:10px;cursor:pointer;border:1px solid var(--border);transition:all var(--transition)}
+.pp-action-row:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.15)}
+.pp-action-row.danger:hover{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25)}
+.pp-action-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.pp-action-icon.purple{background:rgba(168,85,247,.1);color:var(--primary)}
+.pp-action-icon.cyan{background:rgba(6,182,212,.1);color:var(--cyan)}
+.pp-action-icon.red{background:rgba(239,68,68,.1);color:#f87171}
+.pp-action-label{flex:1;font-size:14px;font-weight:500}
+.pp-action-row.danger .pp-action-label{color:#f87171}
+.pp-action-chevron{color:var(--faint);font-size:12px}
 </style>
 </head>
 <body>
 
-<!-- ══ NAV ══ -->
-<header class="app-nav">
-  <a href="https://jeethylabs.site" class="nav-home" title="Back to Home"><i class="fas fa-arrow-left"></i></a>
-  <div class="nav-brand">
-    <span class="brand-jee">JeeThy</span><span class="brand-labs">Labs</span>
-    <span class="brand-tag">App</span>
+<!-- ══════════════ TOP NAV ══════════════ -->
+<nav class="nav">
+  <div class="nav-logo">
+    <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="JeeThy Labs">
+      <rect width="28" height="28" rx="8" fill="url(#lg)"/>
+      <path d="M7 14c0-3.86 3.14-7 7-7s7 3.14 7 7-3.14 7-7 7" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="14" cy="14" r="2.5" fill="#fff"/>
+      <defs><linearGradient id="lg" x1="0" y1="0" x2="28" y2="28">
+        <stop stop-color="#7c3aed"/><stop offset="1" stop-color="#a855f7"/>
+      </linearGradient></defs>
+    </svg>
+    JeeThy Labs
   </div>
-  <div class="nav-actions">
-    <button class="plan-badge-btn" id="planBadge" onclick="openPlanModal()" title="Change Plan">Free</button>
-    <button class="nav-settings-btn" onclick="openSettings()" title="Settings"><i class="fas fa-gear"></i></button>
-    <!-- hidden until login -->
-    <div class="user-profile-wrap" id="userProfileWrap" style="display:none">
-      <button class="user-avatar-btn" id="userAvatarBtn" type="button" aria-label="Profile menu" onclick="toggleDropdown(event)">
-        <span id="userAvatarInitial"></span>
-      </button>
-      <div class="profile-dropdown" id="profileDropdown">
-        <div class="pd-header">
-          <div class="pd-av" id="pdAv"><span id="pdAvInitial"></span></div>
-          <div class="pd-info">
-            <div class="pd-name" id="pdName"></div>
-            <div class="pd-email" id="pdEmail"></div>
-            <span class="pd-badge" id="pdBadge">Free</span>
-          </div>
-        </div>
-        <div class="pd-body">
-          <button class="pd-btn" onclick="closeDd();openProfileSheet()"><i class="fas fa-user"></i> Profile</button>
-          <button class="pd-signout" onclick="closeDd();doLogout()"><i class="fas fa-right-from-bracket"></i> Sign Out</button>
-        </div>
+  <div class="nav-spacer"></div>
+  <span id="planBadge">Free</span>
+
+  <!-- User avatar + dropdown -->
+  <div id="userProfileWrap">
+    <button id="userAvatarBtn" onclick="toggleDropdown(event)" aria-label="User menu"></button>
+    <div id="profileDropdown">
+      <div class="dd-header">
+        <div id="pdAv"></div>
+        <div id="pdName">—</div>
+        <div id="pdEmail">—</div>
+        <span id="pdBadge">Free</span>
+      </div>
+      <div class="dd-item" onclick="closeDd();openProfileSheet()">
+        <i class="fas fa-user-circle"></i> Profile
+      </div>
+      <div class="dd-item" onclick="closeDd();openPlanModal()">
+        <i class="fas fa-crown"></i> Upgrade Plan
+      </div>
+      <div class="dd-divider"></div>
+      <div class="dd-item danger" onclick="doLogout()">
+        <i class="fas fa-arrow-right-from-bracket"></i> Sign Out
       </div>
     </div>
   </div>
-</header>
 
-<!-- ══ TABS ══ -->
-<nav class="tab-bar">
-  <button class="tab active" onclick="goToPanel(0)" id="tab0"><i class="fas fa-brain"></i><span>AI Assistant</span></button>
-  <button class="tab" onclick="goToPanel(1)" id="tab1"><i class="fas fa-palette"></i><span>Image</span></button>
-  <button class="tab" onclick="goToPanel(2)" id="tab2"><i class="fas fa-music"></i><span>Song</span></button>
+  <!-- Login button when logged out -->
+  <button class="nav-icon-btn" id="loginNavBtn" onclick="openAuthModal()" aria-label="Login" style="display:flex">
+    <i class="fas fa-right-to-bracket"></i>
+  </button>
 </nav>
 
-<!-- ══ PANELS ══ -->
-<main class="panels-wrap" id="panelsWrap">
-  <div class="panels-track" id="panelsTrack">
+<!-- ══════════════ PANELS ══════════════ -->
+<div class="main">
+  <div id="panelsWrap">
+    <div id="panelsTrack" style="width:300%">
 
-    <!-- CHAT -->
-    <section class="panel panel-chat" id="panelChat">
-      <div class="panel-inner">
-        <div class="chat-messages" id="chatMessages">
-          <div class="msg msg-bot">
-            <div class="msg-avatar"><i class="fas fa-brain"></i></div>
-            <div class="msg-bubble">
-              <p>Hello! 👋 I'm <strong>JeeThy Assistant</strong>, your smart helper.</p>
-              <p>Sign in to start chatting!</p>
-              <span class="msg-time" id="welcomeTime"></span>
+      <!-- PANEL 0: CHAT -->
+      <div class="panel" style="width:33.333%">
+        <div class="chat-wrap">
+          <div style="margin-bottom:12px">
+            <div class="section-title"><i class="fas fa-brain" style="color:var(--primary);margin-right:8px"></i>AI Chat</div>
+            <div class="section-sub">Powered by Gemini 2.5 Flash</div>
+          </div>
+          <div id="chatMessages">
+            <div class="msg msg-bot">
+              <div class="msg-avatar"><i class="fas fa-brain"></i></div>
+              <div class="msg-bubble">
+                ជំរាបសួរ! 👋 ខ្ញុំជា JeeThy AI ។ តើខ្ញុំអាចជួយអ្វីបានខ្លះ?
+                <span class="msg-time">Now</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="chat-input-wrap">
-          <div class="chat-input-box">
-            <textarea id="chatInput" class="chat-textarea" placeholder="Type your message..." rows="1"
+          <div class="chat-input-row">
+            <textarea id="chatInput" class="field" placeholder="Type a message…" rows="1"
               oninput="autoResize(this)" onkeydown="handleChatKey(event)"></textarea>
-            <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+            <button class="send-btn" onclick="sendChat()" aria-label="Send">
+              <i class="fas fa-paper-plane"></i>
+            </button>
           </div>
-          <p class="chat-hint">Powered by Google Gemini · JeeThy Labs</p>
         </div>
       </div>
-    </section>
 
-    <!-- IMAGE -->
-    <section class="panel panel-image" id="panelImage">
-      <div class="panel-inner panel-inner-scroll">
-        <div class="panel-header">
-          <div class="panel-icon cyan"><i class="fas fa-palette"></i></div>
-          <div><h2 class="panel-title">Image Generate</h2><p class="panel-subtitle">Turn text into stunning visuals</p></div>
+      <!-- PANEL 1: IMAGE -->
+      <div class="panel" style="width:33.333%">
+        <div class="section-title"><i class="fas fa-image" style="color:var(--cyan);margin-right:8px"></i>Image AI</div>
+        <div class="section-sub">Generate stunning images with Gemini</div>
+        <label class="lbl">Prompt</label>
+        <textarea id="imgPrompt" class="field" placeholder="Describe your image…" rows="3" style="margin-bottom:12px"></textarea>
+        <label class="lbl">Style</label>
+        <div class="chips" id="imgStyleGroup">
+          <button class="chip active" onclick="selectChip(this,'imgStyleGroup')">Realistic</button>
+          <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Anime</button>
+          <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Oil Painting</button>
+          <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Watercolor</button>
+          <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Pixel Art</button>
         </div>
-        <div class="form-group">
-          <label class="form-label">Prompt</label>
-          <textarea id="imgPrompt" class="form-textarea" placeholder="Describe the image..." rows="3"></textarea>
+        <label class="lbl">Quality</label>
+        <div class="chips" id="imgQualityGroup">
+          <button class="chip active" onclick="selectChip(this,'imgQualityGroup')">Standard</button>
+          <button class="chip chip-pro" onclick="requirePro(this,'imgQualityGroup')">1080p</button>
         </div>
-        <div class="form-group">
-          <label class="form-label">Style</label>
-          <div class="chip-group" id="imgStyleGroup">
-            <button class="chip active" onclick="selectChip(this,'imgStyleGroup')">Realistic</button>
-            <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Cartoon</button>
-            <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Anime</button>
-            <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Other</button>
-          </div>
+        <label class="lbl">Count</label>
+        <div class="chips" id="imgQtyGroup">
+          <button class="chip active" onclick="selectChip(this,'imgQtyGroup')">1</button>
+          <button class="chip" onclick="selectChip(this,'imgQtyGroup')">2</button>
+          <button class="chip" onclick="selectChip(this,'imgQtyGroup')">4</button>
         </div>
-        <div class="form-group">
-          <label class="form-label">Aspect Ratio</label>
-          <div class="chip-group" id="imgRatioGroup">
-            <button class="chip active" onclick="selectChip(this,'imgRatioGroup')">1:1</button>
-            <button class="chip" onclick="selectChip(this,'imgRatioGroup')">9:16</button>
-            <button class="chip" onclick="selectChip(this,'imgRatioGroup')">16:9</button>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group half">
-            <label class="form-label">Quality</label>
-            <div class="chip-group" id="imgQualityGroup">
-              <button class="chip active" onclick="selectChip(this,'imgQualityGroup')">720p</button>
-              <button class="chip pro-locked" onclick="requirePro(this,'imgQualityGroup')">1080p <span class="pro-badge">PRO</span></button>
-            </div>
-          </div>
-          <div class="form-group half">
-            <label class="form-label">Quantity</label>
-            <div class="chip-group" id="imgQtyGroup">
-              <button class="chip active" onclick="selectChip(this,'imgQtyGroup')">1</button>
-              <button class="chip" onclick="selectChip(this,'imgQtyGroup')">2</button>
-              <button class="chip" onclick="selectChip(this,'imgQtyGroup')">4</button>
-            </div>
-          </div>
-        </div>
-        <button class="btn-generate btn-cyan" id="imgGenBtn" onclick="generateImage()"><i class="fas fa-wand-magic-sparkles"></i> Generate Image</button>
-        <div class="results-wrap" id="imgResults"></div>
+        <button id="imgGenBtn" class="btn-primary btn-cyan" onclick="generateImage()" style="margin-top:4px">
+          <i class="fas fa-wand-magic-sparkles"></i> Generate Image
+        </button>
+        <div id="imgResults"></div>
       </div>
-    </section>
 
-    <!-- SONG -->
-    <section class="panel panel-song" id="panelSong">
-      <div class="panel-inner panel-inner-scroll">
-        <div class="panel-header">
-          <div class="panel-icon green"><i class="fas fa-music"></i></div>
-          <div><h2 class="panel-title">Song Generate</h2><p class="panel-subtitle">Create original music from text</p></div>
+      <!-- PANEL 2: SONG -->
+      <div class="panel" style="width:33.333%">
+        <div class="section-title"><i class="fas fa-music" style="color:var(--success);margin-right:8px"></i>Song AI</div>
+        <div class="section-sub">Create songs with Gemini TTS</div>
+        <label class="lbl">Description</label>
+        <textarea id="songPrompt" class="field" placeholder="Describe your song vibe…" rows="3" style="margin-bottom:12px"></textarea>
+        <label class="lbl">Genre</label>
+        <div class="chips" id="songStyleGroup">
+          <button class="chip active" onclick="selectChip(this,'songStyleGroup')">Pop</button>
+          <button class="chip" onclick="selectChip(this,'songStyleGroup')">R&amp;B</button>
+          <button class="chip" onclick="selectChip(this,'songStyleGroup')">Lo-Fi</button>
+          <button class="chip" onclick="selectChip(this,'songStyleGroup')">Hip-Hop</button>
+          <button class="chip" onclick="selectChip(this,'songStyleGroup')">Jazz</button>
         </div>
-        <div class="form-group">
-          <label class="form-label">Song Description</label>
-          <textarea id="songPrompt" class="form-textarea" placeholder="Describe the song: mood, theme, story..." rows="3"></textarea>
+        <label class="lbl">Voice</label>
+        <div class="chips" id="songVoiceGroup">
+          <button class="chip active" onclick="selectChip(this,'songVoiceGroup')">Female</button>
+          <button class="chip" onclick="selectChip(this,'songVoiceGroup')">Male</button>
         </div>
-        <div class="form-group">
-          <label class="form-label">Genre / Style</label>
-          <div class="chip-group" id="songStyleGroup">
-            <button class="chip active" onclick="selectChip(this,'songStyleGroup')">Pop</button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">Sad</button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">Relaxing</button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">Other</button>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Vocalist</label>
-          <div class="chip-group" id="songVoiceGroup">
-            <button class="chip active" onclick="selectChip(this,'songVoiceGroup')"><i class="fas fa-venus"></i> Female</button>
-            <button class="chip" onclick="selectChip(this,'songVoiceGroup')"><i class="fas fa-mars"></i> Male</button>
-          </div>
-        </div>
-        <button class="btn-generate btn-green" id="songGenBtn" onclick="generateSong()"><i class="fas fa-wand-magic-sparkles"></i> Generate Song</button>
-        <div class="results-wrap" id="songResults"></div>
+        <button id="songGenBtn" class="btn-primary btn-green" onclick="generateSong()" style="margin-top:12px">
+          <i class="fas fa-wand-magic-sparkles"></i> Generate Song
+        </button>
+        <div id="songResults"></div>
       </div>
-    </section>
 
-  </div>
-</main>
+    </div><!-- /panelsTrack -->
+  </div><!-- /panelsWrap -->
+</div><!-- /main -->
 
-<!-- ══ PLAN MODAL ══ -->
-<div class="modal-overlay" id="planModal">
-  <div class="modal-box modal-wide">
-    <div class="modal-header">
-      <h3><i class="fas fa-crown"></i> Choose Your Plan</h3>
-      <button class="modal-close" onclick="closePlanModal()"><i class="fas fa-xmark"></i></button>
+<!-- ══════════════ BOTTOM NAV ══════════════ -->
+<nav class="bottom-nav">
+  <div class="tab active" onclick="goToPanel(0)"><i class="fas fa-comments"></i><span>Chat</span></div>
+  <div class="tab" onclick="goToPanel(1)"><i class="fas fa-image"></i><span>Image</span></div>
+  <div class="tab" onclick="goToPanel(2)"><i class="fas fa-music"></i><span>Song</span></div>
+</nav>
+
+<!-- ══════════════ AUTH MODAL ══════════════ -->
+<div id="authModal" class="modal-overlay" onclick="if(event.target===this)closeAuthModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🚀 JeeThy Labs</div>
+    <div class="modal-sub">Sign in to unlock AI tools</div>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <div id="authTabLogin" class="auth-tab active-tab" onclick="switchAuthTab('login')">Login</div>
+      <div id="authTabSignup" class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</div>
     </div>
-    <div class="modal-body">
-      <p class="modal-desc">All AI tools are powered by JeeThy Labs.</p>
-      <div class="plan-cards-row">
-        <div class="plan-card selected" data-plan="free" onclick="selectPlan('free')">
-          <div class="plan-card-header"><span class="plan-name">Free</span><span class="plan-price">$0</span></div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 10 requests / session</li>
-            <li><i class="fas fa-check"></i> All 3 AI tools</li>
-            <li><i class="fas fa-xmark muted"></i> Custom API key</li>
-          </ul>
-          <div class="plan-check"><i class="fas fa-circle-check"></i></div>
-        </div>
-        <div class="plan-card plan-pro" data-plan="pro" onclick="selectPlan('pro')">
-          <div class="plan-card-badge">Popular</div>
-          <div class="plan-card-header"><span class="plan-name">Pro</span><span class="plan-price">$9.99<span class="plan-period">/mo</span></span></div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 100 requests / session</li>
-            <li><i class="fas fa-check"></i> All 3 AI tools</li>
-            <li><i class="fas fa-check"></i> Add your own API key</li>
-          </ul>
-          <div class="plan-check"><i class="fas fa-circle-check"></i></div>
-        </div>
+
+    <!-- Login Form -->
+    <form id="authLoginForm" class="auth-form" onsubmit="submitLogin(event)">
+      <div>
+        <label class="lbl">Email</label>
+        <input id="authLoginEmail" type="email" class="field" placeholder="you@example.com" required/>
       </div>
-      <div id="proSettingsInModal" style="display:none">
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="modal-link">Get a free Google AI key →</a>
+      <div>
+        <label class="lbl">Password</label>
+        <input id="authLoginPass" type="password" class="field" placeholder="Your password" required/>
       </div>
-      <button class="btn-generate btn-purple" onclick="confirmPlan()" style="margin-top:16px"><i class="fas fa-check"></i> Confirm Plan</button>
+      <button id="authLoginBtn" type="submit" class="btn-primary">
+        <i class="fas fa-arrow-right-to-bracket"></i> Login
+      </button>
+    </form>
+
+    <!-- Signup Form -->
+    <form id="authSignupForm" class="auth-form" onsubmit="submitSignup(event)" style="display:none">
+      <div>
+        <label class="lbl">Name</label>
+        <input id="authSignupName" type="text" class="field" placeholder="Your full name" required/>
+      </div>
+      <div>
+        <label class="lbl">Email</label>
+        <input id="authSignupEmail" type="email" class="field" placeholder="you@example.com" required/>
+      </div>
+      <div>
+        <label class="lbl">Password</label>
+        <input id="authSignupPass" type="password" class="field" placeholder="Min. 8 characters" required/>
+      </div>
+      <button id="authSignupBtn" type="submit" class="btn-primary">
+        <i class="fas fa-paper-plane"></i> Send Verification Code
+      </button>
+    </form>
+
+    <!-- OTP Form -->
+    <div id="authOtpForm" class="auth-form" style="display:none">
+      <div class="otp-display">
+        <div class="otp-email">Code sent to <strong id="otpEmailDisplay"></strong></div>
+      </div>
+      <div>
+        <label class="lbl" style="text-align:center">Enter 6-digit code</label>
+        <input id="authOtpInput" type="tel" class="field otp-input" maxlength="6" placeholder="000000" inputmode="numeric"/>
+      </div>
+      <button id="authOtpBtn" class="btn-primary" onclick="submitOtp()">
+        <i class="fas fa-check-circle"></i> Verify &amp; Create Account
+      </button>
+      <div class="otp-actions">
+        <button class="back-btn" onclick="backToSignup()"><i class="fas fa-arrow-left"></i> Back</button>
+        <button id="resendOtpBtn" onclick="resendOtp()" style="display:none">Resend Code</button>
+        <span id="resendTimer" style="display:none;font-size:12px;color:var(--muted)"></span>
+      </div>
     </div>
+
+    <div id="authMsg"></div>
   </div>
 </div>
 
-<!-- ══ SETTINGS MODAL ══ -->
-<div class="modal-overlay" id="settingsModal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <h3><i class="fas fa-gear"></i> Pro Settings</h3>
-      <button class="modal-close" onclick="closeSettings()"><i class="fas fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <p class="modal-desc">As a Pro user, JeeThy Labs' owner key is used by default.</p>
-      <div class="settings-toggle-row">
-        <label class="settings-label"><i class="fas fa-key"></i> Use my own API key</label>
-        <label class="toggle-switch">
-          <input type="checkbox" id="useOwnKeyToggle" onchange="updateSettingsUI()"/>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div id="customKeySection" style="display:none">
-        <div class="form-group" style="margin-top:12px">
-          <label class="form-label">Your Google AI API Key</label>
-          <input type="password" id="customKeyInput" class="form-input" placeholder="AIza..." autocomplete="off"/>
-        </div>
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="modal-link">Get a free key at Google AI Studio →</a>
-      </div>
-      <button class="btn-generate btn-cyan" onclick="saveSettings()" style="margin-top:16px"><i class="fas fa-check"></i> Save Settings</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ UPGRADE MODAL ══ -->
-<div class="modal-overlay" id="upgradeModal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <h3><i class="fas fa-bolt"></i> Quota Reached</h3>
-      <button class="modal-close" onclick="closeUpgradeModal()"><i class="fas fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <p class="modal-desc">You've used all your requests on the <strong>Free plan</strong>.</p>
-      <div class="upgrade-card">
-        <div class="upgrade-icon"><i class="fas fa-crown"></i></div>
-        <div class="upgrade-text"><strong>Upgrade to Pro</strong><span>100 requests/session · $9.99/mo</span></div>
-      </div>
-      <button class="btn-generate btn-purple" onclick="upgradeNow()" style="margin-top:16px"><i class="fas fa-crown"></i> Upgrade to Pro</button>
-      <button class="btn-outline" onclick="closeUpgradeModal()" style="margin-top:8px">Maybe later</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ AUTH MODAL ══ -->
-<div class="modal-overlay" id="authModal">
-  <div class="modal-box" style="max-width:420px">
-    <div class="modal-header">
-      <h3><i class="fas fa-lock"></i> <span id="authModalTitle">Sign in to continue</span></h3>
-      <button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-xmark"></i></button>
-    </div>
-    <div class="modal-body" style="gap:10px">
-      <!-- tabs -->
-      <div style="display:flex;gap:6px;background:var(--surface2,#1f2937);border:1px solid var(--border,rgba(255,255,255,.08));padding:4px;border-radius:30px;">
-        <button id="authTabLogin" onclick="switchAuthTab('login')"
-          style="flex:1;padding:8px;border-radius:30px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;">
-          Login
-        </button>
-        <button id="authTabSignup" onclick="switchAuthTab('signup')"
-          style="flex:1;padding:8px;border-radius:30px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#9ca3af;">
-          Sign Up
-        </button>
-      </div>
-      <!-- message -->
-      <div id="authMsg" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;"></div>
-      <!-- login form -->
-      <form id="authLoginForm" onsubmit="submitLogin(event)" style="display:flex;flex-direction:column;gap:10px;">
-        <div>
-          <label class="form-label">Email</label>
-          <input type="email" id="authLoginEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
-        </div>
-        <div>
-          <label class="form-label">Password</label>
-          <input type="password" id="authLoginPass" class="form-input" placeholder="Your password" required autocomplete="current-password"/>
-        </div>
-        <button type="submit" id="authLoginBtn" class="btn-generate btn-purple" style="margin-bottom:0">
-          <i class="fas fa-arrow-right-to-bracket"></i> Login
-        </button>
-      </form>
-      <!-- signup form -->
-      <form id="authSignupForm" onsubmit="submitSignup(event)" style="display:none;flex-direction:column;gap:10px;">
-        <div>
-          <label class="form-label">Full Name</label>
-          <input type="text" id="authSignupName" class="form-input" placeholder="Your name" required autocomplete="name"/>
-        </div>
-        <div>
-          <label class="form-label">Email</label>
-          <input type="email" id="authSignupEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
-        </div>
-        <div>
-          <label class="form-label">Password</label>
-          <input type="password" id="authSignupPass" class="form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password"/>
-        </div>
-        <button type="submit" id="authSignupBtn" class="btn-generate btn-purple" style="margin-bottom:0">
-          <i class="fas fa-paper-plane"></i> Send Verification Code
-        </button>
-      </form>
-      <!-- OTP form -->
-      <div id="authOtpForm" style="display:none;flex-direction:column;gap:12px;">
-        <div style="text-align:center;padding:8px 0;">
-          <i class="fas fa-envelope-circle-check" style="font-size:2rem;color:#a855f7;margin-bottom:8px;display:block;"></i>
-          <p style="font-size:13px;color:#9ca3af;margin:0;">Code បានផ្ញើទៅ</p>
-          <p id="otpEmailDisplay" style="font-size:14px;font-weight:700;color:#fff;margin:4px 0 0;"></p>
-        </div>
-        <div>
-          <label class="form-label">Verification Code (6 digits)</label>
-          <input type="text" id="authOtpInput" class="form-input"
-            placeholder="_ _ _ _ _ _" maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
-            style="text-align:center;font-size:1.5rem;font-weight:700;letter-spacing:0.4em;"
-            oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button type="button" onclick="backToSignup()" class="btn-generate" style="flex:1;margin-bottom:0;background:var(--surface2,#1f2937);color:#9ca3af;">
-            <i class="fas fa-arrow-left"></i> Back
-          </button>
-          <button type="button" onclick="submitOtp()" id="authOtpBtn" class="btn-generate btn-purple" style="flex:2;margin-bottom:0">
-            <i class="fas fa-check-circle"></i> Verify & Create Account
-          </button>
-        </div>
-        <div style="text-align:center;">
-          <button type="button" onclick="resendOtp()" id="resendOtpBtn"
-            style="background:none;border:none;color:#a855f7;font-size:12px;cursor:pointer;text-decoration:underline;">
-            Resend code
-          </button>
-          <span id="resendTimer" style="font-size:12px;color:#9ca3af;display:none;"></span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══ PROFILE SHEET ══ -->
+<!-- ══════════════ PROFILE SHEET ══════════════ -->
 <div id="ppOverlay" onclick="closePPif(event)">
   <div id="ppSheet">
-    <span class="pp-handle"></span>
-    <div class="pp-hdr">
-      <h3><i class="fas fa-user-circle"></i> My Profile</h3>
-      <button class="pp-closebtn" onclick="closeProfileSheet()"><i class="fas fa-xmark"></i></button>
+    <div class="pp-handle"></div>
+    <div class="pp-header">
+      <div class="pp-header-title">My Profile</div>
+      <button class="pp-close" onclick="closeProfileSheet()"><i class="fas fa-times"></i></button>
     </div>
-    <div class="pp-body2">
-      <!-- hero -->
-      <div class="pp-hero">
-        <div style="position:relative;width:82px;height:82px;">
-          <div id="ppAvatarEl" onclick="document.getElementById('ppFileInput').click()" title="Click to change photo">
-            <span id="ppInitial">?</span>
-          </div>
-          <div class="pp-cam"><i class="fas fa-camera"></i></div>
-        </div>
-        <input type="file" id="ppFileInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)"/>
-        <div id="ppHeroName" style="font-size:19px;font-weight:700;color:#fff;text-align:center;"></div>
-        <div id="ppHeroEmail" style="font-size:12px;color:#9ca3af;margin-top:-6px;text-align:center;"></div>
-        <span id="ppPlanBadge" style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.4);">
-          <i class="fas fa-star"></i> Free Plan
-        </span>
+
+    <!-- Hero: avatar + name + email + plan badge -->
+    <div class="pp-hero">
+      <div class="pp-avatar-wrap">
+        <div id="ppAvatarEl"><span id="ppInitial">U</span></div>
+        <label class="pp-avatar-upload-btn" for="ppAvatarInput" title="Change photo">
+          <i class="fas fa-camera"></i>
+        </label>
+        <input id="ppAvatarInput" type="file" accept="image/*" onchange="handleAvatarUpload(event)"/>
       </div>
-      <!-- info -->
-      <div class="pp-infocard">
-        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-user"></i> Name</span><span class="pp-val" id="ppInfoName">—</span></div>
-        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-envelope"></i> Email</span><span class="pp-val" id="ppInfoEmail">—</span></div>
-        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-crown"></i> Plan</span><span class="pp-val" id="ppInfoPlan">Free</span></div>
-        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-calendar"></i> Member Since</span><span class="pp-val" id="ppInfoJoined">—</span></div>
+      <div id="ppAvatarStatus"></div>
+      <div id="ppHeroName">—</div>
+      <div id="ppHeroEmail">—</div>
+      <span id="ppPlanBadge"></span>
+    </div>
+
+    <!-- Info rows -->
+    <div class="pp-section">
+      <div class="pp-section-label">Account Info</div>
+      <div class="pp-info-row">
+        <div class="pp-info-icon"><i class="fas fa-user"></i></div>
+        <div><div class="pp-info-label">Name</div><div class="pp-info-value" id="ppInfoName">—</div></div>
       </div>
-      <!-- usage -->
-      <div class="pp-usagecard">
-        <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="fas fa-chart-bar"></i> Session Usage</div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:#9ca3af;margin-bottom:5px;"><span>Requests Used</span><span id="ppUsageCount" style="color:#fff;font-weight:600;">0 / 10</span></div>
-        <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;"><div id="ppUsageBar" style="height:100%;border-radius:3px;width:0%;background:#a855f7;transition:width .6s;"></div></div>
+      <div class="pp-info-row">
+        <div class="pp-info-icon"><i class="fas fa-envelope"></i></div>
+        <div><div class="pp-info-label">Email</div><div class="pp-info-value" id="ppInfoEmail">—</div></div>
       </div>
-      <!-- upgrade -->
-      <div class="pp-upgrade-banner" id="ppUpgradeBanner" onclick="closeProfileSheet();setTimeout(()=>openPlanModal(),200)">
-        <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#a855f7,#22d3ee);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0;"><i class="fas fa-crown"></i></div>
-        <div><strong style="font-size:13px;display:block;color:#fff;">Upgrade to Pro</strong><span style="font-size:11px;color:#9ca3af;">100 requests · $9.99/mo</span></div>
+      <div class="pp-info-row">
+        <div class="pp-info-icon"><i class="fas fa-crown"></i></div>
+        <div><div class="pp-info-label">Plan</div><div class="pp-info-value" id="ppInfoPlan">Free</div></div>
       </div>
-      <!-- avatar status -->
-      <div id="ppAvatarStatus" style="display:none;font-size:12px;text-align:center;padding:6px 10px;border-radius:8px;"></div>
-      <!-- sign out -->
-      <button onclick="closeProfileSheet();doLogout()" style="width:100%;padding:11px;border-radius:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#f87171;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-        <i class="fas fa-right-from-bracket"></i> Sign Out
-      </button>
+      <div class="pp-info-row">
+        <div class="pp-info-icon"><i class="fas fa-calendar"></i></div>
+        <div><div class="pp-info-label">Joined</div><div class="pp-info-value" id="ppInfoJoined">—</div></div>
+      </div>
+    </div>
+
+    <!-- Usage bar -->
+    <div class="pp-usage">
+      <div class="pp-usage-header">
+        <span style="color:var(--muted);font-size:13px">Requests used</span>
+        <span id="ppUsageCount">0 / 10</span>
+      </div>
+      <div class="pp-usage-bar-bg"><div id="ppUsageBar"></div></div>
+      <div class="pp-usage-hint">Resets every billing period</div>
+    </div>
+
+    <!-- Upgrade banner (free only) -->
+    <div id="ppUpgradeBanner">
+      <div class="pp-upgrade-icon">⚡</div>
+      <div class="pp-upgrade-text">
+        <strong>Upgrade to Pro</strong>
+        <span>100 requests/month + priority speed</span>
+      </div>
+      <button class="pp-upgrade-btn" onclick="closeProfileSheet();openPlanModal()">Upgrade</button>
+    </div>
+
+    <!-- Actions -->
+    <div class="pp-actions">
+      <div class="pp-action-row" onclick="closeProfileSheet();openPlanModal()">
+        <div class="pp-action-icon purple"><i class="fas fa-crown"></i></div>
+        <span class="pp-action-label">Upgrade Plan</span>
+        <i class="fas fa-chevron-right pp-action-chevron"></i>
+      </div>
+      <div class="pp-action-row" onclick="closeProfileSheet();openSettings()">
+        <div class="pp-action-icon cyan"><i class="fas fa-gear"></i></div>
+        <span class="pp-action-label">Settings</span>
+        <i class="fas fa-chevron-right pp-action-chevron"></i>
+      </div>
+      <div class="pp-action-row danger" onclick="doLogout()">
+        <div class="pp-action-icon red"><i class="fas fa-arrow-right-from-bracket"></i></div>
+        <span class="pp-action-label">Sign Out</span>
+        <i class="fas fa-chevron-right pp-action-chevron"></i>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- ══ SCRIPT.JS (external — handles chat/image/song API calls) ══ -->
-<script src="script.js"></script>
+<!-- ══════════════ PLAN MODAL ══════════════ -->
+<div id="planModal" class="modal-overlay" onclick="if(event.target===this)closePlanModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Choose Your Plan</div>
+    <div class="modal-sub">Unlock more AI power</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <div class="plan-card card" data-plan="free" onclick="selectPlan('free')" style="cursor:pointer;border-color:rgba(167,139,250,.4)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:700">Free</span><span class="badge badge-purple">10 req/mo</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Basic AI access</div>
+      </div>
+      <div class="plan-card card" data-plan="pro" onclick="selectPlan('pro')" style="cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:700">Pro</span><span class="badge badge-cyan">100 req/mo</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Priority speed + custom API key</div>
+      </div>
+      <div class="plan-card card" data-plan="max" onclick="selectPlan('max')" style="cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:700">Max</span><span class="badge badge-gold">500 req/mo</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Unlimited feel, all features</div>
+      </div>
+    </div>
+    <div id="proSettingsInModal" style="display:none;margin-bottom:12px">
+      <label class="lbl">Your Gemini API Key (optional)</label>
+      <input id="proKeyInModal" type="text" class="field" placeholder="AIza..."/>
+    </div>
+    <button class="btn-primary" onclick="confirmPlan()">Confirm Plan</button>
+  </div>
+</div>
 
-<!-- ══ APP LOGIC — AUTH + PROFILE (inline, runs after script.js) ══ -->
+<!-- ══════════════ SETTINGS MODAL ══════════════ -->
+<div id="settingsModal" class="modal-overlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Settings</div>
+    <div class="auth-form" style="gap:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:14px;font-weight:600">Use own API key</div>
+          <div style="font-size:12px;color:var(--muted)">Pro feature</div>
+        </div>
+        <input type="checkbox" id="useOwnKeyToggle" onchange="updateSettingsUI()" style="width:20px;height:20px;accent-color:var(--primary)"/>
+      </div>
+      <div id="customKeySection" style="display:none">
+        <label class="lbl">Gemini API Key</label>
+        <input id="customKeyInput" type="text" class="field" placeholder="AIza..."/>
+      </div>
+      <button class="btn-primary" onclick="saveSettings()">Save Settings</button>
+      <button onclick="closeSettings()" style="color:var(--muted);font-size:14px;padding:8px">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ UPGRADE MODAL ══════════════ -->
+<div id="upgradeModal" class="modal-overlay" onclick="if(event.target===this)closeUpgradeModal()">
+  <div class="modal-sheet" style="text-align:center">
+    <div class="modal-handle"></div>
+    <div style="font-size:40px;margin-bottom:12px">🚀</div>
+    <div class="modal-title">Quota Reached!</div>
+    <div class="modal-sub">Upgrade your plan to get more AI requests</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn-primary" onclick="upgradeNow()"><i class="fas fa-crown"></i> Upgrade Plan</button>
+      <button onclick="closeUpgradeModal()" style="color:var(--muted);font-size:14px;padding:10px">Maybe later</button>
+    </div>
+  </div>
+</div>
+
+<script src="./script.js"></script>
 <script>
-'use strict';
-
-/* ─── 1. KILL checkExistingSession immediately after script.js loads ─── */
-window.checkExistingSession = async function () { /* blocked — user must login manually */ };
-
-/* ─── 2. STATE ─── */
-var _currentUser   = null;   /* single source of truth */
-var _pendingAction = null;
-var _otpData       = null;
-var _resendTimer   = null;
-
-/* ─── 3. DROPDOWN ─── */
-function toggleDropdown(e) {
-  if (e) { e.preventDefault(); e.stopPropagation(); }
-  var dd = document.getElementById('profileDropdown');
-  if (!dd) return;
-  dd.classList.toggle('open');
+// hide login btn when user logged in
+const _origOnLoginSuccess = window.onLoginSuccess;
+function patchLoginBtn(){
+  const lb=document.getElementById('loginNavBtn');
+  if(lb) lb.style.display = window.currentUser ? 'none' : 'flex';
 }
-function closeDd() {
-  var dd = document.getElementById('profileDropdown');
-  if (dd) dd.classList.remove('open');
-}
-document.addEventListener('click', function(e) {
-  var wrap = document.getElementById('userProfileWrap');
-  if (wrap && !wrap.contains(e.target)) closeDd();
-}, true);
-
-/* ─── 4. AUTH MODAL ─── */
-function openAuthModal(action) {
-  _pendingAction = action || null;
-  var m = document.getElementById('authModal');
-  if (m) m.classList.add('open');
-  clearAuthMsg();
-  switchAuthTab('login');
-}
-function closeAuthModal() {
-  var m = document.getElementById('authModal');
-  if (m) m.classList.remove('open');
-  _pendingAction = null;
-}
-function switchAuthTab(tab) {
-  var lf = document.getElementById('authLoginForm');
-  var sf = document.getElementById('authSignupForm');
-  var of = document.getElementById('authOtpForm');
-  var tl = document.getElementById('authTabLogin');
-  var ts = document.getElementById('authTabSignup');
-  clearAuthMsg();
-  if (of) of.style.display = 'none';
-  var actStyle = 'background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;';
-  var inactStyle = 'background:transparent;color:#9ca3af;';
-  if (tab === 'login') {
-    if (lf) lf.style.display = 'flex';
-    if (sf) sf.style.display = 'none';
-    if (tl) tl.setAttribute('style', tl.getAttribute('style').replace(/background[^;]+;|color[^;]+;/g,'') + actStyle);
-    if (ts) ts.setAttribute('style', ts.getAttribute('style').replace(/background[^;]+;|color[^;]+;/g,'') + inactStyle);
-  } else {
-    if (lf) lf.style.display = 'none';
-    if (sf) sf.style.display = 'flex';
-    if (ts) ts.setAttribute('style', ts.getAttribute('style').replace(/background[^;]+;|color[^;]+;/g,'') + actStyle);
-    if (tl) tl.setAttribute('style', tl.getAttribute('style').replace(/background[^;]+;|color[^;]+;/g,'') + inactStyle);
-  }
-}
-function showAuthMsg(msg, type) {
-  var el = document.getElementById('authMsg');
-  if (!el) return;
-  el.style.display = 'block';
-  el.style.background = type === 'error' ? 'rgba(239,68,68,.12)' : 'rgba(16,185,129,.12)';
-  el.style.color = type === 'error' ? '#f87171' : '#34d399';
-  el.style.border = '1px solid ' + (type === 'error' ? 'rgba(239,68,68,.3)' : 'rgba(16,185,129,.3)');
-  el.textContent = msg;
-}
-function clearAuthMsg() {
-  var el = document.getElementById('authMsg');
-  if (el) { el.style.display = 'none'; el.textContent = ''; }
-}
-
-/* ─── 5. SIGNUP → OTP ─── */
-async function submitSignup(e) {
-  e.preventDefault();
-  clearAuthMsg();
-  var btn   = document.getElementById('authSignupBtn');
-  var name  = document.getElementById('authSignupName').value.trim();
-  var email = document.getElementById('authSignupEmail').value.trim();
-  var pass  = document.getElementById('authSignupPass').value;
-  if (!name)          return showAuthMsg('Please enter your name.', 'error');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAuthMsg('Please enter a valid email.', 'error');
-  if (pass.length < 8) return showAuthMsg('Password must be at least 8 characters.', 'error');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending code...';
-  try {
-    var res  = await fetch('/api/send-otp', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({name, email, password: pass}) });
-    var data = await res.json();
-    if (res.ok) {
-      _otpData = { name, email, password: pass, password_hash: pass };
-      document.getElementById('otpEmailDisplay').textContent = email;
-      document.getElementById('authSignupForm').style.display = 'none';
-      var of = document.getElementById('authOtpForm');
-      of.style.display = 'flex';
-      document.getElementById('authOtpInput').value = '';
-      startResendTimer(60);
-      showAuthMsg('Code ត្រូវបានផ្ញើ! សូមពិនិត្យ Email.', 'success');
-    } else {
-      showAuthMsg(data.error || 'Failed to send code.', 'error');
-    }
-  } catch(ex) {
-    showAuthMsg('Network error. Check connection.', 'error');
-  }
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Verification Code';
-}
-
-async function submitOtp() {
-  clearAuthMsg();
-  var otp = document.getElementById('authOtpInput').value.trim();
-  var btn = document.getElementById('authOtpBtn');
-  if (!otp || otp.length !== 6) return showAuthMsg('Please enter the 6-digit code.', 'error');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
-  try {
-    var res  = await fetch('/api/verify-otp', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({..._otpData, otp}) });
-    var data = await res.json();
-    if (res.ok) {
-      _otpData = null;
-      showAuthMsg('Welcome, ' + data.user.name + '! 🎉 Account created!', 'success');
-      setTimeout(function(){ onLoginSuccess(data.user); }, 900);
-    } else {
-      showAuthMsg(data.error || 'Invalid or expired code.', 'error');
-    }
-  } catch(ex) {
-    showAuthMsg('Network error.', 'error');
-  }
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-check-circle"></i> Verify & Create Account';
-}
-
-async function resendOtp() {
-  if (!_otpData) return;
-  clearAuthMsg();
-  try {
-    var res  = await fetch('/api/send-otp', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(_otpData) });
-    var data = await res.json();
-    if (res.ok) { showAuthMsg('Code ថ្មីត្រូវបានផ្ញើ!', 'success'); startResendTimer(60); }
-    else showAuthMsg(data.error || 'Failed to resend.', 'error');
-  } catch(ex) { showAuthMsg('Network error.', 'error'); }
-}
-
-function backToSignup() {
-  document.getElementById('authOtpForm').style.display = 'none';
-  document.getElementById('authSignupForm').style.display = 'flex';
-  clearAuthMsg();
-  if (_resendTimer) clearInterval(_resendTimer);
-}
-
-function startResendTimer(sec) {
-  var btn   = document.getElementById('resendOtpBtn');
-  var timer = document.getElementById('resendTimer');
-  if (!btn || !timer) return;
-  btn.style.display = 'none';
-  timer.style.display = 'inline';
-  var s = sec;
-  if (_resendTimer) clearInterval(_resendTimer);
-  _resendTimer = setInterval(function() {
-    timer.textContent = 'Resend in ' + s + 's';
-    s--;
-    if (s < 0) { clearInterval(_resendTimer); btn.style.display = 'inline'; timer.style.display = 'none'; }
-  }, 1000);
-}
-
-/* ─── 6. LOGIN ─── */
-async function submitLogin(e) {
-  e.preventDefault();
-  clearAuthMsg();
-  var btn   = document.getElementById('authLoginBtn');
-  var email = document.getElementById('authLoginEmail').value.trim();
-  var pass  = document.getElementById('authLoginPass').value;
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
-  try {
-    var res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({email, password: pass, password_hash: pass}) });
-    var data = await res.json();
-    if (res.ok) {
-      showAuthMsg('Welcome back, ' + data.user.name + '! ✅', 'success');
-      setTimeout(function(){ onLoginSuccess(data.user); }, 800);
-    } else {
-      showAuthMsg(data.error || 'Invalid email or password.', 'error');
-    }
-  } catch(ex) {
-    showAuthMsg('Network error. Check connection.', 'error');
-  }
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Login';
-}
-
-/* ─── 7. onLoginSuccess (replaces onAuthSuccess) ─── */
-function onLoginSuccess(user) {
-  _currentUser = user;
-  /* sync script.js globals */
-  window.currentUser = user;
-  if (user.plan && window.PLAN_LIMITS && window.PLAN_LIMITS[user.plan]) {
-    window.userPlan = user.plan;
-    if (typeof window.renderPlanBadge === 'function') window.renderPlanBadge();
-  }
-  /* show avatar */
-  updateNavAvatar(user);
-  closeAuthModal();
-  /* run pending action */
-  var action = _pendingAction;
-  _pendingAction = null;
-  if (action === 'chat')  setTimeout(function(){ if(typeof sendChat==='function') sendChat(); }, 100);
-  if (action === 'image') setTimeout(function(){ if(typeof generateImage==='function') generateImage(); }, 100);
-  if (action === 'song')  setTimeout(function(){ if(typeof generateSong==='function') generateSong(); }, 100);
-}
-
-/* ─── 8. LOGOUT ─── */
-async function doLogout() {
-  _currentUser = null;
-  window.currentUser = null;
-  var wrap = document.getElementById('userProfileWrap');
-  if (wrap) wrap.style.display = 'none';
-  closeDd();
-  try { await fetch('/api/logout', { method:'POST', credentials:'include' }); } catch(ex){}
-  if (typeof window.showToast === 'function') window.showToast('Signed out', 'error');
-}
-
-/* ─── 9. NAV AVATAR ─── */
-function updateNavAvatar(user) {
-  var wrap    = document.getElementById('userProfileWrap');
-  var navBtn  = document.getElementById('userAvatarBtn');
-  var initial = (user.name || 'U').charAt(0).toUpperCase();
-  var plan    = user.plan || 'free';
-  var limits  = window.PLAN_LIMITS || { free:{label:'Free'}, pro:{label:'Pro'}, max:{label:'Max'} };
-  var planLbl = (limits[plan] || limits.free).label;
-
-  if (wrap)   wrap.style.display = 'flex';
-  if (navBtn) {
-    navBtn.innerHTML = user.avatar_url
-      ? '<img src="' + user.avatar_url + '" alt="' + initial + '"/>'
-      : '<span id="userAvatarInitial">' + initial + '</span>';
-  }
-  /* dropdown header */
-  var pdAv = document.getElementById('pdAv');
-  if (pdAv) pdAv.innerHTML = user.avatar_url
-    ? '<img src="' + user.avatar_url + '" alt="' + initial + '"/>'
-    : '<span id="pdAvInitial">' + initial + '</span>';
-  var el;
-  el = document.getElementById('pdName');  if(el) el.textContent = user.name  || '';
-  el = document.getElementById('pdEmail'); if(el) el.textContent = user.email || '';
-  el = document.getElementById('pdBadge'); if(el) { el.textContent = planLbl; }
-}
-
-/* ─── 10. PROFILE SHEET ─── */
-function openProfileSheet() {
-  syncProfileSheet();
-  document.getElementById('ppOverlay').classList.add('open');
-}
-function closeProfileSheet() {
-  document.getElementById('ppOverlay').classList.remove('open');
-}
-function closePPif(e) {
-  if (e.target === document.getElementById('ppOverlay')) closeProfileSheet();
-}
-
-function syncProfileSheet() {
-  var u      = _currentUser;
-  var plan   = (u && u.plan) || window.userPlan || 'free';
-  var limits = window.PLAN_LIMITS || { free:{requests:10,label:'Free'}, pro:{requests:100,label:'Pro'}, max:{requests:500,label:'Max'} };
-  var limit  = (limits[plan] || limits.free).requests;
-  var used   = window.requestCount || 0;
-  var pct    = Math.min(100, Math.round(used / limit * 100));
-  var planLbl= (limits[plan] || limits.free).label;
-
-  if (u) {
-    var init = (u.name || 'U').charAt(0).toUpperCase();
-    var set  = function(id,v){ var e=document.getElementById(id); if(e) e.textContent = v||'—'; };
-    set('ppHeroName',  u.name);
-    set('ppHeroEmail', u.email);
-    set('ppInfoName',  u.name);
-    set('ppInfoEmail', u.email);
-    set('ppInfoPlan',  planLbl);
-    set('ppInfoJoined', u.created_at
-      ? new Date(u.created_at).toLocaleDateString([],{year:'numeric',month:'short',day:'numeric'})
-      : 'Today');
-
-    /* avatar */
-    var av = document.getElementById('ppAvatarEl');
-    if (av) av.innerHTML = u.avatar_url
-      ? '<img src="' + u.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="' + init + '"/>'
-      : '<span id="ppInitial">' + init + '</span>';
-
-    /* plan badge */
-    var badge = document.getElementById('ppPlanBadge');
-    if (badge) {
-      var bs = { free:'rgba(167,139,250,.15);color:#a78bfa;border-color:rgba(167,139,250,.4)',
-                 pro: 'rgba(6,182,212,.15);color:#22d3ee;border-color:rgba(6,182,212,.4)',
-                 max: 'rgba(251,191,36,.15);color:#fbbf24;border-color:rgba(251,191,36,.4)' };
-      badge.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;background:' + (bs[plan]||bs.free);
-      badge.innerHTML = '<i class="fas fa-star"></i> ' + planLbl + ' Plan';
-    }
-
-    /* upgrade banner */
-    var ub = document.getElementById('ppUpgradeBanner');
-    if (ub) ub.style.display = (plan==='pro'||plan==='max') ? 'none' : 'flex';
-  }
-
-  /* usage bar */
-  var uc = document.getElementById('ppUsageCount'); if(uc) uc.textContent = used + ' / ' + limit;
-  var ub2 = document.getElementById('ppUsageBar');
-  if (ub2) {
-    ub2.style.width = pct + '%';
-    ub2.style.background = pct>=80 ? '#f87171' : pct>=50 ? '#fbbf24' : '#a855f7';
-  }
-}
-
-/* ─── 11. AVATAR UPLOAD ─── */
-async function handleAvatarUpload(e) {
-  var file = e.target.files && e.target.files[0];
-  if (!file) return;
-  if (file.size > 2*1024*1024) { showAvatarStatus('Image too large (max 2 MB)', 'error'); return; }
-  showAvatarStatus('Uploading...', 'info');
-  var reader = new FileReader();
-  reader.onload = async function(ev) {
-    var dataUrl = ev.target.result;
-    /* optimistic UI update */
-    var av = document.getElementById('ppAvatarEl');
-    if (av) av.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
-    var nb = document.getElementById('userAvatarBtn');
-    if (nb) nb.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
-    var pd = document.getElementById('pdAv');
-    if (pd) pd.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
-    try {
-      var res  = await fetch('/api/profile', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({avatar_url: dataUrl}) });
-      if (res.ok) { if(_currentUser) _currentUser.avatar_url = dataUrl; showAvatarStatus('Photo updated! ✅','success'); }
-      else { var d=await res.json(); showAvatarStatus(d.error||'Upload failed','error'); }
-    } catch(ex) {
-      if(_currentUser) _currentUser.avatar_url = dataUrl;
-      showAvatarStatus('Saved locally ✅','success');
-    }
+document.addEventListener('DOMContentLoaded',()=>{
+  // patch onLoginSuccess to also toggle login btn
+  const orig = window.onLoginSuccess;
+  window.onLoginSuccess = function(u,r){
+    orig(u,r);
+    patchLoginBtn();
   };
-  reader.readAsDataURL(file);
-  e.target.value = '';
-}
-function showAvatarStatus(msg, type) {
-  var el = document.getElementById('ppAvatarStatus');
-  if (!el) return;
-  el.style.display = 'block';
-  el.style.background = type==='error'?'rgba(239,68,68,.12)':type==='success'?'rgba(16,185,129,.12)':'rgba(99,102,241,.12)';
-  el.style.color = type==='error'?'#f87171':type==='success'?'#34d399':'#818cf8';
-  el.textContent = msg;
-  if (type!=='info') setTimeout(function(){ el.style.display='none'; }, 3000);
-}
-
-/* ─── 12. PATCH script.js globals so sendChat/generateImage/generateSong work ─── */
-/* Override sendChat / generateImage / generateSong guards */
-var _origSendChat = window.sendChat;
-window.sendChat = function() {
-  if (!_currentUser) { openAuthModal('chat'); return; }
-  if (typeof _origSendChat === 'function') _origSendChat.call(this);
-  else if (typeof window._sendChat === 'function') window._sendChat();
-};
-
-var _origGenImg = window.generateImage;
-window.generateImage = function() {
-  if (!_currentUser) { openAuthModal('image'); return; }
-  if (typeof _origGenImg === 'function') _origGenImg.call(this);
-  else if (typeof window._generateImage === 'function') window._generateImage();
-};
-
-var _origGenSong = window.generateSong;
-window.generateSong = function() {
-  if (!_currentUser) { openAuthModal('song'); return; }
-  if (typeof _origGenSong === 'function') _origGenSong.call(this);
-  else if (typeof window._generateSong === 'function') window._generateSong();
-};
-
-/* patch currentUser so script.js internal checks also work */
-Object.defineProperty(window, 'currentUser', {
-  get: function() { return _currentUser; },
-  set: function(v) { _currentUser = v; },
-  configurable: true
-});
-
-/* ─── 13. EXPOSE globals script.js may call ─── */
-window.openAuthModal     = openAuthModal;
-window.closeAuthModal    = closeAuthModal;
-window.onAuthSuccess     = onLoginSuccess;   /* alias */
-window.logoutUser        = doLogout;
-window.openProfilePage   = openProfileSheet;
-window.syncProfilePage   = syncProfileSheet;
-window.injectProfileActionButton = function(){};
-window.toggleProfileDropdown     = toggleDropdown;
-window.closeProfileDropdown      = closeDd;
-window.bindGlobalProfileClose    = function(){};
-
-/* ─── 14. INIT ─── */
-document.addEventListener('DOMContentLoaded', function() {
-  /* ensure avatar wrap hidden */
-  var wrap = document.getElementById('userProfileWrap');
-  if (wrap) wrap.style.display = 'none';
-  /* wire dropdown sign-out (safety) */
-  var soBtn = document.getElementById('pdSignOutBtn');
-  if (soBtn) soBtn.onclick = function(){ closeDd(); doLogout(); };
-  /* welcome time */
-  var wt = document.getElementById('welcomeTime');
-  if (wt) {
-    var now = new Date();
-    var h = now.getHours(), m = now.getMinutes();
-    var ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
-    wt.textContent = h + ':' + (m<10?'0'+m:m) + ' ' + ampm;
-  }
+  // check after session restore
+  setTimeout(patchLoginBtn,1500);
 });
 </script>
-
 </body>
 </html>
