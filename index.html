@@ -32,7 +32,6 @@
 .pd-btn:hover{background:rgba(6,182,212,.16)}
 .pd-signout{background:rgba(239,68,68,.08)!important;border:1px solid rgba(239,68,68,.2)!important;color:#f87171!important;width:100%;padding:10px 12px;border-radius:10px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s}
 .pd-signout:hover{background:rgba(239,68,68,.15)!important}
-
 /* ── PROFILE PAGE OVERLAY ── */
 .pp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
 .pp-overlay.open{opacity:1;pointer-events:all}
@@ -81,7 +80,7 @@
   <div class="nav-actions">
     <button class="plan-badge-btn" id="planBadge" onclick="openPlanModal()" title="Change Plan">Free</button>
     <button class="nav-settings-btn" onclick="openSettings()" title="Settings"><i class="fas fa-gear"></i></button>
-    <!-- User Profile -->
+    <!-- User Profile — hidden until login -->
     <div class="user-profile-wrap" id="userProfileWrap" style="display:none">
       <button class="user-avatar-btn" id="userAvatarBtn" type="button" aria-label="Profile menu">
         <span id="userAvatarInitial"></span>
@@ -318,7 +317,6 @@
       <button class="pp-close" id="ppCloseBtn" type="button"><i class="fas fa-xmark"></i></button>
     </div>
     <div class="pp-body">
-      <!-- Hero -->
       <div class="pp-hero">
         <div class="pp-avatar" id="ppAvatar">
           <span id="ppInitial">?</span>
@@ -328,20 +326,17 @@
         <div class="pp-hero-email" id="ppEmail">—</div>
         <span class="pp-hero-plan plan-badge-free" id="ppPlan"><i class="fas fa-star"></i> Free Plan</span>
       </div>
-      <!-- Info -->
       <div class="pp-infocard">
         <div class="pp-row"><span class="pp-label"><i class="fas fa-user"></i> Name</span><span class="pp-value" id="ppInfoName">—</span></div>
         <div class="pp-row"><span class="pp-label"><i class="fas fa-envelope"></i> Email</span><span class="pp-value" id="ppInfoEmail">—</span></div>
         <div class="pp-row"><span class="pp-label"><i class="fas fa-crown"></i> Plan</span><span class="pp-value" id="ppInfoPlan">Free</span></div>
         <div class="pp-row"><span class="pp-label"><i class="fas fa-calendar"></i> Member Since</span><span class="pp-value" id="ppInfoJoined">—</span></div>
       </div>
-      <!-- Usage -->
       <div class="pp-usagecard">
         <div class="pp-usage-title"><i class="fas fa-chart-bar"></i> Session Usage</div>
         <div class="pp-bar-label"><span>Requests Used</span><span id="ppUsageCount">0 / 10</span></div>
         <div class="pp-bar-track"><div class="pp-bar-fill" id="ppUsageBar" style="width:0%;background:#a855f7"></div></div>
       </div>
-      <!-- Upgrade -->
       <div class="pp-upgrade" id="ppUpgradeBanner">
         <div class="pp-upgrade-icon"><i class="fas fa-crown"></i></div>
         <div class="pp-upgrade-text"><strong>Upgrade to Pro</strong><span>100 req/session · Custom API key</span></div>
@@ -354,20 +349,31 @@
 
 <script src="script.js"></script>
 <script>
-/* ══════════════════════════════════════════
-   PROFILE PAGE FIX — Overrides script.js bugs
-   1. openProfilePage → opens pp-overlay (NOT settings)
-   2. injectProfileActionButton → disabled (button already in HTML)
-   3. pdProfileBtn & pdSignOutBtn wired correctly
-══════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════
+   PROFILE PAGE — Complete Fix
+   Bugs fixed:
+   1. openProfilePage() was calling openSettings() — FIXED
+   2. injectProfileActionButton() duplicated buttons — DISABLED
+   3. Avatar button visible before login — FIXED (only shown after login)
+   4. Dropdown "Profile" btn now correctly opens profile sheet
+   5. Auth guard: if user clicks avatar & NOT logged in → open auth modal
+══════════════════════════════════════════════════════ */
 (function () {
-  /* ── helpers ── */
-  function eid(id) { return document.getElementById(id); }
-  function txt(id, v) { var e = eid(id); if (e) e.textContent = v || '—'; }
+  'use strict';
 
-  /* ── open / close profile sheet ── */
+  /* helpers */
+  function eid(id) { return document.getElementById(id); }
+  function txt(id, v) { var e = eid(id); if (e) e.textContent = (v != null ? v : '—'); }
+
+  /* ── open/close profile sheet ── */
   function openProfilePage(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
+    /* guard: must be logged in */
+    if (typeof currentUser === 'undefined' || !currentUser) {
+      if (typeof closeProfileDropdown === 'function') closeProfileDropdown();
+      if (typeof openAuthModal === 'function') openAuthModal(null);
+      return;
+    }
     if (typeof closeProfileDropdown === 'function') closeProfileDropdown();
     syncProfilePage();
     var o = eid('ppOverlay');
@@ -384,7 +390,7 @@
     if (typeof openPlanModal === 'function') openPlanModal();
   }
 
-  /* ── sync data into profile sheet ── */
+  /* ── sync user data into profile sheet ── */
   function getPlanBadgeClass(p) {
     if (p === 'pro') return 'pp-hero-plan plan-badge-pro';
     if (p === 'max') return 'pp-hero-plan plan-badge-max';
@@ -392,54 +398,58 @@
   }
 
   function syncProfilePage() {
-    var u = (typeof currentUser !== 'undefined') ? currentUser : null;
-    var plan = (typeof userPlan !== 'undefined') ? userPlan : 'free';
+    var u     = (typeof currentUser !== 'undefined') ? currentUser : null;
+    var plan  = (typeof userPlan !== 'undefined') ? userPlan : 'free';
     var limits = (typeof PLAN_LIMITS !== 'undefined') ? PLAN_LIMITS : {
-      free: { requests: 10, label: 'Free' },
-      pro:  { requests: 100, label: 'Pro' },
-      max:  { requests: 500, label: 'Max' }
+      free: { requests: 10,  label: 'Free' },
+      pro:  { requests: 100, label: 'Pro'  },
+      max:  { requests: 500, label: 'Max'  }
     };
     var limit = (limits[plan] || limits.free).requests;
     var used  = (typeof requestCount !== 'undefined') ? requestCount : 0;
     var pct   = Math.min(100, Math.round(used / limit * 100));
 
     if (u) {
-      var init     = (u.name || 'U').charAt(0).toUpperCase();
-      var uplan    = u.plan || plan;
+      var init      = (u.name || 'U').charAt(0).toUpperCase();
+      var uplan     = u.plan || plan;
       var planLabel = (limits[uplan] || limits.free).label;
 
-      txt('ppName', u.name);
-      txt('ppEmail', u.email);
-      txt('ppInfoName', u.name);
+      txt('ppName',      u.name);
+      txt('ppEmail',     u.email);
+      txt('ppInfoName',  u.name);
       txt('ppInfoEmail', u.email);
-      txt('ppInfoPlan', planLabel);
+      txt('ppInfoPlan',  planLabel);
 
       var joined = u.created_at
         ? new Date(u.created_at).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })
         : 'Today';
       txt('ppInfoJoined', joined);
 
+      /* avatar */
       var ppAv = eid('ppAvatar');
-      if (u.avatar_url) {
-        if (ppAv) ppAv.innerHTML = '<img src="' + u.avatar_url + '" alt="' + init + '"/><span class="pp-avatar-hint">PHOTO</span>';
+      if (u.avatar_url && ppAv) {
+        ppAv.innerHTML = '<img src="' + u.avatar_url + '" alt="' + init + '"/><span class="pp-avatar-hint">PHOTO</span>';
       } else {
         var ppInit = eid('ppInitial');
         if (ppInit) ppInit.textContent = init;
       }
 
+      /* plan badge */
       var ppP = eid('ppPlan');
       if (ppP) {
         ppP.className = getPlanBadgeClass(uplan);
         ppP.innerHTML = '<i class="fas fa-star"></i> ' + planLabel + ' Plan';
       }
 
+      /* hide upgrade if already pro/max */
+      var isPro = (uplan === 'pro' || uplan === 'max');
       var ub   = eid('ppUpgradeBanner');
       var ubtn = eid('ppUpgradeBtn');
-      var isUpgrade = (uplan === 'pro' || uplan === 'max');
-      if (ub)   ub.style.display   = isUpgrade ? 'none' : 'flex';
-      if (ubtn) ubtn.style.display = isUpgrade ? 'none' : 'block';
+      if (ub)   ub.style.display   = isPro ? 'none' : 'flex';
+      if (ubtn) ubtn.style.display = isPro ? 'none' : 'block';
     }
 
+    /* usage bar */
     txt('ppUsageCount', used + ' / ' + limit);
     var fill = eid('ppUsageBar');
     if (fill) {
@@ -448,7 +458,7 @@
     }
   }
 
-  /* ── wire static buttons ── */
+  /* ── wire static sheet buttons ── */
   var ppClose   = eid('ppCloseBtn');
   var ppOverlay = eid('ppOverlay');
   var ppLogout  = eid('ppLogoutBtn');
@@ -456,7 +466,7 @@
 
   if (ppClose)   ppClose.onclick   = closeProfilePage;
   if (ppUpgrade) ppUpgrade.onclick = ppOpenPlan;
-  if (ppLogout)  ppLogout.onclick  = function () {
+  if (ppLogout) ppLogout.onclick = function () {
     closeProfilePage();
     if (typeof logoutUser === 'function') logoutUser();
   };
@@ -464,44 +474,71 @@
     if (e.target === ppOverlay) closeProfilePage();
   };
 
-  /* ── wire dropdown buttons ── */
+  /* ── wire dropdown buttons (after DOM ready) ── */
   function wireDropdown() {
+    /* Profile button in dropdown */
     var profileBtn = eid('pdProfileBtn');
-    var signOutBtn = eid('pdSignOutBtn');
-    var avatarBtn  = eid('userAvatarBtn');
-
     if (profileBtn) {
       profileBtn.onclick = function (e) { openProfilePage(e); };
     }
+
+    /* Sign Out button in dropdown */
+    var signOutBtn = eid('pdSignOutBtn');
     if (signOutBtn) {
       signOutBtn.onclick = function () {
         if (typeof closeProfileDropdown === 'function') closeProfileDropdown();
         if (typeof logoutUser === 'function') logoutUser();
       };
     }
+
+    /* Avatar button — guard: only show after login, open dropdown */
+    var avatarBtn = eid('userAvatarBtn');
     if (avatarBtn) {
       avatarBtn.onclick = function (e) {
         e.preventDefault();
         e.stopPropagation();
+        /* if somehow visible before login, open auth instead */
+        if (typeof currentUser === 'undefined' || !currentUser) {
+          if (typeof openAuthModal === 'function') openAuthModal(null);
+          return;
+        }
         if (typeof toggleProfileDropdown === 'function') toggleProfileDropdown(e);
       };
     }
   }
 
-  /* ── OVERRIDE script.js functions that are broken ── */
+  /* ══ OVERRIDE broken script.js functions ══ */
 
-  /* Fix 1: openProfilePage in script.js calls openSettings() — override it */
+  /* FIX 1: openProfilePage in script.js wrongly calls openSettings() */
   window.openProfilePage = openProfilePage;
 
-  /* Fix 2: injectProfileActionButton duplicates the button — neutralize it */
-  window.injectProfileActionButton = function () { /* disabled — button already in HTML */ };
+  /* FIX 2: injectProfileActionButton duplicates the Profile button */
+  window.injectProfileActionButton = function () { /* no-op: button already in HTML */ };
 
-  /* Fix 3: expose helpers globally */
-  window.closeProfilePage  = closeProfilePage;
-  window.syncProfilePage   = syncProfilePage;
-  window.ppOpenPlan        = ppOpenPlan;
+  /* FIX 3: Override updateProfileUI to ensure wrap is ONLY shown when logged in */
+  var _originalUpdateProfileUI = window.updateProfileUI;
+  window.updateProfileUI = function (user) {
+    if (!user) {
+      /* hide avatar wrap if no user */
+      var wrap = eid('userProfileWrap');
+      if (wrap) wrap.style.display = 'none';
+      return;
+    }
+    /* call original script.js logic */
+    if (typeof _originalUpdateProfileUI === 'function') {
+      _originalUpdateProfileUI(user);
+    }
+    /* ensure wrap is visible only now */
+    var wrap = eid('userProfileWrap');
+    if (wrap) wrap.style.display = 'flex';
+  };
 
-  /* ── init after DOM ready ── */
+  /* expose globals */
+  window.closeProfilePage = closeProfilePage;
+  window.syncProfilePage  = syncProfilePage;
+  window.ppOpenPlan       = ppOpenPlan;
+
+  /* init */
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', wireDropdown);
   } else {
