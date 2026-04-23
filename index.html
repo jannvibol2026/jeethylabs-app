@@ -28,13 +28,13 @@
 .plan-badge-pro{background:rgba(6,182,212,.15);color:#22d3ee;border:1px solid rgba(6,182,212,.4)}
 .plan-badge-max{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.4)}
 .profile-dropdown-body{padding:8px;display:flex;flex-direction:column;gap:6px}
-.pd-btn{width:100%;padding:10px 12px;border-radius:10px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#22d3ee;transition:background .2s}
+.pd-btn{width:100%;padding:10px 12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#22d3ee;transition:background .2s}
 .pd-btn:hover{background:rgba(6,182,212,.16)}
 .pd-signout{background:rgba(239,68,68,.08)!important;border:1px solid rgba(239,68,68,.2)!important;color:#f87171!important;width:100%;padding:10px 12px;border-radius:10px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s}
 .pd-signout:hover{background:rgba(239,68,68,.15)!important}
 
 /* ── PROFILE PAGE OVERLAY ── */
-.pp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:9000;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.pp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
 .pp-overlay.open{opacity:1;pointer-events:all}
 .pp-sheet{width:100%;max-width:480px;background:var(--surface,#111827);border-radius:24px 24px 0 0;border-top:1px solid var(--border,rgba(255,255,255,.08));max-height:90vh;overflow-y:auto;transform:translateY(40px);transition:transform .3s cubic-bezier(.4,0,.2,1)}
 .pp-overlay.open .pp-sheet{transform:translateY(0)}
@@ -346,7 +346,7 @@
         <div class="pp-upgrade-icon"><i class="fas fa-crown"></i></div>
         <div class="pp-upgrade-text"><strong>Upgrade to Pro</strong><span>100 req/session · Custom API key</span></div>
       </div>
-      <button class="btn-generate btn-purple" id="ppUpgradeBtn" onclick="ppOpenPlan()"><i class="fas fa-crown"></i> Upgrade to Pro — $9.99/mo</button>
+      <button class="btn-generate btn-purple" id="ppUpgradeBtn"><i class="fas fa-crown"></i> Upgrade to Pro — $9.99/mo</button>
       <button class="pd-signout" id="ppLogoutBtn" type="button" style="margin-top:4px"><i class="fas fa-right-from-bracket"></i> Sign Out</button>
     </div>
   </div>
@@ -354,52 +354,59 @@
 
 <script src="script.js"></script>
 <script>
-/* ══════════════════════════════
-   PROFILE PAGE — standalone fix
-   Works with original script.js
-══════════════════════════════ */
-(function(){
-  var overlay  = document.getElementById('ppOverlay');
-  var sheet    = document.getElementById('ppSheet');
-  var closeBtn = document.getElementById('ppCloseBtn');
-  var logoutBtn= document.getElementById('ppLogoutBtn');
-  var upgradeBtn = document.getElementById('ppUpgradeBtn');
+/* ══════════════════════════════════════════
+   PROFILE PAGE FIX — Overrides script.js bugs
+   1. openProfilePage → opens pp-overlay (NOT settings)
+   2. injectProfileActionButton → disabled (button already in HTML)
+   3. pdProfileBtn & pdSignOutBtn wired correctly
+══════════════════════════════════════════ */
+(function () {
+  /* ── helpers ── */
+  function eid(id) { return document.getElementById(id); }
+  function txt(id, v) { var e = eid(id); if (e) e.textContent = v || '—'; }
 
-  function eid(id){ return document.getElementById(id); }
-  function txt(id,v){ var e=eid(id); if(e) e.textContent=v||'—'; }
-
-  function openProfilePage(e){
-    if(e){ e.preventDefault(); e.stopPropagation(); }
-    if(typeof closeProfileDropdown==='function') closeProfileDropdown();
+  /* ── open / close profile sheet ── */
+  function openProfilePage(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (typeof closeProfileDropdown === 'function') closeProfileDropdown();
     syncProfilePage();
-    overlay.classList.add('open');
-  }
-  function closeProfilePage(){
-    overlay.classList.remove('open');
-  }
-  function ppOpenPlan(){
-    closeProfilePage();
-    if(typeof openPlanModal==='function') openPlanModal();
+    var o = eid('ppOverlay');
+    if (o) o.classList.add('open');
   }
 
-  function getPlanBadgeClass(p){
-    if(p==='pro') return 'pp-hero-plan plan-badge-pro';
-    if(p==='max') return 'pp-hero-plan plan-badge-max';
+  function closeProfilePage() {
+    var o = eid('ppOverlay');
+    if (o) o.classList.remove('open');
+  }
+
+  function ppOpenPlan() {
+    closeProfilePage();
+    if (typeof openPlanModal === 'function') openPlanModal();
+  }
+
+  /* ── sync data into profile sheet ── */
+  function getPlanBadgeClass(p) {
+    if (p === 'pro') return 'pp-hero-plan plan-badge-pro';
+    if (p === 'max') return 'pp-hero-plan plan-badge-max';
     return 'pp-hero-plan plan-badge-free';
   }
 
-  function syncProfilePage(){
-    var u = (typeof currentUser!=='undefined') ? currentUser : null;
-    var plan = (typeof userPlan!=='undefined') ? userPlan : 'free';
-    var limits = (typeof PLAN_LIMITS!=='undefined') ? PLAN_LIMITS : {free:{requests:10,label:'Free'},pro:{requests:100,label:'Pro'},max:{requests:500,label:'Max'}};
-    var limit = (limits[plan]||limits.free).requests;
-    var used  = (typeof requestCount!=='undefined') ? requestCount : 0;
-    var pct   = Math.min(100, Math.round(used/limit*100));
+  function syncProfilePage() {
+    var u = (typeof currentUser !== 'undefined') ? currentUser : null;
+    var plan = (typeof userPlan !== 'undefined') ? userPlan : 'free';
+    var limits = (typeof PLAN_LIMITS !== 'undefined') ? PLAN_LIMITS : {
+      free: { requests: 10, label: 'Free' },
+      pro:  { requests: 100, label: 'Pro' },
+      max:  { requests: 500, label: 'Max' }
+    };
+    var limit = (limits[plan] || limits.free).requests;
+    var used  = (typeof requestCount !== 'undefined') ? requestCount : 0;
+    var pct   = Math.min(100, Math.round(used / limit * 100));
 
-    if(u){
-      var init = (u.name||'U').charAt(0).toUpperCase();
-      var uplan = u.plan||plan;
-      var planLabel = (limits[uplan]||limits.free).label;
+    if (u) {
+      var init     = (u.name || 'U').charAt(0).toUpperCase();
+      var uplan    = u.plan || plan;
+      var planLabel = (limits[uplan] || limits.free).label;
 
       txt('ppName', u.name);
       txt('ppEmail', u.email);
@@ -407,68 +414,98 @@
       txt('ppInfoEmail', u.email);
       txt('ppInfoPlan', planLabel);
 
-      var joined = u.created_at ? new Date(u.created_at).toLocaleDateString([],{year:'numeric',month:'short',day:'numeric'}) : 'Today';
+      var joined = u.created_at
+        ? new Date(u.created_at).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })
+        : 'Today';
       txt('ppInfoJoined', joined);
 
-      var ppInit = eid('ppInitial');
       var ppAv = eid('ppAvatar');
-      if(u.avatar_url){
-        if(ppAv) ppAv.innerHTML = '<img src="'+u.avatar_url+'" alt="'+init+'" /><span class="pp-avatar-hint">PHOTO</span>';
+      if (u.avatar_url) {
+        if (ppAv) ppAv.innerHTML = '<img src="' + u.avatar_url + '" alt="' + init + '"/><span class="pp-avatar-hint">PHOTO</span>';
       } else {
-        if(ppInit) ppInit.textContent = init;
+        var ppInit = eid('ppInitial');
+        if (ppInit) ppInit.textContent = init;
       }
 
       var ppP = eid('ppPlan');
-      if(ppP){ ppP.className = getPlanBadgeClass(uplan); ppP.innerHTML = '<i class="fas fa-star"></i> '+planLabel+' Plan'; }
-
-      var ub = eid('ppUpgradeBanner');
-      var ubtn = eid('ppUpgradeBtn');
-      if(uplan==='pro'||uplan==='max'){
-        if(ub) ub.style.display='none';
-        if(ubtn) ubtn.style.display='none';
-      } else {
-        if(ub) ub.style.display='flex';
-        if(ubtn) ubtn.style.display='block';
+      if (ppP) {
+        ppP.className = getPlanBadgeClass(uplan);
+        ppP.innerHTML = '<i class="fas fa-star"></i> ' + planLabel + ' Plan';
       }
+
+      var ub   = eid('ppUpgradeBanner');
+      var ubtn = eid('ppUpgradeBtn');
+      var isUpgrade = (uplan === 'pro' || uplan === 'max');
+      if (ub)   ub.style.display   = isUpgrade ? 'none' : 'flex';
+      if (ubtn) ubtn.style.display = isUpgrade ? 'none' : 'block';
     }
 
-    txt('ppUsageCount', used+' / '+limit);
+    txt('ppUsageCount', used + ' / ' + limit);
     var fill = eid('ppUsageBar');
-    if(fill){
-      fill.style.width = pct+'%';
-      fill.style.background = pct>=80 ? '#f87171' : pct>=50 ? '#fbbf24' : '#a855f7';
+    if (fill) {
+      fill.style.width      = pct + '%';
+      fill.style.background = pct >= 80 ? '#f87171' : pct >= 50 ? '#fbbf24' : '#a855f7';
     }
   }
 
-  /* Wire close */
-  if(closeBtn) closeBtn.onclick = closeProfilePage;
-  if(overlay) overlay.onclick = function(e){ if(e.target===overlay) closeProfilePage(); };
-  if(logoutBtn) logoutBtn.onclick = function(){ if(typeof logoutUser==='function') logoutUser(); };
-  if(upgradeBtn) upgradeBtn.onclick = ppOpenPlan;
+  /* ── wire static buttons ── */
+  var ppClose   = eid('ppCloseBtn');
+  var ppOverlay = eid('ppOverlay');
+  var ppLogout  = eid('ppLogoutBtn');
+  var ppUpgrade = eid('ppUpgradeBtn');
 
-  /* Wire dropdown Profile button */
-  function wireDropdownBtn(){
-    var btn = document.getElementById('pdProfileBtn');
-    if(btn) btn.onclick = openProfilePage;
-    var so = document.getElementById('pdSignOutBtn');
-    if(so) so.onclick = function(){ if(typeof logoutUser==='function') logoutUser(); };
-    var av = document.getElementById('userAvatarBtn');
-    if(av) av.onclick = function(e){
-      e.preventDefault(); e.stopPropagation();
-      if(typeof toggleProfileDropdown==='function') toggleProfileDropdown(e);
-    };
+  if (ppClose)   ppClose.onclick   = closeProfilePage;
+  if (ppUpgrade) ppUpgrade.onclick = ppOpenPlan;
+  if (ppLogout)  ppLogout.onclick  = function () {
+    closeProfilePage();
+    if (typeof logoutUser === 'function') logoutUser();
+  };
+  if (ppOverlay) ppOverlay.onclick = function (e) {
+    if (e.target === ppOverlay) closeProfilePage();
+  };
+
+  /* ── wire dropdown buttons ── */
+  function wireDropdown() {
+    var profileBtn = eid('pdProfileBtn');
+    var signOutBtn = eid('pdSignOutBtn');
+    var avatarBtn  = eid('userAvatarBtn');
+
+    if (profileBtn) {
+      profileBtn.onclick = function (e) { openProfilePage(e); };
+    }
+    if (signOutBtn) {
+      signOutBtn.onclick = function () {
+        if (typeof closeProfileDropdown === 'function') closeProfileDropdown();
+        if (typeof logoutUser === 'function') logoutUser();
+      };
+    }
+    if (avatarBtn) {
+      avatarBtn.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof toggleProfileDropdown === 'function') toggleProfileDropdown(e);
+      };
+    }
   }
 
-  /* Override openProfilePage globally */
-  window.openProfilePage = openProfilePage;
-  window.closeProfilePage = closeProfilePage;
-  window.ppOpenPlan = ppOpenPlan;
-  window.syncProfilePage = syncProfilePage;
+  /* ── OVERRIDE script.js functions that are broken ── */
 
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded', wireDropdownBtn);
+  /* Fix 1: openProfilePage in script.js calls openSettings() — override it */
+  window.openProfilePage = openProfilePage;
+
+  /* Fix 2: injectProfileActionButton duplicates the button — neutralize it */
+  window.injectProfileActionButton = function () { /* disabled — button already in HTML */ };
+
+  /* Fix 3: expose helpers globally */
+  window.closeProfilePage  = closeProfilePage;
+  window.syncProfilePage   = syncProfilePage;
+  window.ppOpenPlan        = ppOpenPlan;
+
+  /* ── init after DOM ready ── */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireDropdown);
   } else {
-    wireDropdownBtn();
+    wireDropdown();
   }
 })();
 </script>
