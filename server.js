@@ -9,13 +9,12 @@ const path = require('path');
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname)));
 
-// ── ENV ───────────────────────────────────
 const DATABASE_URL = process.env.DATABASE_URL;
 const JWT_SECRET   = process.env.JWT_SECRET || 'secret123';
-const SMTP_USER    = process.env.SMTP_USER || '';   // Brevo: a8c959001@smtp-brevo.com
-const SMTP_PASS    = process.env.SMTP_PASS || '';   // Brevo SMTP key
+const SMTP_USER    = process.env.SMTP_USER || '';
+const SMTP_PASS    = process.env.SMTP_PASS || '';
 const FROM_EMAIL   = process.env.FROM_EMAIL || SMTP_USER;
 const PORT         = process.env.PORT || 8080;
 
@@ -24,15 +23,11 @@ console.log('SMTP_USER:', SMTP_USER || '❌ MISSING');
 console.log('SMTP_PASS:', SMTP_PASS ? '✅ set' : '❌ MISSING');
 console.log('FROM_EMAIL:', FROM_EMAIL || '❌ MISSING');
 
-// ── BREVO SMTP (ផ្លាស់ពី Gmail → Brevo) ──
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
   port: 587,
   secure: false,
-  auth: {
-    user: SMTP_USER,
-    pass: SMTP_PASS,
-  },
+  auth: { user: SMTP_USER, pass: SMTP_PASS },
 });
 
 transporter.verify((err) => {
@@ -40,7 +35,6 @@ transporter.verify((err) => {
   else console.log('✅ Brevo SMTP Ready');
 });
 
-// ── DB ────────────────────────────────────
 const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: { rejectUnauthorized: false },
@@ -49,25 +43,19 @@ pool.connect()
   .then(c => { console.log('DB Connected'); c.release(); })
   .catch(e => console.error('❌ DB Error:', e.message));
 
-// ── OTP STORE ─────────────────────────────
 const otpStore = {};
 function genOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// ── SEND EMAIL ────────────────────────────
 async function sendEmail(to, subject, html) {
   const info = await transporter.sendMail({
     from: `"JeeThy Labs" <${FROM_EMAIL}>`,
-    to,
-    subject,
-    html,
+    to, subject, html,
   });
   console.log('[sendEmail] ✅ messageId:', info.messageId);
   return info;
 }
-
-// ── ROUTES ───────────────────────────────
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -83,18 +71,15 @@ app.get('/api/key', (req, res) => {
   res.json({ key: process.env.GOOGLE_API_KEY || '' });
 });
 
-// Send OTP
 app.post('/api/send-otp', async (req, res) => {
   const { email, name } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
-
   const otp = genOTP();
   otpStore[email] = { otp, name, expires: Date.now() + 10 * 60 * 1000 };
   console.log('[send-otp] Sending to:', email, '| OTP:', otp);
-
   try {
-    await sendEmail(email, 'Your Verification Code - JeeThy Labs', `
-      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px;">
+    await sendEmail(email, 'Your Verification Code - JeeThy Labs',
+      `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px;">
         <h2 style="color:#7c3aed;">JeeThy Labs</h2>
         <p>Hi <strong>${name || 'there'}</strong>,</p>
         <p>Your verification code is:</p>
@@ -102,8 +87,8 @@ app.post('/api/send-otp', async (req, res) => {
         <p style="color:#888;font-size:14px;">This code expires in <strong>10 minutes</strong>.</p>
         <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
         <p style="color:#aaa;font-size:12px;">If you did not request this, please ignore this email.</p>
-      </div>
-    `);
+      </div>`
+    );
     console.log('[send-otp] ✅ Sent to:', email);
     res.json({ success: true });
   } catch (e) {
@@ -112,7 +97,6 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
-// Verify OTP + Register
 app.post('/api/verify-otp', async (req, res) => {
   const { email, otp, name, password } = req.body;
   const record = otpStore[email];
@@ -123,7 +107,6 @@ app.post('/api/verify-otp', async (req, res) => {
   }
   if (record.otp !== String(otp).trim()) return res.status(400).json({ error: 'Invalid OTP.' });
   delete otpStore[email];
-
   try {
     const hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
@@ -139,7 +122,6 @@ app.post('/api/verify-otp', async (req, res) => {
   }
 });
 
-// Login
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -155,7 +137,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Forgot password
 app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body;
   try {
@@ -164,19 +145,17 @@ app.post('/api/forgot-password', async (req, res) => {
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
-
   const otp = genOTP();
   otpStore[email] = { otp, expires: Date.now() + 10 * 60 * 1000, type: 'reset' };
-
   try {
-    await sendEmail(email, 'Password Reset Code - JeeThy Labs', `
-      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px;">
+    await sendEmail(email, 'Password Reset Code - JeeThy Labs',
+      `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px;">
         <h2 style="color:#7c3aed;">Reset Your Password</h2>
         <p>Your reset code:</p>
         <div style="font-size:42px;font-weight:bold;letter-spacing:10px;color:#7c3aed;padding:20px 0;text-align:center;">${otp}</div>
         <p style="color:#888;font-size:14px;">Expires in <strong>10 minutes</strong>.</p>
-      </div>
-    `);
+      </div>`
+    );
     res.json({ success: true });
   } catch (e) {
     console.error('[forgot-password]', e.message);
@@ -184,7 +163,6 @@ app.post('/api/forgot-password', async (req, res) => {
   }
 });
 
-// Reset password
 app.post('/api/reset-password', async (req, res) => {
   const { email, otp, newPassword } = req.body;
   const record = otpStore[email];
@@ -200,7 +178,6 @@ app.post('/api/reset-password', async (req, res) => {
   }
 });
 
-// Auth middleware
 function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token' });
@@ -212,7 +189,6 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// Get profile
 app.get('/api/profile', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query('SELECT id, name, email, created_at FROM users WHERE id=$1', [req.user.id]);
@@ -222,9 +198,8 @@ app.get('/api/profile', authMiddleware, async (req, res) => {
   }
 });
 
-// Fallback
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => console.log(`✅ JeeThy Labs running on port ${PORT}`));
