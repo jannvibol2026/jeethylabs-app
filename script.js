@@ -2,7 +2,8 @@
 
 // ── MODELS ─────────────────────────────────────────────────
 const GEMINI_CHAT_MODEL  = "gemini-2.5-flash";
-const GEMINI_IMAGE_MODEL = "imagen-3.0-generate-002";
+const GEMINI_IMAGE_MODEL = "gemini-2.0-flash-preview-image-generation";
+const GEMINI_IMAGE_FALLBACK = "gemini-2.0-flash-exp-image-generation";
 
 // ── PLAN LIMITS ────────────────────────────────────────────
 const PLAN_LIMITS = {
@@ -570,26 +571,60 @@ async function _generateImage() {
   const style  = getActiveChip("imgStyleGroup");
   const ratio  = getActiveChip("imgRatioGroup");
   const qty    = parseInt(getActiveChip("imgQtyGroup")) || 1;
-  const aspectRatio = ({ "1:1": "1:1", "9:16": "9:16", "16:9": "16:9" })[ratio] || "1:1";
+  const styleHint   = style && style.toLowerCase() !== "none" ? `, style: ${style}` : "";
+  const fullPrompt  = `${prompt}${styleHint}`;
   const btn       = document.getElementById("imgGenBtn");
   const resultsEl = document.getElementById("imgResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
   resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI...</div></div>`;
 
-  async function fetchOne(prompt, _unusedKey) {
-    const r = await fetch("/api/image", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, aspectRatio, style })
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
-    if (!d.data) throw new Error("No image data in response");
-    return { data: d.data, mimeType: d.mimeType || "image/png" };
+  /* Call Gemini image generation API directly (same pattern as chat) */
+  async function fetchOne() {
+    const models = [GEMINI_IMAGE_MODEL, GEMINI_IMAGE_FALLBACK];
+    let lastErr = null;
+    for (const model of models) {
+      try {
+        console.log(`[image] Trying model: ${model} | prompt: "${fullPrompt.slice(0, 80)}"`);
+        const r = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: fullPrompt }] }],
+              generationConfig: { responseModalities: ["IMAGE", "TEXT"] }
+            })
+          }
+        );
+        const d = await r.json();
+        if (!r.ok) {
+          const msg = d.error?.message || `HTTP ${r.status}`;
+          console.warn(`[image] ${model} error:`, msg);
+          throw new Error(msg);
+        }
+        for (const c of (d.candidates || [])) {
+          for (const p of (c.content?.parts || [])) {
+            if (p.inlineData?.data) {
+              console.log(`[image] success with ${model} | mimeType: ${p.inlineData.mimeType}`);
+              return { data: p.inlineData.data, mimeType: p.inlineData.mimeType || "image/png" };
+            }
+          }
+        }
+        const reason = d.candidates?.[0]?.finishReason || "UNKNOWN";
+        if (reason === "IMAGE_SAFETY") throw new Error("Image blocked by safety filters. Please try a different prompt.");
+        console.warn(`[image] ${model} returned no image data. finishReason: ${reason}`);
+        throw new Error(`No image returned by ${model}. Try a more descriptive prompt.`);
+      } catch (err) {
+        lastErr = err;
+        console.warn(`[image] model ${model} failed:`, err.message);
+      }
+    }
+    throw lastErr || new Error("Image generation failed. Please try again.");
   }
 
   try {
     resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI… (retries up to 3×)</div></div>`;
-    const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne(prompt, key)));
+    const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne()));
     const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
     const errors  = results.filter(r => r.status === "rejected").map(r => r.reason?.message);
     if (errors.length) console.warn("[image] Some requests failed:", errors);
