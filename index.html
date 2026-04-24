@@ -4,77 +4,26 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>JeeThy Labs — App</title>
-<link rel="icon" href="https://jeethylabs.site/favicon.svg" type="image/svg+xml"/>
 <link rel="stylesheet" href="style.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<style>
-/* NAV AVATAR */
-.user-profile-wrap{position:relative;display:flex;align-items:center;flex-shrink:0}
-.user-avatar-btn{width:34px;height:34px;border-radius:50%;border:2px solid rgba(167,139,250,.5);background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:border-color .2s,transform .15s;overflow:hidden;padding:0;-webkit-tap-highlight-color:transparent}
-.user-avatar-btn:active{transform:scale(.93)}
-.user-avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-/* DROPDOWN */
-.profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;width:240px;max-width:92vw;background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.6);z-index:9999;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(-8px) scale(.96);transition:opacity .2s,transform .2s}
-.profile-dropdown.open{opacity:1;pointer-events:all;transform:translateY(0) scale(1)}
-.pd-header{padding:14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);background:#1f2937}
-.pd-av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-.pd-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-.pd-info{flex:1;overflow:hidden}
-.pd-name{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pd-email{font-size:11px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.pd-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-top:3px;text-transform:uppercase;letter-spacing:.5px;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.4)}
-.pd-body{padding:8px;display:flex;flex-direction:column;gap:5px}
-.pd-btn{width:100%;padding:9px 12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#22d3ee;transition:background .2s}
-.pd-signout{background:rgba(239,68,68,.08)!important;border:1px solid rgba(239,68,68,.2)!important;color:#f87171!important;width:100%;padding:9px 12px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
-/* PROFILE SHEET */
-#ppOverlay{position:fixed;inset:0;background:rgba(0,0,0,.80);backdrop-filter:blur(10px);z-index:10500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
-#ppOverlay.open{opacity:1;pointer-events:all}
-#ppSheet{width:100%;max-width:480px;background:#111827;border-radius:24px 24px 0 0;border-top:1px solid rgba(255,255,255,.08);max-height:92vh;overflow-y:auto;transform:translateY(48px);transition:transform .3s cubic-bezier(.4,0,.2,1)}
-#ppOverlay.open #ppSheet{transform:translateY(0)}
-#ppSheet::-webkit-scrollbar{display:none}
-.pp-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.14);margin:12px auto 0;display:block}
-.pp-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 10px;border-bottom:1px solid rgba(255,255,255,.08)}
-.pp-hdr h3{margin:0;font-size:15px;font-weight:700;color:#a855f7;display:flex;align-items:center;gap:8px}
-.pp-closebtn{width:28px;height:28px;border-radius:50%;background:#1f2937;border:none;color:#9ca3af;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px}
-.pp-body2{padding:16px;display:flex;flex-direction:column;gap:12px}
-.pp-hero{display:flex;flex-direction:column;align-items:center;gap:10px;background:#1f2937;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
-#ppAvatarEl{width:82px;height:82px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:30px;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid rgba(167,139,250,.4);cursor:pointer;position:relative}
-#ppAvatarEl img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-.pp-cam{position:absolute;bottom:2px;right:2px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);border:2px solid #111827;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;pointer-events:none}
-.pp-infocard{background:#1f2937;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden}
-.pp-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
-.pp-row:last-child{border-bottom:none}
-.pp-lbl{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:7px}
-.pp-val{font-size:13px;font-weight:600;color:#fff;max-width:55%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pp-usagecard{background:#1f2937;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px}
-.pp-upgrade-banner{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(167,139,250,.1),rgba(6,182,212,.1));border:1px solid rgba(167,139,250,.3);border-radius:14px;padding:14px;cursor:pointer}
-@media(min-width:768px){#ppOverlay{align-items:center}#ppSheet{border-radius:20px;border:1px solid rgba(255,255,255,.08);max-height:88vh;width:calc(100% - 32px)}}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 </head>
 <body>
 
 <!-- NAV -->
 <header class="app-nav">
-  <a href="https://jeethylabs.site" class="nav-home" title="Back to Home"><i class="fas fa-arrow-left"></i></a>
-  <div class="nav-brand">
-    <span class="brand-jee">JeeThy</span><span class="brand-labs">Labs</span>
-    <span class="brand-tag">App</span>
-  </div>
+  <a href="https://jeethylabs.site" class="nav-home"><i class="fas fa-arrow-left"></i></a>
+  <div class="nav-brand"><span class="brand-jee">JeeThy</span><span class="brand-labs">Labs</span><span class="brand-tag">App</span></div>
   <div class="nav-actions">
-    <button class="plan-badge-btn" id="planBadge" onclick="openPlanModal()" title="Change Plan">Free</button>
-    <button class="nav-settings-btn" onclick="openSettings()" title="Settings"><i class="fas fa-gear"></i></button>
+    <button class="plan-badge-btn" id="planBadge" onclick="openPlanModal()">Free</button>
+    <button class="nav-settings-btn" onclick="openSettings()"><i class="fas fa-gear"></i></button>
     <div class="user-profile-wrap" id="userProfileWrap" style="display:none">
-      <button class="user-avatar-btn" id="userAvatarBtn" type="button" aria-label="Profile menu" onclick="toggleDropdown(event)"></button>
+      <button class="user-avatar-btn" id="userAvatarBtn" type="button" onclick="toggleDropdown(event)"><span></span></button>
       <div class="profile-dropdown" id="profileDropdown">
         <div class="pd-header">
           <div class="pd-av" id="pdAv"></div>
-          <div class="pd-info">
-            <div class="pd-name" id="pdName"></div>
-            <div class="pd-email" id="pdEmail"></div>
-            <span class="pd-badge" id="pdBadge">Free</span>
-          </div>
+          <div class="pd-info"><div class="pd-name" id="pdName"></div><div class="pd-email" id="pdEmail"></div><span class="pd-badge" id="pdBadge">Free</span></div>
         </div>
         <div class="pd-body">
           <button class="pd-btn" onclick="closeDd();openProfileSheet()"><i class="fas fa-user"></i> Profile</button>
@@ -87,51 +36,44 @@
 
 <!-- TABS -->
 <nav class="tab-bar">
-  <button class="tab active" onclick="goToPanel(0)" id="tab0"><i class="fas fa-brain"></i><span>AI Assistant</span></button>
-  <button class="tab" onclick="goToPanel(1)" id="tab1"><i class="fas fa-palette"></i><span>Image</span></button>
-  <button class="tab" onclick="goToPanel(2)" id="tab2"><i class="fas fa-music"></i><span>Song</span></button>
+  <button class="tab active" onclick="goToPanel(0)"><i class="fas fa-brain"></i><span>AI Assistant</span></button>
+  <button class="tab" onclick="goToPanel(1)"><i class="fas fa-palette"></i><span>Image</span></button>
+  <button class="tab" onclick="goToPanel(2)"><i class="fas fa-music"></i><span>Song</span></button>
 </nav>
 
 <!-- PANELS -->
 <main class="panels-wrap" id="panelsWrap">
   <div class="panels-track" id="panelsTrack">
 
-    <!-- CHAT PANEL -->
-    <section class="panel panel-chat" id="panelChat">
+    <!-- CHAT -->
+    <section class="panel panel-chat">
       <div class="panel-inner">
         <div class="chat-messages" id="chatMessages">
           <div class="msg msg-bot">
             <div class="msg-avatar"><i class="fas fa-brain"></i></div>
             <div class="msg-bubble">
-              <p>Hello! 👋 I'm <strong>JeeThy AI</strong>, your smart assistant. How can I help you today?</p>
+              <p>Hello! I'm <strong>JeeThy Assistant</strong>, your smart AI helper.</p>
+              <p>Sign in to start chatting! &#x1F44B;</p>
               <span class="msg-time" id="welcomeTime"></span>
             </div>
           </div>
         </div>
         <div class="chat-input-wrap">
           <div class="chat-input-box">
-            <textarea id="chatInput" class="chat-textarea" placeholder="Type a message..." rows="1"
-              oninput="autoResize(this)" onkeydown="handleChatKey(event)"></textarea>
+            <textarea id="chatInput" class="chat-textarea" placeholder="Type your message..." rows="1" oninput="autoResize(this)" onkeydown="handleChatKey(event)"></textarea>
             <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
           </div>
-          <p class="chat-hint">Powered by Gemini 2.5 Flash · JeeThy Labs</p>
+          <p class="chat-hint">Powered by Google Gemini &middot; JeeThy Labs</p>
         </div>
       </div>
     </section>
 
-    <!-- IMAGE PANEL -->
-    <section class="panel panel-image" id="panelImage">
+    <!-- IMAGE -->
+    <section class="panel panel-image">
       <div class="panel-inner panel-inner-scroll">
-        <div class="panel-header">
-          <div class="panel-icon cyan"><i class="fas fa-palette"></i></div>
-          <div><h2 class="panel-title">Image Generate</h2><p class="panel-subtitle">Turn text into stunning visuals</p></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Prompt</label>
-          <textarea id="imgPrompt" class="form-textarea" placeholder="Describe the image you want..." rows="3"></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Style</label>
+        <div class="panel-header"><div class="panel-icon cyan"><i class="fas fa-palette"></i></div><div><h2 class="panel-title">Image Generate</h2><p class="panel-subtitle">Turn text into stunning visuals</p></div></div>
+        <div class="form-group"><label class="form-label">Prompt</label><textarea id="imgPrompt" class="form-textarea" placeholder="Describe the image you want to create..." rows="3"></textarea></div>
+        <div class="form-group"><label class="form-label">Style</label>
           <div class="chip-group" id="imgStyleGroup">
             <button class="chip active" onclick="selectChip(this,'imgStyleGroup')">Realistic</button>
             <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Cartoon</button>
@@ -139,12 +81,26 @@
             <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Other</button>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Aspect Ratio</label>
+        <div class="form-group"><label class="form-label">Aspect Ratio</label>
           <div class="chip-group" id="imgRatioGroup">
             <button class="chip active" onclick="selectChip(this,'imgRatioGroup')">1:1</button>
             <button class="chip" onclick="selectChip(this,'imgRatioGroup')">9:16</button>
             <button class="chip" onclick="selectChip(this,'imgRatioGroup')">16:9</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group half"><label class="form-label">Quality</label>
+            <div class="chip-group" id="imgQualityGroup">
+              <button class="chip active" onclick="selectChip(this,'imgQualityGroup')">Standard</button>
+              <button class="chip pro-locked" onclick="requirePro(this,'imgQualityGroup')">HD <span class="pro-badge">PRO</span></button>
+            </div>
+          </div>
+          <div class="form-group half"><label class="form-label">Quantity</label>
+            <div class="chip-group" id="imgQtyGroup">
+              <button class="chip active" onclick="selectChip(this,'imgQtyGroup')">1</button>
+              <button class="chip" onclick="selectChip(this,'imgQtyGroup')">2</button>
+              <button class="chip" onclick="selectChip(this,'imgQtyGroup')">4</button>
+            </div>
           </div>
         </div>
         <button class="btn-generate btn-cyan" id="imgGenBtn" onclick="generateImage()"><i class="fas fa-wand-magic-sparkles"></i> Generate Image</button>
@@ -152,29 +108,20 @@
       </div>
     </section>
 
-    <!-- SONG PANEL -->
-    <section class="panel panel-song" id="panelSong">
+    <!-- SONG -->
+    <section class="panel panel-song">
       <div class="panel-inner panel-inner-scroll">
-        <div class="panel-header">
-          <div class="panel-icon green"><i class="fas fa-music"></i></div>
-          <div><h2 class="panel-title">Song Generate</h2><p class="panel-subtitle">Create original music from text</p></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Song Description</label>
-          <textarea id="songPrompt" class="form-textarea" placeholder="Describe mood, theme, story..." rows="3"></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Genre / Style</label>
+        <div class="panel-header"><div class="panel-icon green"><i class="fas fa-music"></i></div><div><h2 class="panel-title">Song Generate</h2><p class="panel-subtitle">Create original music from text</p></div></div>
+        <div class="form-group"><label class="form-label">Song Description</label><textarea id="songPrompt" class="form-textarea" placeholder="Describe the song: mood, theme, story..." rows="3"></textarea></div>
+        <div class="form-group"><label class="form-label">Genre / Style</label>
           <div class="chip-group" id="songStyleGroup">
             <button class="chip active" onclick="selectChip(this,'songStyleGroup')">Pop</button>
             <button class="chip" onclick="selectChip(this,'songStyleGroup')">Sad</button>
             <button class="chip" onclick="selectChip(this,'songStyleGroup')">Relaxing</button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">R&amp;B</button>
             <button class="chip" onclick="selectChip(this,'songStyleGroup')">Other</button>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Vocalist</label>
+        <div class="form-group"><label class="form-label">Vocalist</label>
           <div class="chip-group" id="songVoiceGroup">
             <button class="chip active" onclick="selectChip(this,'songVoiceGroup')"><i class="fas fa-venus"></i> Female</button>
             <button class="chip" onclick="selectChip(this,'songVoiceGroup')"><i class="fas fa-mars"></i> Male</button>
@@ -188,109 +135,39 @@
   </div>
 </main>
 
-<!-- PLAN MODAL -->
-<div class="modal-overlay" id="planModal">
-  <div class="modal-box modal-wide">
-    <div class="modal-header">
-      <h3><i class="fas fa-crown"></i> Choose Your Plan</h3>
-      <button class="modal-close" onclick="closePlanModal()"><i class="fas fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="plan-cards-row">
-        <div class="plan-card selected" data-plan="free" onclick="selectPlan('free')">
-          <div class="plan-card-header"><span class="plan-name">Free</span><span class="plan-price">$0</span></div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 10 requests / session</li>
-            <li><i class="fas fa-check"></i> All 3 AI tools</li>
-          </ul>
-          <div class="plan-check"><i class="fas fa-circle-check"></i></div>
-        </div>
-        <div class="plan-card plan-pro" data-plan="pro" onclick="selectPlan('pro')">
-          <div class="plan-card-badge">Popular</div>
-          <div class="plan-card-header"><span class="plan-name">Pro</span><span class="plan-price">$9.99<span class="plan-period">/mo</span></span></div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 100 requests / session</li>
-            <li><i class="fas fa-check"></i> All 3 AI tools</li>
-          </ul>
-          <div class="plan-check"><i class="fas fa-circle-check"></i></div>
-        </div>
-      </div>
-      <button class="btn-generate btn-purple" onclick="confirmPlan()" style="margin-top:16px"><i class="fas fa-check"></i> Confirm Plan</button>
-    </div>
-  </div>
-</div>
-
-<!-- SETTINGS MODAL -->
-<div class="modal-overlay" id="settingsModal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <h3><i class="fas fa-gear"></i> Settings</h3>
-      <button class="modal-close" onclick="closeSettings()"><i class="fas fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <p class="modal-desc" style="color:#9ca3af;font-size:13px;">All AI tools use JeeThy Labs server API key by default.</p>
-      <button class="btn-generate btn-cyan" onclick="closeSettings()" style="margin-top:16px"><i class="fas fa-check"></i> OK</button>
-    </div>
-  </div>
-</div>
-
-<!-- UPGRADE MODAL -->
-<div class="modal-overlay" id="upgradeModal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <h3><i class="fas fa-bolt"></i> Quota Reached</h3>
-      <button class="modal-close" onclick="closeUpgradeModal()"><i class="fas fa-xmark"></i></button>
-    </div>
-    <div class="modal-body">
-      <p class="modal-desc">You've used all your requests on the <strong>Free plan</strong>.</p>
-      <button class="btn-generate btn-purple" onclick="upgradeNow()" style="margin-top:16px"><i class="fas fa-crown"></i> Upgrade to Pro</button>
-      <button class="btn-outline" onclick="closeUpgradeModal()" style="margin-top:8px">Maybe later</button>
-    </div>
-  </div>
-</div>
-
 <!-- AUTH MODAL -->
 <div class="modal-overlay" id="authModal">
   <div class="modal-box" style="max-width:420px">
-    <div class="modal-header">
-      <h3><i class="fas fa-lock"></i> <span id="authModalTitle">Sign in to continue</span></h3>
-      <button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-xmark"></i></button>
-    </div>
+    <div class="modal-header"><h3><i class="fas fa-lock"></i> Sign in to continue</h3><button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-xmark"></i></button></div>
     <div class="modal-body" style="gap:10px">
-      <div style="display:flex;gap:6px;background:#1f2937;border:1px solid rgba(255,255,255,.08);padding:4px;border-radius:30px;">
-        <button id="authTabLogin" onclick="switchAuthTab('login')" style="flex:1;padding:8px;border-radius:30px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;">Login</button>
-        <button id="authTabSignup" onclick="switchAuthTab('signup')" style="flex:1;padding:8px;border-radius:30px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#9ca3af;">Sign Up</button>
+      <div style="display:flex;gap:6px;background:var(--surface2);border:1px solid var(--border);padding:4px;border-radius:30px;">
+        <button id="authTabLogin" onclick="switchAuthTab('login')" style="flex:1;padding:8px;border-radius:30px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;">Login</button>
+        <button id="authTabSignup" onclick="switchAuthTab('signup')" style="flex:1;padding:8px;border-radius:30px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#9ca3af;">Sign Up</button>
       </div>
       <div id="authMsg" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;"></div>
-      <!-- LOGIN -->
       <form id="authLoginForm" onsubmit="submitLogin(event)" style="display:flex;flex-direction:column;gap:10px;">
         <div><label class="form-label">Email</label><input type="email" id="authLoginEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/></div>
         <div><label class="form-label">Password</label><input type="password" id="authLoginPass" class="form-input" placeholder="Your password" required autocomplete="current-password"/></div>
         <button type="submit" id="authLoginBtn" class="btn-generate btn-purple" style="margin-bottom:0"><i class="fas fa-arrow-right-to-bracket"></i> Login</button>
       </form>
-      <!-- SIGNUP -->
       <form id="authSignupForm" onsubmit="submitSignup(event)" style="display:none;flex-direction:column;gap:10px;">
         <div><label class="form-label">Full Name</label><input type="text" id="authSignupName" class="form-input" placeholder="Your name" required autocomplete="name"/></div>
         <div><label class="form-label">Email</label><input type="email" id="authSignupEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/></div>
-        <div><label class="form-label">Password</label><input type="password" id="authSignupPass" class="form-input" placeholder="Min 8 characters" required minlength="8" autocomplete="new-password"/></div>
+        <div><label class="form-label">Password</label><input type="password" id="authSignupPass" class="form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password"/></div>
         <button type="submit" id="authSignupBtn" class="btn-generate btn-purple" style="margin-bottom:0"><i class="fas fa-paper-plane"></i> Send Verification Code</button>
       </form>
-      <!-- OTP -->
       <div id="authOtpForm" style="display:none;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
           <i class="fas fa-envelope-circle-check" style="font-size:2rem;color:#a855f7;margin-bottom:8px;display:block;"></i>
-          <p style="font-size:13px;color:#9ca3af;margin:0;">Code sent to</p>
+          <p style="font-size:13px;color:#9ca3af;margin:0;">Code បានផ្ញើសទៅ</p>
           <p id="otpEmailDisplay" style="font-size:14px;font-weight:700;color:#fff;margin:4px 0 0;"></p>
         </div>
-        <div>
-          <label class="form-label">Verification Code (6 digits)</label>
-          <input type="text" id="authOtpInput" class="form-input" placeholder="_ _ _ _ _ _" maxlength="6" inputmode="numeric"
-            style="text-align:center;font-size:1.5rem;font-weight:700;letter-spacing:0.4em;"
-            oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
+        <div><label class="form-label">Verification Code (6 digits)</label>
+          <input type="text" id="authOtpInput" class="form-input" placeholder="_ _ _ _ _ _" maxlength="6" inputmode="numeric" style="text-align:center;font-size:1.5rem;font-weight:700;letter-spacing:0.4em;" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
         </div>
         <div style="display:flex;gap:8px;">
-          <button type="button" onclick="backToSignup()" class="btn-generate" style="flex:1;margin-bottom:0;background:#1f2937;color:#9ca3af;"><i class="fas fa-arrow-left"></i> Back</button>
-          <button type="button" onclick="submitOtp()" id="authOtpBtn" class="btn-generate btn-purple" style="flex:2;margin-bottom:0"><i class="fas fa-check-circle"></i> Verify & Create Account</button>
+          <button type="button" onclick="backToSignup()" class="btn-generate" style="flex:1;margin-bottom:0;background:var(--surface2);color:#9ca3af;"><i class="fas fa-arrow-left"></i> Back</button>
+          <button type="button" onclick="submitOtp()" id="authOtpBtn" class="btn-generate btn-purple" style="flex:2;margin-bottom:0"><i class="fas fa-check-circle"></i> Verify &amp; Create Account</button>
         </div>
         <div style="text-align:center;">
           <button type="button" onclick="resendOtp()" id="resendOtpBtn" style="background:none;border:none;color:#a855f7;font-size:12px;cursor:pointer;text-decoration:underline;">Resend code</button>
@@ -301,32 +178,84 @@
   </div>
 </div>
 
+<!-- PLAN MODAL -->
+<div class="modal-overlay" id="planModal">
+  <div class="modal-box modal-wide">
+    <div class="modal-header"><h3><i class="fas fa-crown"></i> Choose Your Plan</h3><button class="modal-close" onclick="closePlanModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <p class="modal-desc">All AI tools are powered by JeeThy Labs.</p>
+      <div class="plan-cards-row">
+        <div class="plan-card selected" data-plan="free" onclick="selectPlan('free')">
+          <div class="plan-card-header"><span class="plan-name">Free</span><span class="plan-price">$0</span></div>
+          <ul class="plan-features"><li><i class="fas fa-check"></i> 10 requests / session</li><li><i class="fas fa-check"></i> All 3 AI tools</li><li><i class="fas fa-xmark muted"></i> Custom API key</li></ul>
+          <div class="plan-check"><i class="fas fa-circle-check"></i></div>
+        </div>
+        <div class="plan-card plan-pro" data-plan="pro" onclick="selectPlan('pro')">
+          <div class="plan-card-badge">Popular</div>
+          <div class="plan-card-header"><span class="plan-name">Pro</span><span class="plan-price">$9.99<span class="plan-period">/mo</span></span></div>
+          <ul class="plan-features"><li><i class="fas fa-check"></i> 100 requests / session</li><li><i class="fas fa-check"></i> All 3 AI tools</li><li><i class="fas fa-check"></i> Add your own API key</li></ul>
+          <div class="plan-check"><i class="fas fa-circle-check"></i></div>
+        </div>
+      </div>
+      <div id="proSettingsInModal" style="display:none"><a href="https://aistudio.google.com/app/apikey" target="_blank" class="modal-link">Get a free Google AI key &rarr;</a></div>
+      <button class="btn-generate btn-purple" onclick="confirmPlan()" style="margin-top:16px"><i class="fas fa-check"></i> Confirm Plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-box">
+    <div class="modal-header"><h3><i class="fas fa-gear"></i> Pro Settings</h3><button class="modal-close" onclick="closeSettings()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <p class="modal-desc">As a Pro user, JeeThy Labs' owner key is used by default.</p>
+      <div class="settings-toggle-row">
+        <label class="settings-label"><i class="fas fa-key"></i> Use my own API key</label>
+        <label class="toggle-switch"><input type="checkbox" id="useOwnKeyToggle" onchange="updateSettingsUI()"/><span class="toggle-slider"></span></label>
+      </div>
+      <div id="customKeySection" style="display:none">
+        <div class="form-group" style="margin-top:12px"><label class="form-label">Your Google AI API Key</label><input type="password" id="customKeyInput" class="form-input" placeholder="AIza..." autocomplete="off"/></div>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="modal-link">Get a free key at Google AI Studio &rarr;</a>
+      </div>
+      <button class="btn-generate btn-cyan" onclick="saveSettings()" style="margin-top:16px"><i class="fas fa-check"></i> Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- UPGRADE MODAL -->
+<div class="modal-overlay" id="upgradeModal">
+  <div class="modal-box">
+    <div class="modal-header"><h3><i class="fas fa-bolt"></i> Quota Reached</h3><button class="modal-close" onclick="closeUpgradeModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <p class="modal-desc">You've used all your requests on the <strong>Free plan</strong>.</p>
+      <div class="upgrade-card"><div class="upgrade-icon"><i class="fas fa-crown"></i></div><div class="upgrade-text"><strong>Upgrade to Pro</strong><span>100 requests/session &middot; $9.99/mo</span></div></div>
+      <button class="btn-generate btn-purple" onclick="upgradeNow()" style="margin-top:16px"><i class="fas fa-crown"></i> Upgrade to Pro</button>
+      <button class="btn-outline" onclick="closeUpgradeModal()">Maybe later</button>
+    </div>
+  </div>
+</div>
+
 <!-- PROFILE SHEET -->
 <div id="ppOverlay" onclick="closePPif(event)">
   <div id="ppSheet">
     <span class="pp-handle"></span>
-    <div class="pp-hdr">
-      <h3><i class="fas fa-user-circle"></i> My Profile</h3>
-      <button class="pp-closebtn" onclick="closeProfileSheet()"><i class="fas fa-xmark"></i></button>
-    </div>
+    <div class="pp-hdr"><h3><i class="fas fa-user-circle"></i> My Profile</h3><button class="pp-closebtn" onclick="closeProfileSheet()"><i class="fas fa-xmark"></i></button></div>
     <div class="pp-body2">
       <div class="pp-hero">
         <div style="position:relative;width:82px;height:82px;">
-          <div id="ppAvatarEl" onclick="document.getElementById('ppFileInput').click()" title="Click to change photo" style="width:82px;height:82px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:30px;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid rgba(167,139,250,.4);cursor:pointer;"></div>
+          <div id="ppAvatarEl" onclick="document.getElementById('ppFileInput').click()"><span id="ppInitial">?</span></div>
           <div class="pp-cam"><i class="fas fa-camera"></i></div>
         </div>
         <input type="file" id="ppFileInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)"/>
         <div id="ppHeroName" style="font-size:19px;font-weight:700;color:#fff;text-align:center;"></div>
         <div id="ppHeroEmail" style="font-size:12px;color:#9ca3af;margin-top:-6px;text-align:center;"></div>
-        <span id="ppPlanBadge" style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.4);">
-          <i class="fas fa-star"></i> Free Plan
-        </span>
+        <span id="ppPlanBadge" style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;text-transform:uppercase;background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.4);"><i class="fas fa-star"></i> Free Plan</span>
       </div>
       <div class="pp-infocard">
-        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-user"></i> Name</span><span class="pp-val" id="ppInfoName">—</span></div>
-        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-envelope"></i> Email</span><span class="pp-val" id="ppInfoEmail">—</span></div>
+        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-user"></i> Name</span><span class="pp-val" id="ppInfoName">&mdash;</span></div>
+        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-envelope"></i> Email</span><span class="pp-val" id="ppInfoEmail">&mdash;</span></div>
         <div class="pp-row"><span class="pp-lbl"><i class="fas fa-crown"></i> Plan</span><span class="pp-val" id="ppInfoPlan">Free</span></div>
-        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-calendar"></i> Joined</span><span class="pp-val" id="ppInfoJoined">—</span></div>
+        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-calendar"></i> Member Since</span><span class="pp-val" id="ppInfoJoined">&mdash;</span></div>
       </div>
       <div class="pp-usagecard">
         <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="fas fa-chart-bar"></i> Session Usage</div>
@@ -335,465 +264,15 @@
       </div>
       <div class="pp-upgrade-banner" id="ppUpgradeBanner" onclick="closeProfileSheet();setTimeout(()=>openPlanModal(),200)">
         <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#a855f7,#22d3ee);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0;"><i class="fas fa-crown"></i></div>
-        <div><strong style="font-size:13px;display:block;color:#fff;">Upgrade to Pro</strong><span style="font-size:11px;color:#9ca3af;">100 requests · $9.99/mo</span></div>
+        <div><strong style="font-size:13px;display:block;color:#fff;">Upgrade to Pro</strong><span style="font-size:11px;color:#9ca3af;">100 requests &middot; $9.99/mo</span></div>
       </div>
-      <div id="ppAvatarStatus" style="display:none;font-size:12px;text-align:center;padding:6px 10px;border-radius:8px;"></div>
-      <button onclick="closeProfileSheet();doLogout()" style="width:100%;padding:11px;border-radius:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#f87171;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <button onclick="closeProfileSheet();doLogout()" style="width:100%;padding:11px;border-radius:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#f87171;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
         <i class="fas fa-right-from-bracket"></i> Sign Out
       </button>
     </div>
   </div>
 </div>
 
-<script>
-'use strict';
-/* ════════════════════════════════════════════════
-   JeeThy Labs — All-in-one app logic
-   ‣ Auth (login/signup/OTP/logout)
-   ‣ Chat / Image / Song via server proxy
-   ‣ Profile sheet with avatar upload
-   ════════════════════════════════════════════════ */
-
-/* ── STATE ── */
-var _user        = null;   // logged-in user object
-var _token       = null;   // JWT in memory
-var _pendingAct  = null;
-var _otpData     = null;
-var _resendTimer = null;
-var _reqCount    = 0;
-var _plan        = 'free';
-var _chatHistory = [];
-
-var PLANS = {
-  free: { label:'Free', requests:10  },
-  pro:  { label:'Pro',  requests:100 },
-  max:  { label:'Max',  requests:500 }
-};
-
-/* ── WELCOME TIME ── */
-(function(){
-  var wt=document.getElementById('welcomeTime');
-  if(!wt) return;
-  var n=new Date(),h=n.getHours(),m=n.getMinutes(),ap=h>=12?'PM':'AM';
-  h=h%12||12; wt.textContent=h+':'+(m<10?'0'+m:m)+' '+ap;
-})();
-
-/* ── API HELPER ── */
-function apiPost(path, body) {
-  var h = {'Content-Type':'application/json'};
-  if (_token) h['Authorization'] = 'Bearer ' + _token;
-  return fetch(path, { method:'POST', headers:h, body:JSON.stringify(body||{}) });
-}
-function apiGet(path) {
-  var h = {};
-  if (_token) h['Authorization'] = 'Bearer ' + _token;
-  return fetch(path, { headers:h });
-}
-
-/* ── TOAST ── */
-function showToast(msg, type) {
-  var t=document.createElement('div');
-  t.textContent=msg;
-  t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:99999;color:#fff;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;' +
-    'background:'+(type==='error'?'rgba(239,68,68,.92)':type==='success'?'rgba(16,185,129,.92)':'rgba(99,102,241,.92)');
-  document.body.appendChild(t);
-  requestAnimationFrame(function(){ t.style.opacity='1'; });
-  setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ t.remove(); },400); },2800);
-}
-
-/* ── ESCAPE HTML ── */
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>'); }
-
-/* ── QUOTA ── */
-function checkQuota(){
-  var lim=(PLANS[_plan]||PLANS.free).requests;
-  if(_reqCount>=lim){ document.getElementById('upgradeModal').classList.add('open'); return false; }
-  return true;
-}
-
-/* ════ TABS ════ */
-function goToPanel(i){
-  document.getElementById('panelsTrack').style.transform='translateX(-'+(i*100)+'%)';
-  document.querySelectorAll('.tab').forEach(function(t,j){ t.classList.toggle('active',j===i); });
-}
-
-/* ════ PLAN MODAL ════ */
-function openPlanModal()  { document.getElementById('planModal').classList.add('open'); }
-function closePlanModal() { document.getElementById('planModal').classList.remove('open'); }
-function selectPlan(p){
-  document.querySelectorAll('.plan-card').forEach(function(c){ c.classList.remove('selected'); });
-  var c=document.querySelector('.plan-card[data-plan="'+p+'"]'); if(c) c.classList.add('selected');
-}
-function confirmPlan(){
-  var c=document.querySelector('.plan-card.selected'); if(!c) return;
-  _plan=c.dataset.plan||'free';
-  document.getElementById('planBadge').textContent=(PLANS[_plan]||PLANS.free).label;
-  closePlanModal(); showToast((PLANS[_plan]||PLANS.free).label+' plan selected ✅','success');
-}
-function openSettings()  { document.getElementById('settingsModal').classList.add('open'); }
-function closeSettings() { document.getElementById('settingsModal').classList.remove('open'); }
-function closeUpgradeModal(){ document.getElementById('upgradeModal').classList.remove('open'); }
-function upgradeNow(){ closeUpgradeModal(); openPlanModal(); }
-
-/* close modals on backdrop */
-document.addEventListener('click',function(e){
-  ['planModal','settingsModal','upgradeModal'].forEach(function(id){
-    var m=document.getElementById(id); if(m&&e.target===m) m.classList.remove('open');
-  });
-});
-
-/* ════ DROPDOWN ════ */
-function toggleDropdown(e){
-  e.preventDefault(); e.stopPropagation();
-  document.getElementById('profileDropdown').classList.toggle('open');
-}
-function closeDd(){ document.getElementById('profileDropdown').classList.remove('open'); }
-document.addEventListener('click',function(e){
-  var w=document.getElementById('userProfileWrap');
-  if(w&&!w.contains(e.target)) closeDd();
-},true);
-
-/* ════ AUTH MODAL ════ */
-function openAuthModal(action){
-  _pendingAct=action||null;
-  document.getElementById('authModal').classList.add('open');
-  clearAuthMsg(); switchAuthTab('login');
-}
-function closeAuthModal(){
-  document.getElementById('authModal').classList.remove('open');
-  _pendingAct=null;
-}
-function switchAuthTab(tab){
-  var lf=document.getElementById('authLoginForm');
-  var sf=document.getElementById('authSignupForm');
-  var of=document.getElementById('authOtpForm');
-  var tl=document.getElementById('authTabLogin');
-  var ts=document.getElementById('authTabSignup');
-  clearAuthMsg();
-  if(of) of.style.display='none';
-  var act='background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;';
-  var inact='background:transparent;color:#9ca3af;';
-  if(tab==='login'){
-    lf.style.display='flex'; sf.style.display='none';
-    tl.style.cssText=tl.style.cssText+act; ts.style.cssText=ts.style.cssText+inact;
-  } else {
-    lf.style.display='none'; sf.style.display='flex';
-    ts.style.cssText=ts.style.cssText+act; tl.style.cssText=tl.style.cssText+inact;
-  }
-}
-function showAuthMsg(msg,type){
-  var el=document.getElementById('authMsg');
-  el.style.display='block';
-  el.style.background=type==='error'?'rgba(239,68,68,.12)':'rgba(16,185,129,.12)';
-  el.style.color=type==='error'?'#f87171':'#34d399';
-  el.style.border='1px solid '+(type==='error'?'rgba(239,68,68,.3)':'rgba(16,185,129,.3)');
-  el.textContent=msg;
-}
-function clearAuthMsg(){ var el=document.getElementById('authMsg'); el.style.display='none'; el.textContent=''; }
-
-/* ════ SIGNUP ════ */
-async function submitSignup(e){
-  e.preventDefault(); clearAuthMsg();
-  var btn=document.getElementById('authSignupBtn');
-  var name=document.getElementById('authSignupName').value.trim();
-  var email=document.getElementById('authSignupEmail').value.trim();
-  var pass=document.getElementById('authSignupPass').value;
-  if(!name) return showAuthMsg('Please enter your name.','error');
-  if(pass.length<8) return showAuthMsg('Password must be at least 8 characters.','error');
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Sending...';
-  try{
-    var res=await apiPost('/api/send-otp',{name,email,password:pass});
-    var data=await res.json();
-    if(res.ok){
-      _otpData={name,email,password:pass};
-      document.getElementById('otpEmailDisplay').textContent=email;
-      document.getElementById('authSignupForm').style.display='none';
-      document.getElementById('authOtpForm').style.display='flex';
-      document.getElementById('authOtpInput').value='';
-      startResendTimer(60);
-      showAuthMsg('Code sent! Check your email.','success');
-    } else { showAuthMsg(data.error||'Failed to send code.','error'); }
-  } catch(ex){ showAuthMsg('Network error.','error'); }
-  btn.disabled=false; btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Verification Code';
-}
-
-async function submitOtp(){
-  clearAuthMsg();
-  var otp=document.getElementById('authOtpInput').value.trim();
-  var btn=document.getElementById('authOtpBtn');
-  if(!otp||otp.length!==6) return showAuthMsg('Please enter the 6-digit code.','error');
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Verifying...';
-  try{
-    var res=await apiPost('/api/verify-otp',{..._otpData,otp});
-    var data=await res.json();
-    if(res.ok){
-      _token=data.token; _otpData=null;
-      showAuthMsg('Account created! Welcome 🎉','success');
-      setTimeout(function(){ onLoginSuccess(data.user,data.token); },900);
-    } else { showAuthMsg(data.error||'Invalid code.','error'); }
-  } catch(ex){ showAuthMsg('Network error.','error'); }
-  btn.disabled=false; btn.innerHTML='<i class="fas fa-check-circle"></i> Verify & Create Account';
-}
-
-async function resendOtp(){
-  if(!_otpData) return; clearAuthMsg();
-  try{
-    var res=await apiPost('/api/send-otp',_otpData);
-    var data=await res.json();
-    if(res.ok){ showAuthMsg('New code sent!','success'); startResendTimer(60); }
-    else showAuthMsg(data.error||'Failed to resend.','error');
-  } catch(ex){ showAuthMsg('Network error.','error'); }
-}
-function backToSignup(){
-  document.getElementById('authOtpForm').style.display='none';
-  document.getElementById('authSignupForm').style.display='flex';
-  clearAuthMsg(); if(_resendTimer) clearInterval(_resendTimer);
-}
-function startResendTimer(sec){
-  var btn=document.getElementById('resendOtpBtn');
-  var tmr=document.getElementById('resendTimer');
-  btn.style.display='none'; tmr.style.display='inline';
-  var s=sec; if(_resendTimer) clearInterval(_resendTimer);
-  _resendTimer=setInterval(function(){
-    tmr.textContent='Resend in '+s+'s'; s--;
-    if(s<0){ clearInterval(_resendTimer); btn.style.display='inline'; tmr.style.display='none'; }
-  },1000);
-}
-
-/* ════ LOGIN ════ */
-async function submitLogin(e){
-  e.preventDefault(); clearAuthMsg();
-  var btn=document.getElementById('authLoginBtn');
-  var email=document.getElementById('authLoginEmail').value.trim();
-  var pass=document.getElementById('authLoginPass').value;
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Logging in...';
-  try{
-    var res=await apiPost('/api/login',{email,password:pass});
-    var data=await res.json();
-    if(res.ok){
-      showAuthMsg('Welcome back '+data.user.name+'! ✅','success');
-      setTimeout(function(){ onLoginSuccess(data.user,data.token); },800);
-    } else { showAuthMsg(data.error||'Invalid credentials.','error'); }
-  } catch(ex){ showAuthMsg('Network error.','error'); }
-  btn.disabled=false; btn.innerHTML='<i class="fas fa-arrow-right-to-bracket"></i> Login';
-}
-
-/* ════ ON LOGIN SUCCESS ════ */
-function onLoginSuccess(user, token){
-  _user=user; _token=token;
-  updateNavAvatar(user);
-  closeAuthModal();
-  var act=_pendingAct; _pendingAct=null;
-  if(act==='chat')  setTimeout(sendChat,   100);
-  if(act==='image') setTimeout(generateImage,100);
-  if(act==='song')  setTimeout(generateSong, 100);
-}
-
-/* ════ LOGOUT ════ */
-async function doLogout(){
-  _user=null; _token=null; _reqCount=0;
-  document.getElementById('userProfileWrap').style.display='none';
-  closeDd();
-  try{ await apiPost('/api/logout'); } catch(ex){}
-  showToast('Signed out','error');
-}
-
-/* ════ NAV AVATAR ════ */
-function updateNavAvatar(u){
-  var wrap=document.getElementById('userProfileWrap');
-  var btn=document.getElementById('userAvatarBtn');
-  var init=(u.name||'U').charAt(0).toUpperCase();
-  var plan=u.plan||'free';
-  if(wrap) wrap.style.display='flex';
-  if(btn) btn.innerHTML=u.avatar_url
-    ? '<img src="'+u.avatar_url+'" alt="'+init+'"/>'
-    : '<span>'+init+'</span>';
-  var pda=document.getElementById('pdAv');
-  if(pda) pda.innerHTML=u.avatar_url
-    ? '<img src="'+u.avatar_url+'" alt="'+init+'"/>'
-    : '<span>'+init+'</span>';
-  var e;
-  e=document.getElementById('pdName');  if(e) e.textContent=u.name||'';
-  e=document.getElementById('pdEmail'); if(e) e.textContent=u.email||'';
-  e=document.getElementById('pdBadge'); if(e) e.textContent=(PLANS[plan]||PLANS.free).label;
-}
-
-/* ════ PROFILE SHEET ════ */
-function openProfileSheet(){ syncProfileSheet(); document.getElementById('ppOverlay').classList.add('open'); }
-function closeProfileSheet(){ document.getElementById('ppOverlay').classList.remove('open'); }
-function closePPif(e){ if(e.target===document.getElementById('ppOverlay')) closeProfileSheet(); }
-
-function syncProfileSheet(){
-  var u=_user; if(!u) return;
-  var plan=u.plan||_plan||'free';
-  var lim=(PLANS[plan]||PLANS.free).requests;
-  var pct=Math.min(100,Math.round(_reqCount/lim*100));
-  var init=(u.name||'U').charAt(0).toUpperCase();
-  function set(id,v){ var x=document.getElementById(id); if(x) x.textContent=v||'—'; }
-  set('ppHeroName',u.name); set('ppHeroEmail',u.email);
-  set('ppInfoName',u.name); set('ppInfoEmail',u.email);
-  set('ppInfoPlan',(PLANS[plan]||PLANS.free).label);
-  set('ppInfoJoined',u.created_at?new Date(u.created_at).toLocaleDateString([],{year:'numeric',month:'short',day:'numeric'}):'Today');
-  var av=document.getElementById('ppAvatarEl');
-  if(av) av.innerHTML=u.avatar_url
-    ? '<img src="'+u.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="'+init+'"/>'
-    : '<span>'+init+'</span>';
-  var badge=document.getElementById('ppPlanBadge');
-  if(badge){
-    var bc={free:'rgba(167,139,250,.15);color:#a78bfa;border-color:rgba(167,139,250,.4)',
-            pro:'rgba(6,182,212,.15);color:#22d3ee;border-color:rgba(6,182,212,.4)',
-            max:'rgba(251,191,36,.15);color:#fbbf24;border-color:rgba(251,191,36,.4)'};
-    badge.style.cssText='display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;background:'+( bc[plan]||bc.free);
-    badge.innerHTML='<i class="fas fa-'+(plan==='max'?'gem':plan==='pro'?'crown':'star')+'"></i> '+(PLANS[plan]||PLANS.free).label+' Plan';
-  }
-  set('ppUsageCount',_reqCount+' / '+lim);
-  var bar=document.getElementById('ppUsageBar'); if(bar) bar.style.width=pct+'%';
-  var ub=document.getElementById('ppUpgradeBanner');
-  if(ub) ub.style.display=(plan==='free')?'flex':'none';
-}
-
-/* ════ AVATAR UPLOAD ════ */
-async function handleAvatarUpload(e){
-  var file=e.target.files[0]; if(!file) return;
-  if(file.size>2*1024*1024){ showToast('Image too large (max 2MB)','error'); return; }
-  var reader=new FileReader();
-  reader.onload=async function(ev){
-    var b64=ev.target.result;
-    var st=document.getElementById('ppAvatarStatus');
-    st.style.display='block'; st.style.background='rgba(99,102,241,.12)'; st.style.color='#818cf8';
-    st.textContent='Uploading...';
-    try{
-      var res=await apiPost('/api/avatar',{avatar:b64});
-      var data=await res.json();
-      if(res.ok){
-        _user.avatar_url=b64;
-        syncProfileSheet(); updateNavAvatar(_user);
-        st.style.background='rgba(16,185,129,.12)'; st.style.color='#34d399';
-        st.textContent='✅ Avatar updated!';
-        setTimeout(function(){ st.style.display='none'; },2500);
-      } else {
-        st.style.background='rgba(239,68,68,.12)'; st.style.color='#f87171';
-        st.textContent='❌ '+(data.error||'Upload failed');
-      }
-    } catch(ex){
-      st.style.background='rgba(239,68,68,.12)'; st.style.color='#f87171';
-      st.textContent='❌ Network error';
-    }
-  };
-  reader.readAsDataURL(file);
-}
-
-/* ════ CHAT ════ */
-function handleChatKey(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChat(); } }
-function autoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,160)+'px'; }
-
-function addMsg(role,text,time){
-  var wrap=document.getElementById('chatMessages');
-  var isBot=role==='bot';
-  var div=document.createElement('div');
-  div.className='msg '+(isBot?'msg-bot':'msg-user');
-  var t=time||new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  div.innerHTML=isBot
-    ? '<div class="msg-avatar"><i class="fas fa-brain"></i></div><div class="msg-bubble"><p>'+esc(text)+'</p><span class="msg-time">'+t+'</span></div>'
-    : '<div class="msg-bubble msg-bubble-user"><p>'+esc(text)+'</p><span class="msg-time">'+t+'</span></div>';
-  wrap.appendChild(div); wrap.scrollTop=wrap.scrollHeight;
-}
-
-async function sendChat(){
-  if(!_user){ openAuthModal('chat'); return; }
-  if(!checkQuota()) return;
-  var inp=document.getElementById('chatInput');
-  var msg=inp?inp.value.trim():''; if(!msg) return;
-  inp.value=''; inp.style.height='auto';
-  addMsg('user',msg);
-  _chatHistory.push({role:'user',parts:[{text:msg}]});
-  // typing
-  var wrap=document.getElementById('chatMessages');
-  var typing=document.createElement('div');
-  typing.className='msg msg-bot'; typing.id='typingDot';
-  typing.innerHTML='<div class="msg-avatar"><i class="fas fa-brain"></i></div><div class="msg-bubble" style="padding:12px 16px;"><span style="display:inline-flex;gap:5px;align-items:center;"><span style="width:7px;height:7px;border-radius:50%;background:#a855f7;animation:dot 1s infinite 0s"></span><span style="width:7px;height:7px;border-radius:50%;background:#a855f7;animation:dot 1s infinite .2s"></span><span style="width:7px;height:7px;border-radius:50%;background:#a855f7;animation:dot 1s infinite .4s"></span></span></div>';
-  wrap.appendChild(typing); wrap.scrollTop=wrap.scrollHeight;
-  try{
-    var res=await apiPost('/api/chat',{history:_chatHistory});
-    var data=await res.json();
-    var td=document.getElementById('typingDot'); if(td) td.remove();
-    if(res.ok){
-      var reply=data.reply||'No response.';
-      _chatHistory.push({role:'model',parts:[{text:reply}]});
-      addMsg('bot',reply); _reqCount++;
-    } else { addMsg('bot','❌ '+(data.error||'Server error. Please try again.')); }
-  } catch(ex){
-    var td2=document.getElementById('typingDot'); if(td2) td2.remove();
-    addMsg('bot','❌ Network error. Check connection.');
-  }
-}
-
-/* ════ IMAGE ════ */
-function selectChip(btn,gid){
-  var g=document.getElementById(gid); if(!g) return;
-  g.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('active'); });
-  btn.classList.add('active');
-}
-
-async function generateImage(){
-  if(!_user){ openAuthModal('image'); return; }
-  if(!checkQuota()) return;
-  var prompt=(document.getElementById('imgPrompt')||{}).value||'';
-  if(!prompt.trim()){ showToast('Please enter a prompt','error'); return; }
-  var style=''; var ratio='1:1';
-  var sg=document.getElementById('imgStyleGroup'); if(sg){ var sc=sg.querySelector('.chip.active'); if(sc) style=sc.textContent.trim(); }
-  var rg=document.getElementById('imgRatioGroup');  if(rg){ var rc=rg.querySelector('.chip.active'); if(rc) ratio=rc.textContent.trim(); }
-  var full=style&&style!=='Other'?style+' style: '+prompt:prompt;
-  var btn=document.getElementById('imgGenBtn');
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Generating...';
-  var res2=document.getElementById('imgResults');
-  res2.innerHTML='<div style="text-align:center;padding:40px;color:#9ca3af;"><i class="fas fa-spinner fa-spin" style="font-size:2.5rem;color:#22d3ee;"></i><p style="margin-top:14px;font-size:13px;">Creating your image...</p></div>';
-  try{
-    var r=await apiPost('/api/image',{prompt:full,aspectRatio:ratio});
-    var d=await r.json();
-    if(r.ok&&d.data){
-      var src='data:'+(d.mimeType||'image/png')+';base64,'+d.data;
-      res2.innerHTML='<div style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);"><img src="'+src+'" style="width:100%;display:block;" alt="Generated"/></div>'+
-        '<a download="jeethylabs.png" href="'+src+'" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:10px;border-radius:10px;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);color:#22d3ee;font-size:13px;font-weight:600;text-decoration:none;"><i class="fas fa-download"></i> Download Image</a>';
-      _reqCount++;
-    } else { res2.innerHTML='<div style="text-align:center;padding:24px;color:#f87171;">❌ '+(d.error||'Generation failed. Try different prompt.')+'</div>'; }
-  } catch(ex){ res2.innerHTML='<div style="text-align:center;padding:24px;color:#f87171;">❌ Network error.</div>'; }
-  btn.disabled=false; btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Image';
-}
-
-/* ════ SONG ════ */
-async function generateSong(){
-  if(!_user){ openAuthModal('song'); return; }
-  if(!checkQuota()) return;
-  var prompt=(document.getElementById('songPrompt')||{}).value||'';
-  if(!prompt.trim()){ showToast('Please describe the song','error'); return; }
-  var style='Pop'; var voice='Female';
-  var sg=document.getElementById('songStyleGroup'); if(sg){ var sc=sg.querySelector('.chip.active'); if(sc) style=sc.textContent.trim(); }
-  var vg=document.getElementById('songVoiceGroup');  if(vg){ var vc=vg.querySelector('.chip.active'); if(vc) voice=vc.textContent.replace(/[^\w\s]/g,'').trim(); }
-  var btn=document.getElementById('songGenBtn');
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Composing...';
-  var res2=document.getElementById('songResults');
-  res2.innerHTML='<div style="text-align:center;padding:40px;color:#9ca3af;"><i class="fas fa-spinner fa-spin" style="font-size:2.5rem;color:#22d3ee;"></i><p style="margin-top:14px;font-size:13px;">Composing your song...</p></div>';
-  try{
-    var r=await apiPost('/api/song',{prompt,style,voice});
-    var d=await r.json();
-    if(r.ok&&d.audio){
-      var src='data:'+(d.mimeType||'audio/mp3')+';base64,'+d.audio;
-      var lyr=d.lyrics?'<div style="margin-top:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;"><p style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;margin:0 0 8px;">Lyrics</p><pre style="font-size:12px;color:#d1d5db;white-space:pre-wrap;margin:0;font-family:inherit;">'+esc(d.lyrics)+'</pre></div>':'';
-      res2.innerHTML='<div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:14px;padding:16px;">'+
-        '<p style="font-size:13px;font-weight:700;color:#34d399;margin:0 0 12px;"><i class="fas fa-music"></i> '+esc(d.title||'Your Song')+'</p>'+
-        '<audio controls style="width:100%;" src="'+src+'"></audio>'+
-        '<a download="jeethylabs-song.mp3" href="'+src+'" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:10px;border-radius:10px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:#34d399;font-size:13px;font-weight:600;text-decoration:none;"><i class="fas fa-download"></i> Download Song</a></div>'+lyr;
-      _reqCount++;
-    } else { res2.innerHTML='<div style="text-align:center;padding:24px;color:#f87171;">❌ '+(d.error||'Song generation failed.')+'</div>'; }
-  } catch(ex){ res2.innerHTML='<div style="text-align:center;padding:24px;color:#f87171;">❌ Network error.</div>'; }
-  btn.disabled=false; btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
-}
-
-/* typing dot animation */
-var dotStyle=document.createElement('style');
-dotStyle.textContent='@keyframes dot{0%,80%,100%{transform:scale(0);opacity:.3}40%{transform:scale(1);opacity:1}}';
-document.head.appendChild(dotStyle);
-</script>
+<script src="script.js"></script>
 </body>
 </html>
