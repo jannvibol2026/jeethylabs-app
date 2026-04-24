@@ -311,4 +311,181 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// ══════════════════════════════════════════════════════════════
+//  server-routes-fix.js
+//  Add these routes to your Express server.js (Railway)
+//  Place BEFORE  app.listen()
+//
+//  Required env var:  GEMINI_API_KEY=AIza...
+//  Required npm pkg:  node-fetch (or native fetch Node 18+)
+// ══════════════════════════════════════════════════════════════
+
+/*
+  HOW TO USE:
+  1. Open your server.js on Railway
+  2. Find your existing routes (login, signup, etc.)
+  3. Paste the three route blocks below alongside them
+  4. Make sure  GEMINI_API_KEY  is set in Railway environment variables
+  5. Deploy
+*/
+
+// ── helper ────────────────────────────────────────────────────
+function getKey(req) {
+  // If client sends their own pro key, use it; else use server env key
+  return (req.body && req.body.customKey) || process.env.GEMINI_API_KEY || '';
+}
+
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const CHAT_MODEL  = 'gemini-2.5-flash';
+const IMAGE_MODEL = 'gemini-2.0-flash-preview-image-generation';
+const TTS_MODEL   = 'gemini-2.5-pro-preview-tts';
+
+// ── /api/chat ─────────────────────────────────────────────────
+app.post('/api/chat', async (req, res) => {
+  try {
+    const key     = getKey(req);
+    if (!key) return res.status(503).json({ error: 'API key not configured on server.' });
+
+    const history = req.body.history || [];
+    const url     = `${GEMINI_BASE}/${CHAT_MODEL}:generateContent?key=${key}`;
+
+    const geminiRes = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: `You are JeeThy Assistant, a helpful AI created by JeeThy Labs.\nAnswer in the same language the user writes in.\nBe concise but thorough. Format clearly with paragraphs and bullet points when needed.` }]
+        },
+        contents: history
+      })
+    });
+
+    if (!geminiRes.ok) {
+      const errData = await geminiRes.json().catch(() => ({}));
+      return res.status(geminiRes.status).json({ error: errData.error?.message || `Gemini error ${geminiRes.status}` });
+    }
+
+    const data  = await geminiRes.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.';
+    return res.json({ reply });
+  } catch (err) {
+    console.error('[/api/chat]', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ── /api/image ────────────────────────────────────────────────
+app.post('/api/image', async (req, res) => {
+  try {
+    const key = getKey(req);
+    if (!key) return res.status(503).json({ error: 'API key not configured on server.' });
+
+    const { prompt, aspectRatio = '1:1' } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'prompt is required' });
+
+    const url = `${GEMINI_BASE}/${IMAGE_MODEL}:generateContent?key=${key}`;
+
+    const geminiRes = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseModalities: ['IMAGE', 'TEXT'],
+          imageConfig: { aspectRatio }
+        }
+      })
+    });
+
+    if (!geminiRes.ok) {
+      const errData = await geminiRes.json().catch(() => ({}));
+      return res.status(geminiRes.status).json({ error: errData.error?.message || `Gemini error ${geminiRes.status}` });
+    }
+
+    const data = await geminiRes.json();
+    let imgData = null;
+    for (const c of (data.candidates || [])) {
+      for (const p of (c.content?.parts || [])) {
+        if (p.inlineData?.data) { imgData = p.inlineData; break; }
+      }
+      if (imgData) break;
+    }
+
+    if (!imgData) return res.status(500).json({ error: 'No image generated. Try a different prompt.' });
+    return res.json({ data: imgData.data, mimeType: imgData.mimeType || 'image/png' });
+  } catch (err) {
+    console.error('[/api/image]', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ── /api/song ─────────────────────────────────────────────────
+app.post('/api/song', async (req, res) => {
+  try {
+    const key = getKey(req);
+    if (!key) return res.status(503).json({ error: 'API key not configured on server.' });
+
+    const { prompt, style = 'Pop', voice = 'Female', isKhmer = false } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'prompt is required' });
+
+    const voiceHint  = voice.toLowerCase().includes('female') ? 'female vocalist' : 'male vocalist';
+    const langHint   = isKhmer ? 'Lyrics must be in Khmer language (ភាសាខ្មែរ).' : '';
+    const songPrompt = `Create a full ${style} song about: ${prompt}. ${voiceHint}, ${style} genre with full instrumental arrangement, verses, chorus and bridge. ${langHint}`.trim();
+
+    // Try TTS model first (Gemini 2.5 Pro TTS)
+    const url = `${GEMINI_BASE}/${TTS_MODEL}:generateContent?key=${key}`;
+
+    const geminiRes = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: songPrompt }] }],
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: voice.toLowerCase().includes('female') ? 'Aoede' : 'Charon'
+              }
+            }
+          }
+        }
+      })
+    });
+
+    if (!geminiRes.ok) {
+      const errData = await geminiRes.json().catch(() => ({}));
+      return res.status(geminiRes.status).json({ error: errData.error?.message || `Gemini error ${geminiRes.status}` });
+    }
+
+    const data = await geminiRes.json();
+    let audioB64 = null, audioMime = 'audio/mp3', lyricsText = '';
+
+    for (const c of (data.candidates || [])) {
+      for (const p of (c.content?.parts || [])) {
+        if (p.inlineData?.data && !audioB64) {
+          audioB64  = p.inlineData.data;
+          audioMime = p.inlineData.mimeType || 'audio/mp3';
+        }
+        if (p.text) lyricsText += p.text;
+      }
+    }
+
+    if (!audioB64) return res.status(500).json({ error: 'No audio generated. Please try again.' });
+
+    const titleMatch = lyricsText.match(/(?:title|song name)[:\s]+([^\n]+)/i);
+    const title      = titleMatch ? titleMatch[1].trim() : `${style} Song`;
+
+    return res.json({ audio: audioB64, mimeType: audioMime, title, lyrics: lyricsText });
+  } catch (err) {
+    console.error('[/api/song]', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// END OF ROUTES — paste above  app.listen(...)
+// ══════════════════════════════════════════════════════════════
+
+
 app.listen(PORT, () => console.log('JeeThy Labs running on port ' + PORT));
