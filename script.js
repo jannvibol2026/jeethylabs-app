@@ -83,9 +83,9 @@ async function fetchOwnerKey(){
   } catch(e){ ownerApiKey=''; }
 }
 function getActiveApiKey(){
-  // Pro/Max with own key enabled → use their personal key
+  // Pro/Max: if user enabled own key and has one → use it; otherwise fall back to owner key
   if((userPlan==='pro'||userPlan==='max') && useOwnKey && proCustomKey) return proCustomKey;
-  // All users (including Free) → use owner Railway key
+  // All plans: use owner Railway key by default
   return ownerApiKey;
 }
 
@@ -222,7 +222,7 @@ async function submitSignup(e){
       $('authOtpForm').style.display    = 'flex';
       $('authOtpInput').value = '';
       startResendTimer(60);
-      showAuthMsg('Code ត្រូវបានផ្ញើ! សូមពិនិត្យ Email.','success');
+      showAuthMsg('Verification code sent! Please check your email.','success');
     } else showAuthMsg(d.error||'Failed to send code.','error');
   } catch(ex){ showAuthMsg('Network error. Check connection.','error'); }
   btn.disabled=false; btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Verification Code';
@@ -244,7 +244,7 @@ async function submitOtp(){
     const d = await r.json();
     if(r.ok){
       _otpPendingData = null;
-      showAuthMsg(`Welcome, ${d.user.name}! 🎉 Account created!`,'success');
+      showAuthMsg(`Welcome, ${d.user.name}! 🎉 Account created successfully!`,'success');
       setTimeout(()=>onLoginSuccess(d.user),900);
     } else showAuthMsg(d.error||'Invalid or expired code.','error');
   } catch(ex){ showAuthMsg('Network error.','error'); }
@@ -261,7 +261,7 @@ async function resendOtp(){
       body: JSON.stringify(_otpPendingData)
     });
     const d = await r.json();
-    if(r.ok){ showAuthMsg('Code ថ្មីត្រូវបានផ្ញើ!','success'); startResendTimer(60); }
+    if(r.ok){ showAuthMsg('A new code has been sent!','success'); startResendTimer(60); }
     else showAuthMsg(d.error||'Failed to resend.','error');
   } catch(ex){ showAuthMsg('Network error.','error'); }
 }
@@ -300,7 +300,7 @@ async function submitLogin(e){
     });
     const d = await r.json();
     if(r.ok){
-      showAuthMsg(`Welcome back, ${d.user.name}! ✅`,'success');
+      showAuthMsg(`Welcome back, ${d.user.name}! Welcome back ✅`,'success');
       setTimeout(()=>onLoginSuccess(d.user),800);
     } else showAuthMsg(d.error||'Invalid email or password.','error');
   } catch(ex){ showAuthMsg('Network error. Check connection.','error'); }
@@ -314,7 +314,7 @@ async function logoutUser(){
   currentUser = null; window.currentUser = null;
   const wrap = $('userProfileWrap');
   if(wrap) wrap.style.display='none';
-  showToast('Signed out','error');
+  showToast('You have been signed out','error');
 }
 // alias for inline HTML onclick="doLogout()"
 window.doLogout = logoutUser;
@@ -513,7 +513,7 @@ window.selectPlan=selectPlan;
 
 function confirmPlan(){
   closePlanModal();
-  showToast(`${PLAN_LIMITS[userPlan].label} plan activated!`,'success');
+  showToast(`${PLAN_LIMITS[userPlan].label} plan activated! ✅`,'success');
   syncProfileSheet();
 }
 window.confirmPlan=confirmPlan;
@@ -522,7 +522,7 @@ window.confirmPlan=confirmPlan;
 // SETTINGS MODAL (Pro only)
 // ══════════════════════════════════════════════════════
 function openSettings(){
-  if(userPlan==='free'){ showToast('Settings is available for Pro & Max users only 👑','error'); openPlanModal(); return; }
+  if(userPlan==='free'){ showToast('Settings is available for Pro & Max plans only 👑','error'); openPlanModal(); return; }
   const m=$('settingsModal'); if(!m) return;
   m.classList.add('open');
   if($('customKeyInput')) $('customKeyInput').value=proCustomKey;
@@ -584,8 +584,12 @@ async function sendChat(){
     const key=getActiveApiKey();
     if(!key){
       removeTyping(typingId);
-      if(userPlan==='free') appendMessage('bot','❌ Owner API key not configured. Please contact the admin.');
-      else { appendMessage('bot','❌ No API key. Go to Settings → add your Gemini API key.'); openSettings(); }
+      if(userPlan==='free'){
+        appendMessage('bot','❌ Service temporarily unavailable. Please contact the administrator.');
+      } else {
+        appendMessage('bot','❌ No API key configured. Go to Settings and add your Gemini API key.');
+        openSettings();
+      }
       isChatLoading=false; return;
     }
     const body={
@@ -668,8 +672,11 @@ async function generateImage(){
   incrementRequest();
   const key=getActiveApiKey();
   if(!key){
+    const msg = userPlan==='free'
+      ? '❌ Service temporarily unavailable. Please contact the administrator.'
+      : '❌ No API key configured. Go to Settings and add your Gemini API key.';
     if(userPlan!=='free') openSettings();
-    resultsEl.innerHTML='<div class="error-card">'+(userPlan==='free'?'❌ Owner API key not configured. Contact admin.':'❌ No API key. Go to Settings → add your Gemini API key.')+'</div>'; if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Image';} return; }
+    resultsEl.innerHTML=`<div class="error-card">${msg}</div>`; if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Image';} return; }
   const fullPrompt=`${style} style: ${prompt}`;
   try {
     const promises=Array.from({length:qty},()=>fetch(
@@ -724,8 +731,11 @@ async function generateSong(){
   incrementRequest();
   const key=getActiveApiKey();
   if(!key){
+    const msg = userPlan==='free'
+      ? '❌ Service temporarily unavailable. Please contact the administrator.'
+      : '❌ No API key configured. Go to Settings and add your Gemini API key.';
     if(userPlan!=='free') openSettings();
-    resultsEl.innerHTML='<div class="error-card">'+(userPlan==='free'?'❌ Owner API key not configured. Contact admin.':'❌ No API key. Go to Settings → add your Gemini API key.')+'</div>'; if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Song';} return; }
+    resultsEl.innerHTML=`<div class="error-card">${msg}</div>`; if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Song';} return; }
   const fullPrompt=`Create a ${style} song with ${voice.toLowerCase()} vocalist about: ${prompt}`;
   try {
     const r=await fetch(
