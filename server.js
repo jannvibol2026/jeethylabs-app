@@ -305,6 +305,86 @@ function geminiKey() {
   return GEMINI_KEY;
 }
 
+/* ── Model discovery cache ── */
+let _modelsCache     = null;
+let _modelsCacheTime = 0;
+const MODELS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+async function fetchAvailableModels(key) {
+  const now = Date.now();
+  if (_modelsCache && (now - _modelsCacheTime) < MODELS_CACHE_TTL) {
+    return _modelsCache;
+  }
+  console.log('[models] Fetching available models from Gemini ListModels API...');
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}&pageSize=100`);
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`ListModels failed (HTTP ${r.status}): ${text.slice(0, 200)}`);
+  }
+  const data = await r.json();
+  const models = (data.models || []).map(m => ({
+    name:               m.name?.replace('models/', '') || '',
+    displayName:        m.displayName || '',
+    supportedMethods:   m.supportedGenerationMethods || [],
+  }));
+  _modelsCache     = models;
+  _modelsCacheTime = now;
+  console.log(`[models] Discovered ${models.length} models`);
+  return models;
+}
+
+/* Classify models by capability */
+function classifyModels(models) {
+  const generateContent = models.filter(m => m.supportedMethods.includes('generateContent'));
+  const imageModels = generateContent.filter(m =>
+    /image.gen|imagen|flash.*image|image.*flash/i.test(m.name) ||
+    /image.gen|imagen/i.test(m.displayName)
+  );
+  const ttsModels = generateContent.filter(m =>
+    /tts|text.to.speech/i.test(m.name) ||
+    /tts|text.to.speech/i.test(m.displayName)
+  );
+  const chatModels = generateContent.filter(m =>
+    !imageModels.includes(m) && !ttsModels.includes(m)
+  );
+  return { imageModels, ttsModels, chatModels, all: generateContent };
+}
+
+/* /api/models — list available Gemini models and their capabilities */
+app.get('/api/models', async (req, res) => {
+  try {
+    const key    = geminiKey();
+    const models = await fetchAvailableModels(key);
+    const { imageModels, ttsModels, chatModels } = classifyModels(models);
+    res.json({
+      all:         models,
+      imageModels: imageModels.map(m => m.name),
+      ttsModels:   ttsModels.map(m => m.name),
+      chatModels:  chatModels.map(m => m.name),
+      recommended: {
+        chat:  chatModels.find(m => /2\.5.flash/i.test(m.name))?.name  || chatModels[0]?.name  || 'gemini-2.5-flash',
+        image: imageModels[0]?.name || null,
+        tts:   ttsModels.find(m => /flash/i.test(m.name))?.name        || ttsModels[0]?.name   || null,
+      }
+    });
+  } catch (e) {
+    console.error('[/api/models]', e.message);
+    /* Return safe defaults so the frontend can still function */
+    res.json({
+      all:         [],
+      imageModels: [],
+      ttsModels:   [],
+      chatModels:  ['gemini-2.5-flash'],
+      recommended: {
+        chat:  'gemini-2.5-flash',
+        image: null,
+        tts:   null,
+      },
+      error: e.message
+    });
+  }
+});
+
 /* /api/chat */
 app.post('/api/chat', async (req, res) => {
   try {
@@ -356,10 +436,16 @@ async function safeJson(response, label) {
 }
 
 /* /api/image
-   Primary:  gemini-2.0-flash-preview-image-generation (:generateContent)
-   Fallback: gemini-2.0-flash-exp-image-generation (:generateContent)
-   Both use the standard Gemini generateContent API — no Imagen :predict endpoint.
+   Dynamically discovers available image-generation models via ListModels,
+   then tries each in order with exponential-backoff retries.
+   Safe fallback: gemini-2.0-flash if no image model is found in the catalogue.
 */
+
+/* Known-good image model fallbacks (used only when ListModels fails) */
+const IMAGE_MODEL_FALLBACKS = [
+  'gemini-2.0-flash-preview-image-generation',
+  'gemini-2.0-flash',
+];
 
 app.post('/api/image', async (req, res) => {
   try {
@@ -371,11 +457,22 @@ app.post('/api/image', async (req, res) => {
     const fullPrompt = `${prompt}${styleHint}`;
     console.log('[/api/image] prompt:', fullPrompt.slice(0, 120), '| aspectRatio:', aspectRatio);
 
-    /* ── Primary: gemini-2.0-flash-preview-image-generation ── */
-    const IMAGE_MODELS = [
-      'gemini-2.0-flash-preview-image-generation',
-      'gemini-2.0-flash-exp-image-generation',
-    ];
+    /* ── Resolve image models from live catalogue, fall back to safe defaults ── */
+    let IMAGE_MODELS;
+    try {
+      const allModels = await fetchAvailableModels(key);
+      const { imageModels } = classifyModels(allModels);
+      IMAGE_MODELS = imageModels.map(m => m.name);
+      if (IMAGE_MODELS.length === 0) {
+        console.warn('[/api/image] No image models found in catalogue — using fallbacks');
+        IMAGE_MODELS = IMAGE_MODEL_FALLBACKS;
+      } else {
+        console.log('[/api/image] Available image models:', IMAGE_MODELS);
+      }
+    } catch (catalogErr) {
+      console.warn('[/api/image] Could not fetch model catalogue:', catalogErr.message, '— using fallbacks');
+      IMAGE_MODELS = IMAGE_MODEL_FALLBACKS;
+    }
 
     let lastErr = null;
     for (const model of IMAGE_MODELS) {
