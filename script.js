@@ -45,8 +45,19 @@ async function fetchOwnerKey() {
 
 async function checkExistingSession() {
   try {
+    // Try session cookie first (httpOnly — browser sends automatically)
     const r = await fetch("/api/me", { credentials: "include" });
-    if (r.ok) { const d = await r.json(); onLoginSuccess(d.user, false); }
+    if (r.ok) { const d = await r.json(); onLoginSuccess(d.user, false); return; }
+    // Fallback: try stored token in localStorage
+    const stored = localStorage.getItem("jl_token");
+    if (stored) {
+      const r2 = await fetch("/api/me", {
+        credentials: "include",
+        headers: { "Authorization": "Bearer " + stored }
+      });
+      if (r2.ok) { const d = await r2.json(); onLoginSuccess(d.user, false); }
+      else localStorage.removeItem("jl_token"); // token expired/invalid
+    }
   } catch (e) {}
 }
 
@@ -196,6 +207,7 @@ async function submitOtp() {
     const data = await res.json();
     if (res.ok) {
       _otpPending = null;
+      if (data.token) localStorage.setItem("jl_token", data.token);
       showAuthMsg("Welcome, " + data.user.name + "! Account created!", "success");
       setTimeout(() => onLoginSuccess(data.user, true), 900);
     } else { showAuthMsg(data.error || "Invalid or expired code.", "error"); }
@@ -258,6 +270,7 @@ async function submitLogin(e) {
     });
     const data = await res.json();
     if (res.ok) {
+      if (data.token) localStorage.setItem("jl_token", data.token);
       showAuthMsg("Welcome back, " + data.user.name + "!", "success");
       setTimeout(() => onLoginSuccess(data.user, true), 800);
     } else { showAuthMsg(data.error || "Invalid email or password.", "error"); }
@@ -287,6 +300,7 @@ function onLoginSuccess(user, runPending) {
 // ── LOGOUT ─────────────────────────────────────────────────
 async function doLogout() {
   currentUser = null; window.currentUser = null;
+  localStorage.removeItem("jl_token");
   const wrap = document.getElementById("userProfileWrap");
   if (wrap) wrap.style.display = "none";
   closeDd();
@@ -574,6 +588,7 @@ async function _generateImage() {
   }
 
   try {
+    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI… (retries up to 3×)</div></div>`;
     const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne(prompt, key)));
     const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
     const errors  = results.filter(r => r.status === "rejected").map(r => r.reason?.message);
@@ -610,7 +625,16 @@ async function _generateImage() {
     document.querySelector(".panel-image .panel-inner-scroll")?.scrollTo({ top: 99999, behavior: "smooth" });
     incrementRequest();
   } catch (err) {
-    resultsEl.innerHTML = `<div class="error-card"><i class="fas fa-circle-exclamation"></i> ${escapeHtml(err.message)}</div>`;
+    const isOverload = /overload|high demand|quota|rate.?limit/i.test(err.message || "");
+    resultsEl.innerHTML = `
+      <div class="error-card">
+        <i class="fas fa-circle-exclamation"></i>
+        ${escapeHtml(err.message)}
+        ${isOverload ? "<br/><small style='opacity:.7'>The AI model is busy — please wait a moment and try again.</small>" : ""}
+        <br/><button onclick="_generateImage()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--accent,#7c3aed);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
+          <i class="fas fa-rotate-right"></i> Try Again
+        </button>
+      </div>`;
   }
   btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Image';
 }
@@ -638,17 +662,25 @@ async function _generateSong() {
   const btn       = document.getElementById("songGenBtn");
   const resultsEl = document.getElementById("songResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
-  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label">Writing lyrics &amp; generating audio... (~20–30s)</div></div>`;
+  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating audio… (~20–40s)</div></div>`;
+
+  // Show "retrying" hint after 15s if still loading
+  const retryHintTimer = setTimeout(() => {
+    const lbl = document.getElementById("songLoadingLabel");
+    if (lbl) lbl.textContent = "Retrying audio models due to high demand… please wait";
+  }, 15000);
+
   try {
     const res = await fetch("/api/song", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt, style, voice })
     });
+    clearTimeout(retryHintTimer);
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`); }
     const data = await res.json();
 
-    const { audio: audioB64, mimeType: audioMime, title: songTitle, lyrics: lyricsText, lyricsOnly } = data;
+    const { audio: audioB64, mimeType: audioMime, title: songTitle, lyrics: lyricsText, lyricsOnly, ttsMessage } = data;
 
     const card = document.createElement("div"); card.className = "song-result-card";
 
@@ -675,10 +707,14 @@ async function _generateSong() {
       a.innerHTML = '<i class="fas fa-download"></i> Download Audio';
       card.appendChild(a);
     } else {
-      // Lyrics-only notice
+      // Lyrics-only notice with retry button
       const notice = document.createElement("div");
-      notice.style.cssText = "display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);border-bottom:1px solid var(--border);";
-      notice.innerHTML = '<i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0"></i> Audio generation is temporarily unavailable — your lyrics are ready below. You can try again in a moment.';
+      notice.style.cssText = "display:flex;flex-direction:column;gap:8px;padding:10px 14px;font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);border-bottom:1px solid var(--border);";
+      const msg = ttsMessage || "Audio generation is temporarily unavailable due to high demand — your lyrics are ready below. Try again in a few minutes.";
+      notice.innerHTML = `<div style="display:flex;align-items:flex-start;gap:8px;"><i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0;margin-top:2px"></i><span>${escapeHtml(msg)}</span></div>
+        <button onclick="_generateSong()" style="align-self:flex-start;padding:5px 14px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:11px;cursor:pointer;font-weight:600;">
+          <i class="fas fa-rotate-right"></i> Retry Audio
+        </button>`;
       card.appendChild(notice);
     }
 
@@ -694,7 +730,17 @@ async function _generateSong() {
     document.querySelector(".panel-song .panel-inner-scroll")?.scrollTo({ top: 99999, behavior: "smooth" });
     incrementRequest();
   } catch (err) {
-    resultsEl.innerHTML = `<div class="error-card"><i class="fas fa-circle-exclamation"></i> ${escapeHtml(err.message)}</div>`;
+    clearTimeout(retryHintTimer);
+    const isOverload = /overload|high demand|quota|rate.?limit/i.test(err.message || "");
+    resultsEl.innerHTML = `
+      <div class="error-card">
+        <i class="fas fa-circle-exclamation"></i>
+        ${escapeHtml(err.message)}
+        ${isOverload ? "<br/><small style='opacity:.7'>The TTS model is experiencing high demand. Please try again in a moment.</small>" : ""}
+        <br/><button onclick="_generateSong()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
+          <i class="fas fa-rotate-right"></i> Try Again
+        </button>
+      </div>`;
   }
   btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
 }

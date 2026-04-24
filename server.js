@@ -1,5 +1,6 @@
 'use strict';
 const express    = require('express');
+const session    = require('express-session');
 const { Pool }   = require('pg');
 const bcrypt     = require('bcryptjs');
 const jwt        = require('jsonwebtoken');
@@ -9,19 +10,34 @@ const path       = require('path');
 
 const app = express();
 
+/* ── ENV ── */
+const DATABASE_URL  = process.env.DATABASE_URL;
+const JWT_SECRET    = process.env.JWT_SECRET    || 'jeethylabs_secret_2026';
+const SESSION_SECRET= process.env.SESSION_SECRET|| JWT_SECRET;
+const SMTP_USER     = process.env.SMTP_USER     || '';
+const SMTP_PASS     = process.env.SMTP_PASS     || '';
+const FROM_EMAIL    = process.env.FROM_EMAIL    || SMTP_USER;
+const GEMINI_KEY    = process.env.GEMINI_API_KEY|| '';   // ← Railway env var
+const PORT          = process.env.PORT          || 8080;
+
 /* ── CORS: allow all origins + Authorization header ── */
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname)));
 
-/* ── ENV ── */
-const DATABASE_URL = process.env.DATABASE_URL;
-const JWT_SECRET   = process.env.JWT_SECRET   || 'jeethylabs_secret_2026';
-const SMTP_USER    = process.env.SMTP_USER     || '';
-const SMTP_PASS    = process.env.SMTP_PASS     || '';
-const FROM_EMAIL   = process.env.FROM_EMAIL    || SMTP_USER;
-const GEMINI_KEY   = process.env.GEMINI_API_KEY|| '';   // ← Railway env var
-const PORT         = process.env.PORT          || 8080;
+/* ── SESSION: cookie-based, 30-day persistent ── */
+app.use(session({
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000   // 30 days
+  }
+}));
+
+app.use(express.static(path.join(__dirname)));
 
 console.log('=== JeeThy Labs Starting ===');
 console.log('SMTP_USER:',  SMTP_USER  || 'MISSING');
@@ -87,10 +103,13 @@ async function sendEmail(to, subject, html) {
 }
 
 /* ── AUTH MIDDLEWARE ── */
-/* Reads JWT from  Authorization: Bearer <token>  header */
+/* Accepts JWT from:
+   1. Authorization: Bearer <token>  header  (API calls)
+   2. req.session.token               cookie  (browser sessions)
+*/
 function auth(req, res, next) {
   const hdr   = req.headers.authorization || '';
-  const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
+  const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : (req.session && req.session.token) || null;
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
   try { req.user = jwt.verify(token, JWT_SECRET); next(); }
   catch { res.status(401).json({ error: 'Invalid or expired token' }); }
@@ -155,7 +174,8 @@ app.post('/api/verify-otp', async (req, res) => {
        RETURNING id,user_id,name,email,plan,status,avatar_url,created_at`,
       [req.body.name||rec.name||'User', email, hash, now]);
     const u = rows[0];
-    const token = jwt.sign({ id:u.id, email:u.email }, JWT_SECRET, { expiresIn:'7d' });
+    const token = jwt.sign({ id:u.id, email:u.email }, JWT_SECRET, { expiresIn:'30d' });
+    req.session.token = token;   // persist in httpOnly cookie
     res.json({ success:true, token, user:{ id:u.id, name:u.name, email:u.email, plan:u.plan||'free', avatar_url:u.avatar_url||null, created_at:u.created_at } });
   } catch (e) {
     console.error('[verify-otp]', e.message);
@@ -173,7 +193,8 @@ app.post('/api/login', async (req, res) => {
     if (!u.password_hash) return res.status(401).json({ error: 'Account has no password. Please sign up again.' });
     if (!await bcrypt.compare(password||'', u.password_hash)) return res.status(401).json({ error: 'Wrong password.' });
     await pool.query('UPDATE users SET last_active=$1 WHERE id=$2', [new Date(), u.id]);
-    const token = jwt.sign({ id:u.id, email:u.email }, JWT_SECRET, { expiresIn:'7d' });
+    const token = jwt.sign({ id:u.id, email:u.email }, JWT_SECRET, { expiresIn:'30d' });
+    req.session.token = token;   // persist in httpOnly cookie
     res.json({ success:true, token, user:{ id:u.id, name:u.name, email:u.email, plan:u.plan||'free', avatar_url:u.avatar_url||null, created_at:u.created_at } });
   } catch (e) {
     res.status(500).json({ error: 'Login failed: ' + e.message });
@@ -265,7 +286,11 @@ app.post('/api/upload-avatar', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/logout', (req, res) => res.json({ success:true }));
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => {});
+  res.clearCookie('connect.sid');
+  res.json({ success: true });
+});
 
 /* ════════════════════════════════════════════
    GEMINI PROXY ROUTES
@@ -301,6 +326,24 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+/* ── Shared retry helper: exponential backoff ── */
+async function withRetry(fn, { maxAttempts = 3, baseDelayMs = 1000, label = 'op' } = {}) {
+  let lastErr;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn(attempt);
+    } catch (err) {
+      lastErr = err;
+      const isOverload = /overload|high demand|quota|rate.?limit|503|429/i.test(err.message || '');
+      if (!isOverload || attempt === maxAttempts) throw err;
+      const delay = baseDelayMs * Math.pow(2, attempt - 1);
+      console.warn(`[${label}] attempt ${attempt} failed (${err.message}) — retrying in ${delay}ms`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
 /* /api/image */
 app.post('/api/image', async (req, res) => {
   try {
@@ -309,49 +352,50 @@ app.post('/api/image', async (req, res) => {
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
     const fullPrompt = style ? `${prompt}, style: ${style}` : prompt;
-
     console.log('[/api/image] prompt:', fullPrompt.slice(0, 120), '| aspectRatio:', aspectRatio);
 
-    const body = JSON.stringify({
-      contents:[{ parts:[{ text: fullPrompt }] }],
-      generationConfig:{
-        responseModalities:['IMAGE','TEXT'],
-        imageGenerationConfig:{ aspectRatio }
-      }
-    });
+    /* Attempt image generation with up to 3 retries */
+    const img = await withRetry(async (attempt) => {
+      if (attempt > 1) console.log(`[/api/image] retry attempt ${attempt}`);
 
-    const r = await fetch(`${GEMINI}/gemini-2.0-flash-preview-image-generation:generateContent?key=${key}`, {
-      method:'POST', headers:{'Content-Type':'application/json'}, body
-    });
-    const d = await r.json();
-
-    if (!r.ok) {
-      console.error('[/api/image] Gemini error:', JSON.stringify(d.error || d));
-      return res.status(r.status).json({ error: d.error?.message || 'Gemini image API error' });
-    }
-
-    console.log('[/api/image] candidates:', d.candidates?.length,
-      '| parts:', d.candidates?.[0]?.content?.parts?.map(p => Object.keys(p)).join(', '));
-
-    let img = null;
-    for (const c of (d.candidates||[])) {
-      for (const p of (c.content?.parts||[])) {
-        if (p.inlineData?.data) { img = p.inlineData; break; }
-      }
-      if (img) break;
-    }
-
-    if (!img) {
-      const textPart = d.candidates?.[0]?.content?.parts?.find(p => p.text);
-      const reason   = d.candidates?.[0]?.finishReason || 'UNKNOWN';
-      console.error('[/api/image] No image in response. finishReason:', reason,
-        '| text:', textPart?.text?.slice(0, 200));
-      return res.status(500).json({
-        error: reason === 'IMAGE_SAFETY'
-          ? 'Image blocked by safety filters. Please try a different prompt.'
-          : 'No image returned. Try a different or more descriptive prompt.'
+      const body = JSON.stringify({
+        contents: [{ parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+          responseModalities: ['IMAGE', 'TEXT'],
+          imageGenerationConfig: { aspectRatio }
+        }
       });
-    }
+
+      const r = await fetch(
+        `${GEMINI}/gemini-2.0-flash-preview-image-generation:generateContent?key=${key}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }
+      );
+      const d = await r.json();
+
+      if (!r.ok) {
+        const msg = d.error?.message || `Gemini image API error (HTTP ${r.status})`;
+        console.error('[/api/image] Gemini error:', JSON.stringify(d.error || d));
+        throw new Error(msg);
+      }
+
+      console.log('[/api/image] candidates:', d.candidates?.length,
+        '| parts:', d.candidates?.[0]?.content?.parts?.map(p => Object.keys(p)).join(', '));
+
+      for (const c of (d.candidates || [])) {
+        for (const p of (c.content?.parts || [])) {
+          if (p.inlineData?.data) return p.inlineData;
+        }
+      }
+
+      /* No image data found — check why */
+      const reason = d.candidates?.[0]?.finishReason || 'UNKNOWN';
+      const text   = d.candidates?.[0]?.content?.parts?.find(p => p.text)?.text?.slice(0, 200);
+      console.error('[/api/image] No image in response. finishReason:', reason, '| text:', text);
+
+      if (reason === 'IMAGE_SAFETY')
+        throw new Error('Image blocked by safety filters. Please try a different prompt.');
+      throw new Error('No image returned by the model. Try a more descriptive prompt.');
+    }, { maxAttempts: 3, baseDelayMs: 1500, label: '/api/image' });
 
     console.log('[/api/image] success — mimeType:', img.mimeType, '| bytes:', img.data?.length);
     res.json({ data: img.data, mimeType: img.mimeType || 'image/png' });
@@ -374,37 +418,51 @@ const TTS_MODELS = [
   'gemini-2.5-pro-preview-tts',
 ];
 
+/* Try each TTS model with exponential backoff retries per model */
 async function tryTts(key, ttsText, voiceName) {
   for (const model of TTS_MODELS) {
     try {
-      console.log(`[/api/song] Trying TTS model: ${model} | voice: ${voiceName}`);
-      const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          contents:[{ parts:[{ text: ttsText }] }],
-          generationConfig:{
-            responseModalities:['AUDIO'],
-            speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName } } }
-          }
-        })
-      });
-      const d = await r.json();
-      if (!r.ok) {
-        console.warn(`[/api/song] TTS model ${model} failed (HTTP ${r.status}):`, d.error?.message || JSON.stringify(d.error));
-        continue;
-      }
-      for (const c of (d.candidates||[])) {
-        for (const p of (c.content?.parts||[])) {
-          if (p.inlineData?.data) {
-            console.log(`[/api/song] TTS success with ${model} | mimeType: ${p.inlineData.mimeType}`);
-            return { data: p.inlineData.data, mimeType: p.inlineData.mimeType || 'audio/wav' };
+      const result = await withRetry(async (attempt) => {
+        if (attempt > 1) console.log(`[/api/song] TTS ${model} retry attempt ${attempt}`);
+        console.log(`[/api/song] Trying TTS model: ${model} | voice: ${voiceName} | attempt: ${attempt}`);
+
+        const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: ttsText }] }],
+            generationConfig: {
+              responseModalities: ['AUDIO'],
+              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } }
+            }
+          })
+        });
+        const d = await r.json();
+
+        if (!r.ok) {
+          const msg = d.error?.message || `TTS HTTP ${r.status}`;
+          console.warn(`[/api/song] TTS model ${model} failed (HTTP ${r.status}):`, msg);
+          throw new Error(msg);
+        }
+
+        for (const c of (d.candidates || [])) {
+          for (const p of (c.content?.parts || [])) {
+            if (p.inlineData?.data) {
+              console.log(`[/api/song] TTS success with ${model} | mimeType: ${p.inlineData.mimeType}`);
+              return { data: p.inlineData.data, mimeType: p.inlineData.mimeType || 'audio/wav' };
+            }
           }
         }
-      }
-      console.warn(`[/api/song] TTS model ${model} returned no audio. finishReason:`,
-        d.candidates?.[0]?.finishReason, '| parts:', JSON.stringify(d.candidates?.[0]?.content?.parts?.map(p => Object.keys(p))));
+
+        const reason = d.candidates?.[0]?.finishReason;
+        console.warn(`[/api/song] TTS model ${model} returned no audio. finishReason:`, reason,
+          '| parts:', JSON.stringify(d.candidates?.[0]?.content?.parts?.map(p => Object.keys(p))));
+        throw new Error(`No audio data from ${model} (finishReason: ${reason || 'UNKNOWN'})`);
+      }, { maxAttempts: 3, baseDelayMs: 1000, label: `/api/song TTS ${model}` });
+
+      if (result) return result;
     } catch (err) {
-      console.warn(`[/api/song] TTS model ${model} exception:`, err.message);
+      console.warn(`[/api/song] TTS model ${model} exhausted retries:`, err.message);
+      /* Continue to next model */
     }
   }
   return null;
@@ -450,7 +508,7 @@ app.post('/api/song', async (req, res) => {
     const ttsResult = await tryTts(key, ttsText, ttsVoiceName);
 
     if (!ttsResult) {
-      console.warn('[/api/song] All TTS models failed — returning lyrics only');
+      console.warn('[/api/song] All TTS models exhausted — returning lyrics only');
     }
 
     res.json({
@@ -458,7 +516,10 @@ app.post('/api/song', async (req, res) => {
       mimeType:   ttsResult ? ttsResult.mimeType : 'audio/wav',
       title:      songTitle,
       lyrics:     lyricsText,
-      lyricsOnly: !ttsResult
+      lyricsOnly: !ttsResult,
+      ttsMessage: !ttsResult
+        ? 'Audio generation is temporarily unavailable due to high demand. Your lyrics are ready — try again in a few minutes for audio.'
+        : null
     });
   } catch (e) {
     console.error('[/api/song] exception:', e.message);
