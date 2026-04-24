@@ -557,30 +557,31 @@ async function _generateImage() {
   const ratio  = getActiveChip("imgRatioGroup");
   const qty    = parseInt(getActiveChip("imgQtyGroup")) || 1;
   const aspectRatio = ({ "1:1": "1:1", "9:16": "9:16", "16:9": "16:9" })[ratio] || "1:1";
-  const fullPrompt  = `${prompt}, style: ${style}`;
   const btn       = document.getElementById("imgGenBtn");
   const resultsEl = document.getElementById("imgResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
   resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI...</div></div>`;
 
-  async function fetchOne(p, k) {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${k}`,
-      { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: p }] }], generationConfig: { responseModalities: ["IMAGE", "TEXT"], imageGenerationConfig: { aspectRatio } } }) }
-    );
-    if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message || `HTTP ${r.status}`); }
+  async function fetchOne(prompt, _unusedKey) {
+    const r = await fetch("/api/image", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, aspectRatio, style })
+    });
     const d = await r.json();
-    for (const c of (d.candidates || []))
-      for (const pt of (c.content?.parts || []))
-        if (pt.inlineData?.data) return pt.inlineData;
-    throw new Error("No image in response");
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    if (!d.data) throw new Error("No image data in response");
+    return { data: d.data, mimeType: d.mimeType || "image/png" };
   }
 
   try {
-    const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne(fullPrompt, key)));
+    const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne(prompt, key)));
     const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
-    if (!imgs.length) throw new Error("No images generated. Try a different prompt.");
+    const errors  = results.filter(r => r.status === "rejected").map(r => r.reason?.message);
+    if (errors.length) console.warn("[image] Some requests failed:", errors);
+    if (!imgs.length) {
+      const firstErr = errors[0] || "No images generated. Try a different prompt.";
+      throw new Error(firstErr);
+    }
     const card = document.createElement("div"); card.className = "img-result-card";
     const grid = document.createElement("div"); grid.className = `img-grid qty-${imgs.length}`;
     const blobs = [];
@@ -637,7 +638,7 @@ async function _generateSong() {
   const btn       = document.getElementById("songGenBtn");
   const resultsEl = document.getElementById("songResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
-  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label">Writing lyrics &amp; generating audio... (~15s)</div></div>`;
+  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label">Writing lyrics &amp; generating audio... (~20–30s)</div></div>`;
   try {
     const res = await fetch("/api/song", {
       method: "POST",
@@ -677,7 +678,7 @@ async function _generateSong() {
       // Lyrics-only notice
       const notice = document.createElement("div");
       notice.style.cssText = "display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);border-bottom:1px solid var(--border);";
-      notice.innerHTML = '<i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0"></i> Audio generation is temporarily unavailable — your lyrics are ready below.';
+      notice.innerHTML = '<i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0"></i> Audio generation is temporarily unavailable — your lyrics are ready below. You can try again in a moment.';
       card.appendChild(notice);
     }
 

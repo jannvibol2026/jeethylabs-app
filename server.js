@@ -305,23 +305,58 @@ app.post('/api/chat', async (req, res) => {
 app.post('/api/image', async (req, res) => {
   try {
     const key = geminiKey();
-    const { prompt, aspectRatio = '1:1' } = req.body;
+    const { prompt, aspectRatio = '1:1', style = '' } = req.body;
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
+
+    const fullPrompt = style ? `${prompt}, style: ${style}` : prompt;
+
+    console.log('[/api/image] prompt:', fullPrompt.slice(0, 120), '| aspectRatio:', aspectRatio);
+
+    const body = JSON.stringify({
+      contents:[{ parts:[{ text: fullPrompt }] }],
+      generationConfig:{
+        responseModalities:['IMAGE','TEXT'],
+        imageGenerationConfig:{ aspectRatio }
+      }
+    });
+
     const r = await fetch(`${GEMINI}/gemini-2.0-flash-preview-image-generation:generateContent?key=${key}`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        contents:[{ parts:[{ text: prompt }] }],
-        generationConfig:{ responseModalities:['IMAGE','TEXT'], imageConfig:{ aspectRatio } }
-      })
+      method:'POST', headers:{'Content-Type':'application/json'}, body
     });
     const d = await r.json();
-    if (!r.ok) return res.status(r.status).json({ error: d.error?.message || 'Gemini error' });
+
+    if (!r.ok) {
+      console.error('[/api/image] Gemini error:', JSON.stringify(d.error || d));
+      return res.status(r.status).json({ error: d.error?.message || 'Gemini image API error' });
+    }
+
+    console.log('[/api/image] candidates:', d.candidates?.length,
+      '| parts:', d.candidates?.[0]?.content?.parts?.map(p => Object.keys(p)).join(', '));
+
     let img = null;
-    for (const c of (d.candidates||[])) for (const p of (c.content?.parts||[])) if (p.inlineData?.data) { img=p.inlineData; break; }
-    if (!img) return res.status(500).json({ error: 'No image returned. Try a different prompt.' });
-    res.json({ data: img.data, mimeType: img.mimeType||'image/png' });
+    for (const c of (d.candidates||[])) {
+      for (const p of (c.content?.parts||[])) {
+        if (p.inlineData?.data) { img = p.inlineData; break; }
+      }
+      if (img) break;
+    }
+
+    if (!img) {
+      const textPart = d.candidates?.[0]?.content?.parts?.find(p => p.text);
+      const reason   = d.candidates?.[0]?.finishReason || 'UNKNOWN';
+      console.error('[/api/image] No image in response. finishReason:', reason,
+        '| text:', textPart?.text?.slice(0, 200));
+      return res.status(500).json({
+        error: reason === 'IMAGE_SAFETY'
+          ? 'Image blocked by safety filters. Please try a different prompt.'
+          : 'No image returned. Try a different or more descriptive prompt.'
+      });
+    }
+
+    console.log('[/api/image] success — mimeType:', img.mimeType, '| bytes:', img.data?.length);
+    res.json({ data: img.data, mimeType: img.mimeType || 'image/png' });
   } catch (e) {
-    console.error('[/api/image]', e.message);
+    console.error('[/api/image] exception:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -329,86 +364,104 @@ app.post('/api/image', async (req, res) => {
 /* /api/song
    Strategy:
    1. Use gemini-2.5-flash to generate full song lyrics + metadata.
-   2. Use gemini-2.5-pro-preview-tts to convert the lyrics to audio speech.
-   3. If TTS fails, return lyrics-only so the frontend can still display them.
+   2. Try TTS models in order: gemini-2.5-flash-preview-tts → gemini-2.5-pro-preview-tts.
+   3. If all TTS models fail, return lyrics-only so the frontend can still display them.
 */
+
+/* TTS models to try in order — most available first */
+const TTS_MODELS = [
+  'gemini-2.5-flash-preview-tts',
+  'gemini-2.5-pro-preview-tts',
+];
+
+async function tryTts(key, ttsText, voiceName) {
+  for (const model of TTS_MODELS) {
+    try {
+      console.log(`[/api/song] Trying TTS model: ${model} | voice: ${voiceName}`);
+      const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents:[{ parts:[{ text: ttsText }] }],
+          generationConfig:{
+            responseModalities:['AUDIO'],
+            speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName } } }
+          }
+        })
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        console.warn(`[/api/song] TTS model ${model} failed (HTTP ${r.status}):`, d.error?.message || JSON.stringify(d.error));
+        continue;
+      }
+      for (const c of (d.candidates||[])) {
+        for (const p of (c.content?.parts||[])) {
+          if (p.inlineData?.data) {
+            console.log(`[/api/song] TTS success with ${model} | mimeType: ${p.inlineData.mimeType}`);
+            return { data: p.inlineData.data, mimeType: p.inlineData.mimeType || 'audio/wav' };
+          }
+        }
+      }
+      console.warn(`[/api/song] TTS model ${model} returned no audio. finishReason:`,
+        d.candidates?.[0]?.finishReason, '| parts:', JSON.stringify(d.candidates?.[0]?.content?.parts?.map(p => Object.keys(p))));
+    } catch (err) {
+      console.warn(`[/api/song] TTS model ${model} exception:`, err.message);
+    }
+  }
+  return null;
+}
+
 app.post('/api/song', async (req, res) => {
   try {
     const key = geminiKey();
     const { prompt, style='Pop', voice='Female' } = req.body;
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
-    const isFemalVoice = !voice.toLowerCase().includes('male') || voice.toLowerCase().includes('female');
-    const voiceLabel   = isFemalVoice ? 'Female' : 'Male';
-    const ttsVoiceName = isFemalVoice ? 'Aoede' : 'Charon';
+    const isFemaleVoice = !voice.toLowerCase().includes('male') || voice.toLowerCase().includes('female');
+    const voiceLabel    = isFemaleVoice ? 'Female' : 'Male';
+    const ttsVoiceName  = isFemaleVoice ? 'Aoede' : 'Charon';
+
+    console.log(`[/api/song] prompt: "${prompt.slice(0,80)}" | style: ${style} | voice: ${voiceLabel}`);
 
     /* ── Step 1: Generate song lyrics via Gemini Flash ── */
     const lyricsPrompt =
-      `You are a professional songwriter. Write a complete, original ${style} song about: "${prompt}".
-Include:
-- A creative song title (prefix with "Title: ")
-- Verse 1 (label as [Verse 1])
-- Pre-Chorus or Bridge (label as [Pre-Chorus] or [Bridge])
-- Chorus (label as [Chorus])
-- Verse 2 (label as [Verse 2])
-- Final Chorus (label as [Chorus])
-- Outro (label as [Outro])
-Vocalist style: ${voiceLabel}. Genre: ${style}.
-Write only the song — no explanations or commentary.`;
+      `You are a professional songwriter. Write a complete, original ${style} song about: "${prompt}".\nInclude:\n- A creative song title (prefix with "Title: ")\n- Verse 1 (label as [Verse 1])\n- Pre-Chorus or Bridge (label as [Pre-Chorus] or [Bridge])\n- Chorus (label as [Chorus])\n- Verse 2 (label as [Verse 2])\n- Final Chorus (label as [Chorus])\n- Outro (label as [Outro])\nVocalist style: ${voiceLabel}. Genre: ${style}.\nWrite only the song — no explanations or commentary.`;
 
     const lyricsRes = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ contents:[{ parts:[{ text: lyricsPrompt }] }] })
     });
     const lyricsData = await lyricsRes.json();
-    if (!lyricsRes.ok) return res.status(lyricsRes.status).json({ error: lyricsData.error?.message || 'Lyrics generation failed' });
+    if (!lyricsRes.ok) {
+      console.error('[/api/song] Lyrics generation failed:', lyricsData.error?.message);
+      return res.status(lyricsRes.status).json({ error: lyricsData.error?.message || 'Lyrics generation failed' });
+    }
 
     const lyricsText = lyricsData.candidates?.[0]?.content?.parts?.[0]?.text || '';
     if (!lyricsText) return res.status(500).json({ error: 'No lyrics generated. Please try again.' });
+
+    console.log(`[/api/song] Lyrics generated (${lyricsText.length} chars)`);
 
     /* Extract title */
     const titleMatch = lyricsText.match(/^Title:\s*(.+)$/im);
     const songTitle  = titleMatch ? titleMatch[1].trim() : `${style} Song`;
 
     /* ── Step 2: Convert lyrics to audio via TTS ── */
-    const ttsText = lyricsText.replace(/^Title:.*$/im, '').trim();
-    let audio = null, audioMime = 'audio/wav';
+    const ttsText   = lyricsText.replace(/^Title:.*$/im, '').trim();
+    const ttsResult = await tryTts(key, ttsText, ttsVoiceName);
 
-    try {
-      const ttsRes = await fetch(`${GEMINI}/gemini-2.5-pro-preview-tts:generateContent?key=${key}`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          contents:[{ parts:[{ text: ttsText }] }],
-          generationConfig:{
-            responseModalities:['AUDIO'],
-            speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName: ttsVoiceName } } }
-          }
-        })
-      });
-      const ttsData = await ttsRes.json();
-      if (ttsRes.ok) {
-        for (const c of (ttsData.candidates||[]))
-          for (const p of (c.content?.parts||[]))
-            if (p.inlineData?.data && !audio) {
-              audio     = p.inlineData.data;
-              audioMime = p.inlineData.mimeType || 'audio/wav';
-            }
-      } else {
-        console.warn('[/api/song] TTS failed:', ttsData.error?.message, '— returning lyrics only');
-      }
-    } catch (ttsErr) {
-      console.warn('[/api/song] TTS error:', ttsErr.message, '— returning lyrics only');
+    if (!ttsResult) {
+      console.warn('[/api/song] All TTS models failed — returning lyrics only');
     }
 
     res.json({
-      audio:    audio || null,
-      mimeType: audioMime,
-      title:    songTitle,
-      lyrics:   lyricsText,
-      lyricsOnly: !audio
+      audio:      ttsResult ? ttsResult.data : null,
+      mimeType:   ttsResult ? ttsResult.mimeType : 'audio/wav',
+      title:      songTitle,
+      lyrics:     lyricsText,
+      lyricsOnly: !ttsResult
     });
   } catch (e) {
-    console.error('[/api/song]', e.message);
+    console.error('[/api/song] exception:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
