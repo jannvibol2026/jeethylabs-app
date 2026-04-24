@@ -3,7 +3,6 @@
 // ── MODELS ─────────────────────────────────────────────────
 const GEMINI_CHAT_MODEL  = "gemini-2.5-flash";
 const GEMINI_IMAGE_MODEL = "gemini-2.0-flash-preview-image-generation";
-const GEMINI_IMAGE_FALLBACK = "gemini-2.0-flash-exp-image-generation";
 
 // ── PLAN LIMITS ────────────────────────────────────────────
 const PLAN_LIMITS = {
@@ -568,104 +567,60 @@ async function _generateImage() {
   if (!checkQuota()) return;
   const prompt = document.getElementById("imgPrompt").value.trim();
   if (!prompt) return showToast("Please enter a prompt", "error");
-  const style  = getActiveChip("imgStyleGroup");
-  const ratio  = getActiveChip("imgRatioGroup");
-  const qty    = parseInt(getActiveChip("imgQtyGroup")) || 1;
-  const styleHint   = style && style.toLowerCase() !== "none" ? `, style: ${style}` : "";
-  const fullPrompt  = `${prompt}${styleHint}`;
-  const btn       = document.getElementById("imgGenBtn");
-  const resultsEl = document.getElementById("imgResults");
+  const style      = getActiveChip("imgStyleGroup");
+  const styleHint  = style && style.toLowerCase() !== "none" ? `, style: ${style}` : "";
+  const fullPrompt = `${prompt}${styleHint}`;
+  const btn        = document.getElementById("imgGenBtn");
+  const resultsEl  = document.getElementById("imgResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-  resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI...</div></div>`;
-
-  /* Call Gemini image generation API directly (same pattern as chat) */
-  async function fetchOne() {
-    const models = [GEMINI_IMAGE_MODEL, GEMINI_IMAGE_FALLBACK];
-    let lastErr = null;
-    for (const model of models) {
-      try {
-        console.log(`[image] Trying model: ${model} | prompt: "${fullPrompt.slice(0, 80)}"`);
-        const r = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: fullPrompt }] }],
-              generationConfig: { responseModalities: ["IMAGE", "TEXT"] }
-            })
-          }
-        );
-        const d = await r.json();
-        if (!r.ok) {
-          const msg = d.error?.message || `HTTP ${r.status}`;
-          console.warn(`[image] ${model} error:`, msg);
-          throw new Error(msg);
-        }
-        for (const c of (d.candidates || [])) {
-          for (const p of (c.content?.parts || [])) {
-            if (p.inlineData?.data) {
-              console.log(`[image] success with ${model} | mimeType: ${p.inlineData.mimeType}`);
-              return { data: p.inlineData.data, mimeType: p.inlineData.mimeType || "image/png" };
-            }
-          }
-        }
-        const reason = d.candidates?.[0]?.finishReason || "UNKNOWN";
-        if (reason === "IMAGE_SAFETY") throw new Error("Image blocked by safety filters. Please try a different prompt.");
-        console.warn(`[image] ${model} returned no image data. finishReason: ${reason}`);
-        throw new Error(`No image returned by ${model}. Try a more descriptive prompt.`);
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[image] model ${model} failed:`, err.message);
-      }
-    }
-    throw lastErr || new Error("Image generation failed. Please try again.");
-  }
-
+  resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating image with AI...</div></div>`;
   try {
-    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI… (retries up to 3×)</div></div>`;
-    const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne()));
-    const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
-    const errors  = results.filter(r => r.status === "rejected").map(r => r.reason?.message);
-    if (errors.length) console.warn("[image] Some requests failed:", errors);
-    if (!imgs.length) {
-      const firstErr = errors[0] || "No images generated. Try a different prompt.";
-      throw new Error(firstErr);
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${key}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: fullPrompt }] }],
+          generationConfig: { responseModalities: ["IMAGE", "TEXT"] }
+        })
+      }
+    );
+    if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || `HTTP ${res.status}`); }
+    const data = await res.json();
+    let imgPart = null;
+    for (const c of (data.candidates || [])) {
+      for (const p of (c.content?.parts || [])) {
+        if (p.inlineData?.data) { imgPart = p.inlineData; break; }
+      }
+      if (imgPart) break;
     }
+    if (!imgPart) throw new Error("No image returned. Try a more descriptive prompt.");
+    const bytes  = atob(imgPart.data); const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    const mime    = imgPart.mimeType || "image/png";
+    const blob    = new Blob([arr], { type: mime });
+    const blobUrl = URL.createObjectURL(blob);
     const card = document.createElement("div"); card.className = "img-result-card";
-    const grid = document.createElement("div"); grid.className = `img-grid qty-${imgs.length}`;
-    const blobs = [];
-    imgs.forEach((d, i) => {
-      const bytes = atob(d.data); const arr = new Uint8Array(bytes.length);
-      for (let j = 0; j < bytes.length; j++) arr[j] = bytes.charCodeAt(j);
-      const blob    = new Blob([arr], { type: d.mimeType || "image/png" });
-      const blobUrl = URL.createObjectURL(blob);
-      blobs.push({ blobUrl, mime: d.mimeType || "image/png" });
-      const img = document.createElement("img"); img.src = blobUrl; img.alt = `Generated ${i + 1}`;
-      img.onclick = () => openFullscreen(blobUrl);
-      grid.appendChild(img);
-    });
-    card.appendChild(grid);
+    const grid = document.createElement("div"); grid.className = "img-grid qty-1";
+    const img  = document.createElement("img"); img.src = blobUrl; img.alt = "Generated image";
+    img.onclick = () => openFullscreen(blobUrl);
+    grid.appendChild(img); card.appendChild(grid);
     const dlWrap = document.createElement("div");
     dlWrap.style.cssText = "padding:12px;display:flex;flex-direction:column;gap:8px;";
-    blobs.forEach(({ blobUrl, mime }, i) => {
-      const ext = mime.split("/")[1] || "png";
-      const a   = document.createElement("a"); a.className = "btn-download";
-      a.href = blobUrl; a.download = `jeethy-image-${Date.now()}-${i + 1}.${ext}`;
-      a.innerHTML = `<i class="fas fa-download"></i> Download Image${blobs.length > 1 ? " " + (i + 1) : ""}`;
-      dlWrap.appendChild(a);
-    });
-    card.appendChild(dlWrap);
+    const ext = mime.split("/")[1] || "png";
+    const a   = document.createElement("a"); a.className = "btn-download";
+    a.href = blobUrl; a.download = `jeethy-image-${Date.now()}.${ext}`;
+    a.innerHTML = '<i class="fas fa-download"></i> Download Image';
+    dlWrap.appendChild(a); card.appendChild(dlWrap);
     resultsEl.innerHTML = ""; resultsEl.appendChild(card);
     document.querySelector(".panel-image .panel-inner-scroll")?.scrollTo({ top: 99999, behavior: "smooth" });
     incrementRequest();
   } catch (err) {
-    const isOverload = /overload|high demand|quota|rate.?limit/i.test(err.message || "");
     resultsEl.innerHTML = `
       <div class="error-card">
         <i class="fas fa-circle-exclamation"></i>
         ${escapeHtml(err.message)}
-        ${isOverload ? "<br/><small style='opacity:.7'>The AI model is busy — please wait a moment and try again.</small>" : ""}
         <br/><button onclick="_generateImage()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--accent,#7c3aed);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Try Again
         </button>
