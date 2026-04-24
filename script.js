@@ -26,7 +26,7 @@ let currentPanel    = 0;
 let userPlan        = 'free';
 let proCustomKey    = '';
 let useOwnKey       = false;
-let ownerApiKey     = '';
+let ownerApiKey     = window.__ownerApiKey || '';
 let requestCount    = 0;
 let chatHistory     = [];
 let isChatLoading   = false;
@@ -65,6 +65,8 @@ function showToast(msg, type='success'){
 
 // ── INIT ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // Retry owner key fetch after 2s in case first attempt failed
+  setTimeout(async()=>{ if(!ownerApiKey) await fetchOwnerKey(); }, 2000);
   loadState();
   setWelcomeTime();
   initSwipe();
@@ -76,17 +78,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ── OWNER KEY ────────────────────────────────────────
 async function fetchOwnerKey(){
-  // Fetch owner key from Railway server (used by Free users)
+  // Fetch owner key from Railway server
   try {
     const r = await fetch('/api/key', {credentials:'include'});
-    if(r.ok){ const d = await r.json(); ownerApiKey = d.key||''; }
-  } catch(e){ ownerApiKey=''; }
+    if(r.ok){
+      const d = await r.json();
+      ownerApiKey = d.key || d.apiKey || '';
+      window.__ownerApiKey = ownerApiKey;
+    }
+  } catch(e){ ownerApiKey = window.__ownerApiKey || ''; }
 }
 function getActiveApiKey(){
   // Pro/Max: if user enabled own key and has one → use it; otherwise fall back to owner key
   if((userPlan==='pro'||userPlan==='max') && useOwnKey && proCustomKey) return proCustomKey;
-  // All plans: use owner Railway key by default
-  return ownerApiKey;
+  // All plans: use owner Railway key (sync with window global as fallback)
+  const key = ownerApiKey || window.__ownerApiKey || '';
+  ownerApiKey = key; // keep in sync
+  return key;
 }
 
 // ── QUOTA ────────────────────────────────────────────
@@ -582,12 +590,14 @@ async function sendChat(){
   chatHistory.push({role:'user',parts:[{text}]});
   try {
     const key=getActiveApiKey();
+    // Re-fetch if key missing
+    if(!key){ await fetchOwnerKey(); key = getActiveApiKey(); }
     if(!key){
       removeTyping(typingId);
       if(userPlan==='free'){
-        appendMessage('bot','❌ Service temporarily unavailable. Please contact the administrator.');
+        appendMessage('bot','❌ Service unavailable — owner key not configured. Please contact admin.');
       } else {
-        appendMessage('bot','❌ No API key configured. Go to Settings and add your Gemini API key.');
+        appendMessage('bot','❌ No API key found. Go to Settings and add your Gemini API key.');
         openSettings();
       }
       isChatLoading=false; return;
@@ -671,10 +681,12 @@ async function generateImage(){
   resultsEl.innerHTML='<div class="loading-card"><div class="loading-spinner cyan"></div><div class="loading-label">Creating your image…</div></div>';
   incrementRequest();
   const key=getActiveApiKey();
+  // Re-fetch owner key if empty, then proceed
+  if(!key){ await fetchOwnerKey(); key = getActiveApiKey(); }
   if(!key){
     const msg = userPlan==='free'
-      ? '❌ Service temporarily unavailable. Please contact the administrator.'
-      : '❌ No API key configured. Go to Settings and add your Gemini API key.';
+      ? '❌ Service unavailable — owner key not configured. Please contact admin.'
+      : '❌ No API key found. Go to Settings and add your Gemini API key.';
     if(userPlan!=='free') openSettings();
     resultsEl.innerHTML=`<div class="error-card">${msg}</div>`; if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Image';} return; }
   const fullPrompt=`${style} style: ${prompt}`;
@@ -730,10 +742,12 @@ async function generateSong(){
   resultsEl.innerHTML='<div class="loading-card green-loader"><div class="loading-spinner green"></div><div class="loading-label">Composing your song…</div></div>';
   incrementRequest();
   const key=getActiveApiKey();
+  // Re-fetch owner key if empty, then proceed
+  if(!key){ await fetchOwnerKey(); key = getActiveApiKey(); }
   if(!key){
     const msg = userPlan==='free'
-      ? '❌ Service temporarily unavailable. Please contact the administrator.'
-      : '❌ No API key configured. Go to Settings and add your Gemini API key.';
+      ? '❌ Service unavailable — owner key not configured. Please contact admin.'
+      : '❌ No API key found. Go to Settings and add your Gemini API key.';
     if(userPlan!=='free') openSettings();
     resultsEl.innerHTML=`<div class="error-card">${msg}</div>`; if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Song';} return; }
   const fullPrompt=`Create a ${style} song with ${voice.toLowerCase()} vocalist about: ${prompt}`;
