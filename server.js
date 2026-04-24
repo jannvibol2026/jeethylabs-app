@@ -40,8 +40,41 @@ transporter.verify(err => err
 /* ── DB ── */
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 pool.connect()
-  .then(c => { console.log('DB Connected ✅'); c.release(); })
+  .then(c => { console.log('DB Connected ✅'); c.release(); initDb(); })
   .catch(e => console.error('DB Error:', e.message));
+
+/* ── DB MIGRATION: ensure all required columns exist ── */
+async function initDb() {
+  const migrations = [
+    `CREATE TABLE IF NOT EXISTS users (
+       id            SERIAL PRIMARY KEY,
+       user_id       TEXT,
+       name          TEXT,
+       email         TEXT UNIQUE NOT NULL,
+       password_hash TEXT,
+       email_verified BOOLEAN DEFAULT false,
+       avatar_url    TEXT,
+       plan          VARCHAR(32)  DEFAULT 'free',
+       status        VARCHAR(32)  DEFAULT 'active',
+       country       VARCHAR(64),
+       created_at    TIMESTAMPTZ  DEFAULT NOW(),
+       last_active   TIMESTAMPTZ  DEFAULT NOW()
+     )`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url   TEXT`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS plan         VARCHAR(32)  DEFAULT 'free'`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS status       VARCHAR(32)  DEFAULT 'active'`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS country      VARCHAR(64)`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at   TIMESTAMPTZ  DEFAULT NOW()`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active  TIMESTAMPTZ  DEFAULT NOW()`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN    DEFAULT false`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS user_id      TEXT`,
+  ];
+  for (const sql of migrations) {
+    try { await pool.query(sql); }
+    catch (e) { console.error('[initDb] migration error:', e.message); }
+  }
+  console.log('DB schema ready ✅');
+}
 
 /* ── HELPERS ── */
 const otpStore = {};
@@ -72,6 +105,12 @@ app.get('/api/health', (req, res) => res.json({
   smtp:   !!SMTP_USER && !!SMTP_PASS,
   gemini: !!GEMINI_KEY
 }));
+
+/* /api/key  — return owner Gemini API key for frontend use */
+app.get('/api/key', (req, res) => {
+  if (!GEMINI_KEY) return res.status(503).json({ error: 'API key not configured', key: '' });
+  res.json({ key: GEMINI_KEY });
+});
 
 /* /api/send-otp */
 app.post('/api/send-otp', async (req, res) => {
@@ -213,6 +252,16 @@ app.post('/api/avatar', auth, async (req, res) => {
   try {
     await pool.query('UPDATE users SET avatar_url=$1,last_active=$2 WHERE id=$3', [avatar, new Date(), req.user.id]);
     res.json({ success:true, avatar_url: avatar });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* /api/upload-avatar  — alias used by frontend (accepts avatar_url field) */
+app.post('/api/upload-avatar', auth, async (req, res) => {
+  const { avatar_url } = req.body;
+  if (!avatar_url) return res.status(400).json({ error: 'No avatar data' });
+  try {
+    await pool.query('UPDATE users SET avatar_url=$1,last_active=$2 WHERE id=$3', [avatar_url, new Date(), req.user.id]);
+    res.json({ success:true, avatar_url });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
