@@ -1,363 +1,710 @@
-'use strict';
+"use strict";
 
-/* ════════════════════════════════════════════════════════════════
-   script.js — JeeThy Labs  (FINAL CLEAN VERSION)
-   ‣ All API calls go through server proxy  (/api/chat, /api/image, /api/song)
-   ‣ GEMINI_API_KEY is read from Railway env var on the server — never in client
-   ‣ Auth token stored in memory (authToken) + passed via Authorization header
-   ‣ User profile: avatar upload, plan badge, sign out — all wired
-   ════════════════════════════════════════════════════════════════ */
+// ── MODELS ─────────────────────────────────────────────────
+const GEMINI_CHAT_MODEL  = "gemini-2.5-flash";
+const GEMINI_IMAGE_MODEL = "gemini-2.0-flash-preview-image-generation";
+const LYRIA_MODEL        = "lyria-realtime-exp";
 
-/* ── 1. GLOBALS ────────────────────────────────────────────────── */
-var currentUser   = null;
-var authToken     = null;          // JWT stored in memory
-var userPlan      = 'free';
-var requestCount  = 0;
-
-var PLAN_LIMITS = {
-  free : { label:'Free', requests:10  },
-  pro  : { label:'Pro',  requests:100 },
-  max  : { label:'Max',  requests:500 }
+// ── PLAN LIMITS ────────────────────────────────────────────
+const PLAN_LIMITS = {
+  free: { requests: 10,  label: "Free", color: "#a78bfa" },
+  pro:  { requests: 100, label: "Pro",  color: "#06b6d4" },
+  max:  { requests: 500, label: "Max",  color: "#fbbf24" }
 };
 
-var chatHistory = [];              // [{role,parts}]
+// ── STATE ──────────────────────────────────────────────────
+let currentPanel  = 0;
+let userPlan      = "free";
+let proCustomKey  = "";
+let useOwnKey     = false;
+let ownerApiKey   = "";
+let requestCount  = 0;
+let chatHistory   = [];
+let isChatLoading = false;
+let touchStartX   = 0;
+let touchStartY   = 0;
+let currentUser   = null;
+let pendingAction = null;
+let _otpPending   = null;
+let _resendTimer  = null;
 
-/* ── 2. API HELPER ─────────────────────────────────────────────── */
-/* All server calls go here — adds Bearer token automatically */
-async function apiCall(path, body) {
-  var headers = { 'Content-Type': 'application/json' };
-  if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
-  var res = await fetch(path, {
-    method  : 'POST',
-    headers : headers,
-    body    : JSON.stringify(body || {})
-  });
-  return res;
+// ── INIT ───────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", async () => {
+  setWelcomeTime();
+  initSwipe();
+  renderPlanBadge();
+  await fetchOwnerKey();
+  await checkExistingSession();
+});
+
+async function fetchOwnerKey() {
+  try {
+    const r = await fetch("/api/key");
+    if (r.ok) { const d = await r.json(); ownerApiKey = d.key || ""; }
+  } catch (e) { ownerApiKey = ""; }
 }
 
-async function apiGet(path) {
-  var headers = {};
-  if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
-  return fetch(path, { headers: headers });
+async function checkExistingSession() {
+  try {
+    const r = await fetch("/api/me", { credentials: "include" });
+    if (r.ok) { const d = await r.json(); onLoginSuccess(d.user, false); }
+  } catch (e) {}
 }
 
-/* ── 3. TOKEN PERSIST (memory only — no localStorage) ─────────── */
-/* Token lives only while page is open (Railway sandbox safe) */
-function saveToken(token) { authToken = token; }
-function clearToken()     { authToken = null; }
-
-/* ── 4. SESSION RESTORE — disabled (manual login only) ────────── */
-/* We block auto-session to force login screen */
-window.checkExistingSession = function() { /* intentionally empty */ };
-
-/* ── 5. PLAN BADGE ─────────────────────────────────────────────── */
-function renderPlanBadge() {
-  var el = document.getElementById('planBadge');
-  if (!el) return;
-  var info = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
-  el.textContent = info.label;
-  el.style.background = userPlan === 'pro' ? 'rgba(6,182,212,.15)'
-                      : userPlan === 'max' ? 'rgba(251,191,36,.15)'
-                      : 'rgba(167,139,250,.15)';
-  el.style.color = userPlan === 'pro' ? '#22d3ee'
-                 : userPlan === 'max' ? '#fbbf24'
-                 : '#a78bfa';
+function getActiveApiKey() {
+  if (userPlan === "pro" && useOwnKey && proCustomKey) return proCustomKey;
+  return ownerApiKey;
 }
 
-/* ── 6. TOAST ──────────────────────────────────────────────────── */
-function showToast(msg, type) {
-  var t = document.createElement('div');
-  t.textContent = msg;
-  t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);' +
-    'padding:10px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:99999;' +
-    'color:#fff;pointer-events:none;opacity:0;transition:opacity .3s;' +
-    'background:' + (type==='error'?'rgba(239,68,68,.9)':type==='success'?'rgba(16,185,129,.9)':'rgba(99,102,241,.9)');
-  document.body.appendChild(t);
-  requestAnimationFrame(function(){ t.style.opacity='1'; });
-  setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 400); }, 2800);
-}
-
-/* ── 7. QUOTA CHECK ────────────────────────────────────────────── */
 function checkQuota() {
-  var limit = (PLAN_LIMITS[userPlan] || PLAN_LIMITS.free).requests;
-  if (requestCount >= limit) {
-    var m = document.getElementById('upgradeModal');
-    if (m) m.classList.add('open');
-    return false;
-  }
+  const limit = PLAN_LIMITS[userPlan]?.requests ?? 10;
+  if (requestCount >= limit) { showUpgradeModal(); return false; }
   return true;
 }
+function incrementRequest() { requestCount++; }
 
-/* ── 8. CHAT ───────────────────────────────────────────────────── */
-function handleChatKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
-}
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+function setWelcomeTime() {
+  const el = document.getElementById("welcomeTime");
+  if (el) el.textContent = formatTime(new Date());
 }
 
-function addMsg(role, text, time) {
-  var wrap = document.getElementById('chatMessages');
+function renderPlanBadge() {
+  const badge = document.getElementById("planBadge");
+  if (!badge) return;
+  const plan = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+  badge.textContent    = plan.label;
+  badge.style.color    = plan.color;
+  badge.style.borderColor = plan.color + "66";
+}
+
+// ══ PANEL NAV ══════════════════════════════════════════════
+function goToPanel(index) {
+  currentPanel = index;
+  const track = document.getElementById("panelsTrack");
+  if (track) track.style.transform = `translateX(-${index * 33.333}%)`;
+  document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", i === index));
+}
+
+function initSwipe() {
+  const wrap = document.getElementById("panelsWrap");
   if (!wrap) return;
-  var isBot = role === 'bot';
-  var div = document.createElement('div');
-  div.className = 'msg ' + (isBot ? 'msg-bot' : 'msg-user');
-  var t = time || new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  div.innerHTML = isBot
-    ? '<div class="msg-avatar"><i class="fas fa-brain"></i></div>' +
-      '<div class="msg-bubble"><p>' + escHtml(text) + '</p><span class="msg-time">' + t + '</span></div>'
-    : '<div class="msg-bubble msg-bubble-user"><p>' + escHtml(text) + '</p><span class="msg-time">' + t + '</span></div>';
-  wrap.appendChild(div);
-  wrap.scrollTop = wrap.scrollHeight;
+  wrap.addEventListener("touchstart", e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  wrap.addEventListener("touchend", e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      if (dx < 0 && currentPanel < 2) goToPanel(currentPanel + 1);
+      if (dx > 0 && currentPanel > 0) goToPanel(currentPanel - 1);
+    }
+  }, { passive: true });
 }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-                  .replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+// ══ AUTH MODAL ═════════════════════════════════════════════
+function openAuthModal(action) {
+  pendingAction = action || null;
+  const m = document.getElementById("authModal");
+  if (m) m.classList.add("open");
+  clearAuthMsg();
+  switchAuthTab("login");
+}
+function closeAuthModal() {
+  const m = document.getElementById("authModal");
+  if (m) m.classList.remove("open");
+  pendingAction = null;
+}
+function switchAuthTab(tab) {
+  const lf = document.getElementById("authLoginForm");
+  const sf = document.getElementById("authSignupForm");
+  const of = document.getElementById("authOtpForm");
+  const tl = document.getElementById("authTabLogin");
+  const ts = document.getElementById("authTabSignup");
+  clearAuthMsg();
+  if (of) of.style.display = "none";
+  if (tab === "login") {
+    if (lf) lf.style.display = "flex";
+    if (sf) sf.style.display = "none";
+    if (tl) { tl.style.background = "linear-gradient(135deg,#7c3aed,#a855f7)"; tl.style.color = "#fff"; }
+    if (ts) { ts.style.background = "transparent"; ts.style.color = "#9ca3af"; }
+  } else {
+    if (lf) lf.style.display = "none";
+    if (sf) sf.style.display = "flex";
+    if (ts) { ts.style.background = "linear-gradient(135deg,#7c3aed,#a855f7)"; ts.style.color = "#fff"; }
+    if (tl) { tl.style.background = "transparent"; tl.style.color = "#9ca3af"; }
+  }
+}
+function showAuthMsg(msg, type) {
+  const el = document.getElementById("authMsg");
+  if (!el) return;
+  el.style.display    = "block";
+  el.style.background = type === "error" ? "rgba(239,68,68,.12)" : "rgba(16,185,129,.12)";
+  el.style.color      = type === "error" ? "#f87171" : "#34d399";
+  el.style.border     = "1px solid " + (type === "error" ? "rgba(239,68,68,.3)" : "rgba(16,185,129,.3)");
+  el.textContent = msg;
+}
+function clearAuthMsg() {
+  const el = document.getElementById("authMsg");
+  if (el) { el.style.display = "none"; el.textContent = ""; }
 }
 
-async function sendChat() {
-  if (!currentUser) { openAuthModal('chat'); return; }
-  if (!checkQuota()) return;
-
-  var inp = document.getElementById('chatInput');
-  var msg = inp ? inp.value.trim() : '';
-  if (!msg) return;
-
-  inp.value = '';
-  inp.style.height = 'auto';
-  addMsg('user', msg);
-
-  chatHistory.push({ role:'user', parts:[{text: msg}] });
-
-  // typing indicator
-  var wrap = document.getElementById('chatMessages');
-  var typing = document.createElement('div');
-  typing.className = 'msg msg-bot';
-  typing.id = 'typingIndicator';
-  typing.innerHTML = '<div class="msg-avatar"><i class="fas fa-brain"></i></div>' +
-    '<div class="msg-bubble"><span class="msg-time">...</span></div>';
-  if (wrap) { wrap.appendChild(typing); wrap.scrollTop = wrap.scrollHeight; }
-
+// ── SIGNUP ─────────────────────────────────────────────────
+async function submitSignup(e) {
+  e.preventDefault(); clearAuthMsg();
+  const btn   = document.getElementById("authSignupBtn");
+  const name  = document.getElementById("authSignupName").value.trim();
+  const email = document.getElementById("authSignupEmail").value.trim();
+  const pass  = document.getElementById("authSignupPass").value;
+  if (!name)  return showAuthMsg("Please enter your name.", "error");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAuthMsg("Please enter a valid email.", "error");
+  if (pass.length < 8) return showAuthMsg("Password must be at least 8 characters.", "error");
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending code...';
   try {
-    var res  = await apiCall('/api/chat', { history: chatHistory });
-    var data = await res.json();
-
-    if (typing) typing.remove();
-
+    const res  = await fetch("/api/send-otp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      credentials: "include", body: JSON.stringify({ name, email, password: pass })
+    });
+    const data = await res.json();
     if (res.ok) {
-      var reply = data.reply || 'No response.';
-      chatHistory.push({ role:'model', parts:[{text: reply}] });
-      addMsg('bot', reply);
-      requestCount++;
-    } else {
-      addMsg('bot', '❌ ' + (data.error || 'Server error. Please try again.'));
-    }
-  } catch (ex) {
-    if (typing) typing.remove();
-    addMsg('bot', '❌ Network error. Check your connection.');
-  }
+      _otpPending = { name, email, password: pass };
+      document.getElementById("otpEmailDisplay").textContent = email;
+      document.getElementById("authSignupForm").style.display = "none";
+      const of = document.getElementById("authOtpForm");
+      of.style.display = "flex";
+      document.getElementById("authOtpInput").value = "";
+      startResendTimer(60);
+      showAuthMsg("Code ត្រូវបានផ្ញើ! សូមពិនិត្យ Email.", "success");
+    } else { showAuthMsg(data.error || "Failed to send code.", "error"); }
+  } catch (ex) { showAuthMsg("Network error. Check connection.", "error"); }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Verification Code';
 }
 
-/* ── 9. IMAGE GENERATE ─────────────────────────────────────────── */
-function selectChip(btn, groupId) {
-  var group = document.getElementById(groupId);
-  if (!group) return;
-  group.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('active'); });
-  btn.classList.add('active');
-}
-
-function requirePro(btn, groupId) {
-  if (userPlan === 'pro' || userPlan === 'max') { selectChip(btn, groupId); return; }
-  var m = document.getElementById('planModal');
-  if (m) m.classList.add('open');
-}
-
-async function generateImage() {
-  if (!currentUser) { openAuthModal('image'); return; }
-  if (!checkQuota()) return;
-
-  var prompt = (document.getElementById('imgPrompt') || {}).value || '';
-  if (!prompt.trim()) { showToast('Please enter a prompt','error'); return; }
-
-  var style = '', ratio = '1:1';
-  var sg = document.getElementById('imgStyleGroup');
-  if (sg) { var sc = sg.querySelector('.chip.active'); if (sc) style = sc.textContent.trim(); }
-  var rg = document.getElementById('imgRatioGroup');
-  if (rg) { var rc = rg.querySelector('.chip.active'); if (rc) ratio = rc.textContent.trim(); }
-
-  var fullPrompt = style && style !== 'Other' ? style + ' style: ' + prompt : prompt;
-
-  var btn = document.getElementById('imgGenBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...'; }
-
-  var results = document.getElementById('imgResults');
-  if (results) results.innerHTML = '<div style="text-align:center;padding:32px;color:#9ca3af;"><i class="fas fa-spinner fa-spin" style="font-size:2rem;color:#22d3ee;"></i><p style="margin-top:12px;font-size:13px;">Creating your image...</p></div>';
-
+async function submitOtp() {
+  clearAuthMsg();
+  const otp = document.getElementById("authOtpInput").value.trim();
+  const btn = document.getElementById("authOtpBtn");
+  if (!otp || otp.length !== 6) return showAuthMsg("Please enter the 6-digit code.", "error");
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
   try {
-    var res  = await apiCall('/api/image', { prompt: fullPrompt, aspectRatio: ratio });
-    var data = await res.json();
-
-    if (res.ok && data.data) {
-      var src = 'data:' + (data.mimeType||'image/png') + ';base64,' + data.data;
-      if (results) results.innerHTML =
-        '<div style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);">' +
-        '<img src="' + src + '" style="width:100%;display:block;" alt="Generated image"/></div>' +
-        '<a download="jeethylabs-image.png" href="' + src + '" ' +
-        'style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;' +
-        'padding:10px;border-radius:10px;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);' +
-        'color:#22d3ee;font-size:13px;font-weight:600;text-decoration:none;">' +
-        '<i class="fas fa-download"></i> Download Image</a>';
-      requestCount++;
-    } else {
-      if (results) results.innerHTML = '<div style="text-align:center;padding:24px;color:#f87171;">❌ ' + (data.error||'Generation failed') + '</div>';
-    }
-  } catch (ex) {
-    if (results) results.innerHTML = '<div style="text-align:center;padding:24px;color:#f87171;">❌ Network error.</div>';
-  }
-
-  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Image'; }
+    const res  = await fetch("/api/verify-otp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      credentials: "include", body: JSON.stringify({ ..._otpPending, otp })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      _otpPending = null;
+      showAuthMsg("Welcome, " + data.user.name + "! Account created!", "success");
+      setTimeout(() => onLoginSuccess(data.user, true), 900);
+    } else { showAuthMsg(data.error || "Invalid or expired code.", "error"); }
+  } catch (ex) { showAuthMsg("Network error.", "error"); }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-check-circle"></i> Verify & Create Account';
 }
 
-/* ── 10. SONG GENERATE ─────────────────────────────────────────── */
-async function generateSong() {
-  if (!currentUser) { openAuthModal('song'); return; }
-  if (!checkQuota()) return;
-
-  var prompt = (document.getElementById('songPrompt') || {}).value || '';
-  if (!prompt.trim()) { showToast('Please describe the song','error'); return; }
-
-  var style = 'Pop', voice = 'Female';
-  var sg = document.getElementById('songStyleGroup');
-  if (sg) { var sc = sg.querySelector('.chip.active'); if (sc) style = sc.textContent.trim(); }
-  var vg = document.getElementById('songVoiceGroup');
-  if (vg) { var vc = vg.querySelector('.chip.active'); if (vc) voice = vc.textContent.trim(); }
-
-  var btn = document.getElementById('songGenBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...'; }
-
-  var results = document.getElementById('songResults');
-  if (results) results.innerHTML = '<div style="text-align:center;padding:32px;color:#9ca3af;"><i class="fas fa-spinner fa-spin" style="font-size:2rem;color:#22d3ee;"></i><p style="margin-top:12px;font-size:13px;">Composing your song...</p></div>';
-
+async function resendOtp() {
+  if (!_otpPending) return;
+  clearAuthMsg();
   try {
-    var res  = await apiCall('/api/song', { prompt, style, voice });
-    var data = await res.json();
+    const res  = await fetch("/api/send-otp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      credentials: "include", body: JSON.stringify(_otpPending)
+    });
+    const data = await res.json();
+    if (res.ok) { showAuthMsg("Code ថ្មីត្រូវបានផ្ញើ!", "success"); startResendTimer(60); }
+    else showAuthMsg(data.error || "Failed to resend.", "error");
+  } catch (ex) { showAuthMsg("Network error.", "error"); }
+}
 
-    if (res.ok && data.audio) {
-      var src = 'data:' + (data.mimeType||'audio/mp3') + ';base64,' + data.audio;
-      var lyricsHtml = data.lyrics
-        ? '<div style="margin-top:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;">' +
-          '<p style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;margin:0 0 8px;">Lyrics</p>' +
-          '<pre style="font-size:12px;color:#d1d5db;white-space:pre-wrap;margin:0;font-family:inherit;">' + escHtml(data.lyrics) + '</pre></div>'
-        : '';
-      if (results) results.innerHTML =
-        '<div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:14px;padding:16px;">' +
-        '<p style="font-size:13px;font-weight:700;color:#34d399;margin:0 0 12px;"><i class="fas fa-music"></i> ' + escHtml(data.title||'Your Song') + '</p>' +
-        '<audio controls style="width:100%;" src="' + src + '"></audio>' +
-        '<a download="jeethylabs-song.mp3" href="' + src + '" ' +
-        'style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;' +
-        'padding:10px;border-radius:10px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);' +
-        'color:#34d399;font-size:13px;font-weight:600;text-decoration:none;">' +
-        '<i class="fas fa-download"></i> Download Song</a></div>' + lyricsHtml;
-      requestCount++;
-    } else {
-      if (results) results.innerHTML = '<div style="text-align:center;padding:24px;color:#f87171;">❌ ' + (data.error||'Song generation failed') + '</div>';
+function backToSignup() {
+  document.getElementById("authOtpForm").style.display   = "none";
+  document.getElementById("authSignupForm").style.display = "flex";
+  clearAuthMsg();
+  if (_resendTimer) clearInterval(_resendTimer);
+}
+
+function startResendTimer(sec) {
+  const btn   = document.getElementById("resendOtpBtn");
+  const timer = document.getElementById("resendTimer");
+  if (!btn || !timer) return;
+  btn.style.display = "none"; timer.style.display = "inline";
+  let s = sec;
+  if (_resendTimer) clearInterval(_resendTimer);
+  _resendTimer = setInterval(() => {
+    timer.textContent = "Resend in " + s + "s";
+    s--;
+    if (s < 0) {
+      clearInterval(_resendTimer);
+      btn.style.display   = "inline";
+      timer.style.display = "none";
     }
-  } catch (ex) {
-    if (results) results.innerHTML = '<div style="text-align:center;padding:24px;color:#f87171;">❌ Network error.</div>';
+  }, 1000);
+}
+
+// ── LOGIN ──────────────────────────────────────────────────
+async function submitLogin(e) {
+  e.preventDefault(); clearAuthMsg();
+  const btn   = document.getElementById("authLoginBtn");
+  const email = document.getElementById("authLoginEmail").value.trim();
+  const pass  = document.getElementById("authLoginPass").value;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+  try {
+    const res  = await fetch("/api/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      credentials: "include", body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showAuthMsg("Welcome back, " + data.user.name + "!", "success");
+      setTimeout(() => onLoginSuccess(data.user, true), 800);
+    } else { showAuthMsg(data.error || "Invalid email or password.", "error"); }
+  } catch (ex) { showAuthMsg("Network error.", "error"); }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Login';
+}
+
+// ── onLoginSuccess ─────────────────────────────────────────
+function onLoginSuccess(user, runPending) {
+  currentUser = user;
+  window.currentUser = user;
+  if (user.plan && PLAN_LIMITS[user.plan]) {
+    userPlan = user.plan;
+    renderPlanBadge();
   }
-
-  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song'; }
+  updateNavAvatar(user);
+  closeAuthModal();
+  if (runPending) {
+    const action = pendingAction; pendingAction = null;
+    if (action === "chat")  setTimeout(() => _sendChat(),      100);
+    if (action === "image") setTimeout(() => _generateImage(), 100);
+    if (action === "song")  setTimeout(() => _generateSong(),  100);
+  }
 }
 
-/* ── 11. TABS / PANELS ─────────────────────────────────────────── */
-var _activeTab = 0;
-function goToPanel(idx) {
-  _activeTab = idx;
-  var track = document.getElementById('panelsTrack');
-  if (track) track.style.transform = 'translateX(-' + (idx * 100) + '%)';
-  document.querySelectorAll('.tab').forEach(function(t,i){ t.classList.toggle('active', i===idx); });
+// ── LOGOUT ─────────────────────────────────────────────────
+async function doLogout() {
+  currentUser = null; window.currentUser = null;
+  const wrap = document.getElementById("userProfileWrap");
+  if (wrap) wrap.style.display = "none";
+  closeDd();
+  try { await fetch("/api/logout", { method: "POST", credentials: "include" }); } catch (e) {}
+  showToast("Signed out", "error");
 }
 
-/* ── 12. PLAN MODAL ────────────────────────────────────────────── */
-function openPlanModal()  { var m=document.getElementById('planModal'); if(m) m.classList.add('open'); }
-function closePlanModal() { var m=document.getElementById('planModal'); if(m) m.classList.remove('open'); }
+// ── NAV AVATAR ─────────────────────────────────────────────
+function updateNavAvatar(user) {
+  const wrap    = document.getElementById("userProfileWrap");
+  const navBtn  = document.getElementById("userAvatarBtn");
+  const initial = (user.name || "U").charAt(0).toUpperCase();
+  const planInfo = PLAN_LIMITS[user.plan || "free"] || PLAN_LIMITS.free;
+  if (wrap)   wrap.style.display = "flex";
+  if (navBtn) {
+    navBtn.innerHTML = user.avatar_url
+      ? `<img src="${user.avatar_url}" alt="${escapeHtml(initial)}"/>`
+      : `<span>${escapeHtml(initial)}</span>`;
+  }
+  const pdAv = document.getElementById("pdAv");
+  if (pdAv) pdAv.innerHTML = user.avatar_url
+    ? `<img src="${user.avatar_url}" alt="${escapeHtml(initial)}"/>`
+    : `<span>${escapeHtml(initial)}</span>`;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || ""; };
+  set("pdName",  user.name);
+  set("pdEmail", user.email);
+  set("pdBadge", planInfo.label);
+}
 
+// ── DROPDOWN ───────────────────────────────────────────────
+function toggleDropdown(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const dd = document.getElementById("profileDropdown");
+  if (dd) dd.classList.toggle("open");
+}
+function closeDd() {
+  const dd = document.getElementById("profileDropdown");
+  if (dd) dd.classList.remove("open");
+}
+document.addEventListener("click", e => {
+  const wrap = document.getElementById("userProfileWrap");
+  if (wrap && !wrap.contains(e.target)) closeDd();
+}, true);
+
+// ── PROFILE SHEET ──────────────────────────────────────────
+function openProfileSheet()  { syncProfileSheet(); document.getElementById("ppOverlay").classList.add("open"); }
+function closeProfileSheet() { document.getElementById("ppOverlay").classList.remove("open"); }
+function closePPif(e)        { if (e.target === document.getElementById("ppOverlay")) closeProfileSheet(); }
+
+function syncProfileSheet() {
+  const u     = currentUser;
+  const plan  = (u && u.plan) || userPlan || "free";
+  const info  = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+  const limit = info.requests;
+  const used  = requestCount;
+  const pct   = Math.min(100, Math.round(used / limit * 100));
+  if (u) {
+    const init = (u.name || "U").charAt(0).toUpperCase();
+    const set  = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || "—"; };
+    set("ppHeroName",   u.name);
+    set("ppHeroEmail",  u.email);
+    set("ppInfoName",   u.name);
+    set("ppInfoEmail",  u.email);
+    set("ppInfoPlan",   info.label);
+    set("ppInfoJoined", u.created_at ? new Date(u.created_at).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" }) : "Today");
+    const av = document.getElementById("ppAvatarEl");
+    if (av) av.innerHTML = u.avatar_url
+      ? `<img src="${u.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="${init}"/>`
+      : `<span>${escapeHtml(init)}</span>`;
+    const badge = document.getElementById("ppPlanBadge");
+    if (badge) badge.innerHTML = `<i class="fas fa-star"></i> ${info.label} Plan`;
+    const ub = document.getElementById("ppUpgradeBanner");
+    if (ub) ub.style.display = (plan === "pro" || plan === "max") ? "none" : "flex";
+  }
+  const uc = document.getElementById("ppUsageCount");
+  if (uc) uc.textContent = used + " / " + limit;
+  const ub2 = document.getElementById("ppUsageBar");
+  if (ub2) {
+    ub2.style.width      = pct + "%";
+    ub2.style.background = pct >= 80 ? "#f87171" : pct >= 50 ? "#fbbf24" : "#a855f7";
+  }
+}
+
+async function handleAvatarUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    const url = ev.target.result;
+    try {
+      const r = await fetch("/api/upload-avatar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        credentials: "include", body: JSON.stringify({ avatar_url: url })
+      });
+      if (r.ok) {
+        if (currentUser) currentUser.avatar_url = url;
+        updateNavAvatar(currentUser);
+        syncProfileSheet();
+        showToast("Avatar updated!", "success");
+      }
+    } catch (ex) { showToast("Upload failed", "error"); }
+  };
+  reader.readAsDataURL(file);
+}
+
+// ══ PLAN MODAL ═════════════════════════════════════════════
+function openPlanModal() {
+  const m = document.getElementById("planModal");
+  if (!m) return;
+  m.classList.add("open");
+  document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === userPlan));
+}
+function closePlanModal() { const m = document.getElementById("planModal"); if (m) m.classList.remove("open"); }
 function selectPlan(plan) {
-  document.querySelectorAll('.plan-card').forEach(function(c){ c.classList.remove('selected'); });
-  var card = document.querySelector('.plan-card[data-plan="'+plan+'"]');
-  if (card) card.classList.add('selected');
-  var ps = document.getElementById('proSettingsInModal');
-  if (ps) ps.style.display = plan==='pro'||plan==='max' ? 'block' : 'none';
-}
-
-function confirmPlan() {
-  var card = document.querySelector('.plan-card.selected');
-  if (!card) return;
-  var plan = card.dataset.plan || 'free';
   userPlan = plan;
+  document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === plan));
   renderPlanBadge();
-  closePlanModal();
-  showToast(PLAN_LIMITS[plan].label + ' plan selected ✅','success');
+  const ps = document.getElementById("proSettingsInModal");
+  if (ps) ps.style.display = plan === "pro" ? "block" : "none";
 }
+function confirmPlan() { closePlanModal(); showToast(PLAN_LIMITS[userPlan].label + " plan activated!", "success"); }
 
-/* ── 13. SETTINGS MODAL ────────────────────────────────────────── */
-function openSettings()  { var m=document.getElementById('settingsModal'); if(m) m.classList.add('open'); }
-function closeSettings() { var m=document.getElementById('settingsModal'); if(m) m.classList.remove('open'); }
+// ══ SETTINGS ═══════════════════════════════════════════════
+function openSettings() {
+  if (userPlan !== "pro") { showToast("Settings available on Pro plan", "error"); openPlanModal(); return; }
+  const m = document.getElementById("settingsModal"); if (!m) return;
+  m.classList.add("open");
+  document.getElementById("customKeyInput").value   = proCustomKey;
+  document.getElementById("useOwnKeyToggle").checked = useOwnKey;
+  updateSettingsUI();
+}
+function closeSettings() { const m = document.getElementById("settingsModal"); if (m) m.classList.remove("open"); }
 function updateSettingsUI() {
-  var on = document.getElementById('useOwnKeyToggle');
-  var ks = document.getElementById('customKeySection');
-  if (ks) ks.style.display = (on && on.checked) ? 'block' : 'none';
+  const t = document.getElementById("useOwnKeyToggle");
+  const s = document.getElementById("customKeySection");
+  if (t && s) s.style.display = t.checked ? "block" : "none";
 }
 function saveSettings() {
-  showToast('Settings saved ✅','success');
+  const t = document.getElementById("useOwnKeyToggle");
+  const k = document.getElementById("customKeyInput").value.trim();
+  if (!t) return;
+  useOwnKey = t.checked;
+  if (useOwnKey) {
+    if (!k) return showToast("Enter your API key first", "error");
+    proCustomKey = k; showToast("Using your own API key", "success");
+  } else { proCustomKey = k; showToast("Using JeeThy Labs owner key", "success"); }
   closeSettings();
 }
 
-/* ── 14. UPGRADE MODAL ─────────────────────────────────────────── */
-function closeUpgradeModal() { var m=document.getElementById('upgradeModal'); if(m) m.classList.remove('open'); }
-function upgradeNow()        { closeUpgradeModal(); openPlanModal(); }
+// ══ UPGRADE MODAL ══════════════════════════════════════════
+function showUpgradeModal()  { const m = document.getElementById("upgradeModal"); if (m) m.classList.add("open"); }
+function closeUpgradeModal() { const m = document.getElementById("upgradeModal"); if (m) m.classList.remove("open"); }
+function upgradeNow()        { closeUpgradeModal(); if (userPlan === "free") openPlanModal(); }
+function requirePro(btn, groupId) {
+  if (userPlan === "pro") selectChip(btn, groupId);
+  else { showUpgradeModal(); showToast("HD is available on Pro plan only", "error"); }
+}
 
-/* ── 15. CLOSE MODALS ON BACKDROP ─────────────────────────────── */
-document.addEventListener('click', function(e) {
-  ['planModal','settingsModal','upgradeModal'].forEach(function(id){
-    var m = document.getElementById(id);
-    if (m && e.target === m) m.classList.remove('open');
-  });
-});
+// ══ CHAT ═══════════════════════════════════════════════════
+function autoResize(el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 100) + "px"; }
+function handleChatKey(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } }
 
-/* ── 16. WELCOME TIME ──────────────────────────────────────────── */
-(function(){
-  var wt = document.getElementById('welcomeTime');
-  if (!wt) return;
-  var now=new Date(), h=now.getHours(), min=now.getMinutes(), ap=h>=12?'PM':'AM';
-  h=h%12||12;
-  wt.textContent = h+':'+(min<10?'0'+min:min)+' '+ap;
-})();
+function sendChat() {
+  if (!currentUser) { openAuthModal("chat"); return; }
+  _sendChat();
+}
 
-/* ── 17. EXPOSE GLOBALS ────────────────────────────────────────── */
-window.sendChat      = sendChat;
-window.generateImage = generateImage;
-window.generateSong  = generateSong;
-window.goToPanel     = goToPanel;
-window.selectChip    = selectChip;
-window.requirePro    = requirePro;
-window.handleChatKey = handleChatKey;
-window.autoResize    = autoResize;
-window.openPlanModal    = openPlanModal;
-window.closePlanModal   = closePlanModal;
-window.selectPlan       = selectPlan;
-window.confirmPlan      = confirmPlan;
-window.openSettings     = openSettings;
-window.closeSettings    = closeSettings;
-window.updateSettingsUI = updateSettingsUI;
-window.saveSettings     = saveSettings;
-window.closeUpgradeModal= closeUpgradeModal;
-window.upgradeNow       = upgradeNow;
-window.showToast        = showToast;
-window.requestCount     = requestCount;
-window.userPlan         = userPlan;
-window.PLAN_LIMITS      = PLAN_LIMITS;
-window.renderPlanBadge  = renderPlanBadge;
-window.currentUser      = currentUser;
+async function _sendChat() {
+  if (isChatLoading) return;
+  const key = getActiveApiKey();
+  if (!key) { showToast("Service unavailable.", "error"); return; }
+  if (!checkQuota()) return;
+  const input = document.getElementById("chatInput");
+  const text  = input.value.trim();
+  if (!text) return;
+  appendMessage("user", text);
+  input.value = ""; input.style.height = "auto";
+  isChatLoading = true;
+  const sendBtn = document.getElementById("chatSendBtn");
+  if (sendBtn) sendBtn.disabled = true;
+  chatHistory.push({ role: "user", parts: [{ text }] });
+  const typingId = appendTyping();
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CHAT_MODEL}:generateContent?key=${key}`,
+      {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: "You are JeeThy Assistant, a helpful and friendly AI created by JeeThy Labs.\nAnswer in the same language the user writes in.\nBe concise but thorough. Use markdown for formatting." }] },
+          contents: chatHistory
+        })
+      }
+    );
+    removeTyping(typingId);
+    if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || `HTTP ${res.status}`); }
+    const data  = await res.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, could not generate a response.";
+    chatHistory.push({ role: "model", parts: [{ text: reply }] });
+    appendMessage("bot", reply);
+    incrementRequest();
+  } catch (err) {
+    removeTyping(typingId);
+    appendMessage("bot", "⚠️ " + err.message);
+  }
+  isChatLoading = false;
+  if (sendBtn) sendBtn.disabled = false;
+}
+
+function appendMessage(role, text) {
+  const container = document.getElementById("chatMessages"); if (!container) return;
+  const isUser = role === "user";
+  const div    = document.createElement("div");
+  div.className = `msg ${isUser ? "msg-user" : "msg-bot"}`;
+  const avatar = document.createElement("div");
+  avatar.className = "msg-avatar";
+  if (isUser && currentUser) {
+    avatar.textContent = (currentUser.name || "U").charAt(0).toUpperCase();
+    avatar.style.fontSize = "13px"; avatar.style.fontWeight = "700";
+  } else { avatar.innerHTML = isUser ? '<i class="fas fa-user"></i>' : '<i class="fas fa-brain"></i>'; }
+  const bubble = document.createElement("div"); bubble.className = "msg-bubble";
+  if (isUser) bubble.textContent = text;
+  else bubble.innerHTML = `<div class="prose-response">${formatMarkdown(text)}</div>`;
+  const time = document.createElement("span"); time.className = "msg-time"; time.textContent = formatTime(new Date());
+  bubble.appendChild(time);
+  div.appendChild(avatar); div.appendChild(bubble);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function appendTyping() {
+  const container = document.getElementById("chatMessages"); if (!container) return null;
+  const id  = "typing-" + Date.now();
+  const div = document.createElement("div"); div.className = "msg msg-bot"; div.id = id;
+  const avatar = document.createElement("div"); avatar.className = "msg-avatar"; avatar.innerHTML = '<i class="fas fa-brain"></i>';
+  const bubble = document.createElement("div"); bubble.className = "msg-bubble";
+  bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  div.appendChild(avatar); div.appendChild(bubble);
+  container.appendChild(div); container.scrollTop = container.scrollHeight;
+  return id;
+}
+function removeTyping(id) { if (!id) return; const el = document.getElementById(id); if (el) el.remove(); }
+
+function formatMarkdown(text) {
+  return text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/^### (.+)$/gm, "<h4 style=\"font-size:14px;font-weight:700;margin:8px 0 4px\">$1</h4>")
+    .replace(/^## (.+)$/gm,  "<h3 style=\"font-size:15px;font-weight:700;margin:8px 0 4px\">$1</h3>")
+    .replace(/^- (.+)$/gm,   "<li>$1</li>")
+    .replace(/(<li>[\s\S]*?<\/li>)+/g, "<ul>$&</ul>")
+    .replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>");
+}
+
+// ══ IMAGE GENERATE ═════════════════════════════════════════
+function generateImage() {
+  if (!currentUser) { openAuthModal("image"); return; }
+  _generateImage();
+}
+async function _generateImage() {
+  const key = getActiveApiKey();
+  if (!key) return showToast("Service unavailable.", "error");
+  if (!checkQuota()) return;
+  const prompt = document.getElementById("imgPrompt").value.trim();
+  if (!prompt) return showToast("Please enter a prompt", "error");
+  const style  = getActiveChip("imgStyleGroup");
+  const ratio  = getActiveChip("imgRatioGroup");
+  const qty    = parseInt(getActiveChip("imgQtyGroup")) || 1;
+  const aspectRatio = ({ "1:1": "1:1", "9:16": "9:16", "16:9": "16:9" })[ratio] || "1:1";
+  const fullPrompt  = `${prompt}, style: ${style}`;
+  const btn       = document.getElementById("imgGenBtn");
+  const resultsEl = document.getElementById("imgResults");
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+  resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI...</div></div>`;
+
+  async function fetchOne(p, k) {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${k}`,
+      { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: p }] }], generationConfig: { responseModalities: ["IMAGE", "TEXT"], imageGenerationConfig: { aspectRatio } } }) }
+    );
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message || `HTTP ${r.status}`); }
+    const d = await r.json();
+    for (const c of (d.candidates || []))
+      for (const pt of (c.content?.parts || []))
+        if (pt.inlineData?.data) return pt.inlineData;
+    throw new Error("No image in response");
+  }
+
+  try {
+    const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne(fullPrompt, key)));
+    const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
+    if (!imgs.length) throw new Error("No images generated. Try a different prompt.");
+    const card = document.createElement("div"); card.className = "img-result-card";
+    const grid = document.createElement("div"); grid.className = `img-grid qty-${imgs.length}`;
+    const blobs = [];
+    imgs.forEach((d, i) => {
+      const bytes = atob(d.data); const arr = new Uint8Array(bytes.length);
+      for (let j = 0; j < bytes.length; j++) arr[j] = bytes.charCodeAt(j);
+      const blob    = new Blob([arr], { type: d.mimeType || "image/png" });
+      const blobUrl = URL.createObjectURL(blob);
+      blobs.push({ blobUrl, mime: d.mimeType || "image/png" });
+      const img = document.createElement("img"); img.src = blobUrl; img.alt = `Generated ${i + 1}`;
+      img.onclick = () => openFullscreen(blobUrl);
+      grid.appendChild(img);
+    });
+    card.appendChild(grid);
+    const dlWrap = document.createElement("div");
+    dlWrap.style.cssText = "padding:12px;display:flex;flex-direction:column;gap:8px;";
+    blobs.forEach(({ blobUrl, mime }, i) => {
+      const ext = mime.split("/")[1] || "png";
+      const a   = document.createElement("a"); a.className = "btn-download";
+      a.href = blobUrl; a.download = `jeethy-image-${Date.now()}-${i + 1}.${ext}`;
+      a.innerHTML = `<i class="fas fa-download"></i> Download Image${blobs.length > 1 ? " " + (i + 1) : ""}`;
+      dlWrap.appendChild(a);
+    });
+    card.appendChild(dlWrap);
+    resultsEl.innerHTML = ""; resultsEl.appendChild(card);
+    document.querySelector(".panel-image .panel-inner-scroll")?.scrollTo({ top: 99999, behavior: "smooth" });
+    incrementRequest();
+  } catch (err) {
+    resultsEl.innerHTML = `<div class="error-card"><i class="fas fa-circle-exclamation"></i> ${escapeHtml(err.message)}</div>`;
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Image';
+}
+
+function openFullscreen(src) {
+  const ov = document.createElement("div");
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:pointer;";
+  const img = document.createElement("img"); img.src = src;
+  img.style.cssText = "max-width:100%;max-height:100%;border-radius:12px;object-fit:contain;";
+  ov.appendChild(img); ov.onclick = () => ov.remove(); document.body.appendChild(ov);
+}
+
+// ══ SONG GENERATE ══════════════════════════════════════════
+function generateSong() {
+  if (!currentUser) { openAuthModal("song"); return; }
+  _generateSong();
+}
+async function _generateSong() {
+  const key = getActiveApiKey();
+  if (!key) return showToast("Service unavailable.", "error");
+  if (!checkQuota()) return;
+  const prompt = document.getElementById("songPrompt").value.trim();
+  if (!prompt) return showToast("Please enter a song description", "error");
+  const style     = getActiveChip("songStyleGroup");
+  const voice     = getActiveChip("songVoiceGroup").replace(/[^\w\s]/g, "").trim();
+  const isKhmer   = /[\u1780-\u17FF]/.test(prompt);
+  const btn       = document.getElementById("songGenBtn");
+  const resultsEl = document.getElementById("songResults");
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
+  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label">Generating song with Lyria 3... (~20s)</div></div>`;
+  try {
+    const voiceHint   = voice.toLowerCase().includes("female") ? "female vocalist" : "male vocalist";
+    const langHint    = isKhmer ? "Lyrics must be in Khmer language." : "";
+    const lyriaPrompt = `Create a full ${style} song about: ${prompt}. ${voiceHint}, ${style} genre, full instrumental, verses, chorus and bridge. ${langHint}`.trim();
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${LYRIA_MODEL}:generateContent?key=${key}`,
+      { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: lyriaPrompt }] }] }) }
+    );
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+    const data = await res.json();
+    let audioB64 = null, audioMime = "audio/mp3", lyricsText = "", songTitle = `${style} Song`;
+    for (const c of (data.candidates || []))
+      for (const p of (c.content?.parts || [])) {
+        if (p.inlineData?.data && !audioB64) { audioB64 = p.inlineData.data; audioMime = p.inlineData.mimeType || "audio/mp3"; }
+        if (p.text) lyricsText += p.text;
+      }
+    if (!audioB64) throw new Error("No audio generated. Please try again.");
+    const raw = atob(audioB64); const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    const audioBlob    = new Blob([bytes], { type: audioMime });
+    const audioBlobUrl = URL.createObjectURL(audioBlob);
+    const m = lyricsText.match(/(?:title|song name)[:\s]+([^\n]+)/i);
+    if (m) songTitle = m[1].trim();
+    const card = document.createElement("div"); card.className = "song-result-card";
+    card.innerHTML = `
+      <div class="song-result-title">
+        <i class="fas fa-music"></i> ${escapeHtml(songTitle)}
+        <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:auto">${escapeHtml(style)} · ${escapeHtml(voiceHint)}</span>
+      </div>
+      <audio controls preload="auto" style="width:100%;margin-bottom:10px"></audio>
+      ${lyricsText ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);max-height:140px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;margin:0 14px 10px">${escapeHtml(lyricsText)}</div>` : ""}`;
+    card.querySelector("audio").src = audioBlobUrl;
+    const a = document.createElement("a"); a.className = "btn-download";
+    a.href = audioBlobUrl; a.download = `jeethy-song-${Date.now()}.mp3`;
+    a.innerHTML = '<i class="fas fa-download"></i> Download Song';
+    card.appendChild(a);
+    resultsEl.innerHTML = ""; resultsEl.appendChild(card);
+    document.querySelector(".panel-song .panel-inner-scroll")?.scrollTo({ top: 99999, behavior: "smooth" });
+    incrementRequest();
+  } catch (err) {
+    resultsEl.innerHTML = `<div class="error-card"><i class="fas fa-circle-exclamation"></i> ${escapeHtml(err.message)}</div>`;
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
+}
+
+// ══ UTILITIES ══════════════════════════════════════════════
+function getActiveChip(groupId) {
+  const el = document.querySelector(`#${groupId} .chip.active`);
+  return el ? el.textContent.trim() : "";
+}
+function selectChip(el, groupId) {
+  document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove("active"));
+  el.classList.add("active");
+}
+function formatTime(d) { return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+function escapeHtml(t = "") {
+  return String(t)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+function showToast(msg, type = "info") {
+  const t = document.createElement("div");
+  t.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:${type === "error" ? "#ef4444" : "#10b981"};color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:99999;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;animation:msgIn 0.3s ease;`;
+  t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
