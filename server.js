@@ -326,31 +326,87 @@ app.post('/api/image', async (req, res) => {
   }
 });
 
-/* /api/song */
+/* /api/song
+   Strategy:
+   1. Use gemini-2.5-flash to generate full song lyrics + metadata.
+   2. Use gemini-2.5-pro-preview-tts to convert the lyrics to audio speech.
+   3. If TTS fails, return lyrics-only so the frontend can still display them.
+*/
 app.post('/api/song', async (req, res) => {
   try {
     const key = geminiKey();
     const { prompt, style='Pop', voice='Female' } = req.body;
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
-    const vName = voice.toLowerCase().includes('female') ? 'Aoede' : 'Charon';
-    const txt   = `Create a full ${style} song about: ${prompt}. ${vName==='Aoede'?'Female':'Male'} vocalist, full arrangement, verses, chorus, bridge.`;
-    const r = await fetch(`${GEMINI}/gemini-2.5-pro-preview-tts:generateContent?key=${key}`, {
+
+    const isFemalVoice = !voice.toLowerCase().includes('male') || voice.toLowerCase().includes('female');
+    const voiceLabel   = isFemalVoice ? 'Female' : 'Male';
+    const ttsVoiceName = isFemalVoice ? 'Aoede' : 'Charon';
+
+    /* ── Step 1: Generate song lyrics via Gemini Flash ── */
+    const lyricsPrompt =
+      `You are a professional songwriter. Write a complete, original ${style} song about: "${prompt}".
+Include:
+- A creative song title (prefix with "Title: ")
+- Verse 1 (label as [Verse 1])
+- Pre-Chorus or Bridge (label as [Pre-Chorus] or [Bridge])
+- Chorus (label as [Chorus])
+- Verse 2 (label as [Verse 2])
+- Final Chorus (label as [Chorus])
+- Outro (label as [Outro])
+Vocalist style: ${voiceLabel}. Genre: ${style}.
+Write only the song — no explanations or commentary.`;
+
+    const lyricsRes = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        contents:[{ parts:[{ text: txt }] }],
-        generationConfig:{ responseModalities:['AUDIO'], speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName: vName } } } }
-      })
+      body: JSON.stringify({ contents:[{ parts:[{ text: lyricsPrompt }] }] })
     });
-    const d = await r.json();
-    if (!r.ok) return res.status(r.status).json({ error: d.error?.message || 'Gemini error' });
-    let audio=null, mime='audio/mp3', lyrics='';
-    for (const c of (d.candidates||[])) for (const p of (c.content?.parts||[])) {
-      if (p.inlineData?.data && !audio) { audio=p.inlineData.data; mime=p.inlineData.mimeType||'audio/mp3'; }
-      if (p.text) lyrics += p.text;
+    const lyricsData = await lyricsRes.json();
+    if (!lyricsRes.ok) return res.status(lyricsRes.status).json({ error: lyricsData.error?.message || 'Lyrics generation failed' });
+
+    const lyricsText = lyricsData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!lyricsText) return res.status(500).json({ error: 'No lyrics generated. Please try again.' });
+
+    /* Extract title */
+    const titleMatch = lyricsText.match(/^Title:\s*(.+)$/im);
+    const songTitle  = titleMatch ? titleMatch[1].trim() : `${style} Song`;
+
+    /* ── Step 2: Convert lyrics to audio via TTS ── */
+    const ttsText = lyricsText.replace(/^Title:.*$/im, '').trim();
+    let audio = null, audioMime = 'audio/wav';
+
+    try {
+      const ttsRes = await fetch(`${GEMINI}/gemini-2.5-pro-preview-tts:generateContent?key=${key}`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents:[{ parts:[{ text: ttsText }] }],
+          generationConfig:{
+            responseModalities:['AUDIO'],
+            speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName: ttsVoiceName } } }
+          }
+        })
+      });
+      const ttsData = await ttsRes.json();
+      if (ttsRes.ok) {
+        for (const c of (ttsData.candidates||[]))
+          for (const p of (c.content?.parts||[]))
+            if (p.inlineData?.data && !audio) {
+              audio     = p.inlineData.data;
+              audioMime = p.inlineData.mimeType || 'audio/wav';
+            }
+      } else {
+        console.warn('[/api/song] TTS failed:', ttsData.error?.message, '— returning lyrics only');
+      }
+    } catch (ttsErr) {
+      console.warn('[/api/song] TTS error:', ttsErr.message, '— returning lyrics only');
     }
-    if (!audio) return res.status(500).json({ error: 'No audio returned. Please try again.' });
-    const tm = lyrics.match(/(?:title|song name)[:\s]+([^\n]+)/i);
-    res.json({ audio, mimeType: mime, title: tm?tm[1].trim():`${style} Song`, lyrics });
+
+    res.json({
+      audio:    audio || null,
+      mimeType: audioMime,
+      title:    songTitle,
+      lyrics:   lyricsText,
+      lyricsOnly: !audio
+    });
   } catch (e) {
     console.error('[/api/song]', e.message);
     res.status(500).json({ error: e.message });

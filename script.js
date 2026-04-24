@@ -3,7 +3,6 @@
 // ── MODELS ─────────────────────────────────────────────────
 const GEMINI_CHAT_MODEL  = "gemini-2.5-flash";
 const GEMINI_IMAGE_MODEL = "gemini-2.0-flash-preview-image-generation";
-const LYRIA_MODEL        = "lyria-realtime-exp";
 
 // ── PLAN LIMITS ────────────────────────────────────────────
 const PLAN_LIMITS = {
@@ -629,55 +628,67 @@ function generateSong() {
   _generateSong();
 }
 async function _generateSong() {
-  const key = getActiveApiKey();
-  if (!key) return showToast("Service unavailable.", "error");
   if (!checkQuota()) return;
   const prompt = document.getElementById("songPrompt").value.trim();
   if (!prompt) return showToast("Please enter a song description", "error");
   const style     = getActiveChip("songStyleGroup");
   const voice     = getActiveChip("songVoiceGroup").replace(/[^\w\s]/g, "").trim();
-  const isKhmer   = /[\u1780-\u17FF]/.test(prompt);
+  const voiceHint = voice.toLowerCase().includes("female") ? "female vocalist" : "male vocalist";
   const btn       = document.getElementById("songGenBtn");
   const resultsEl = document.getElementById("songResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
-  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label">Generating song with Lyria 3... (~20s)</div></div>`;
+  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label">Writing lyrics &amp; generating audio... (~15s)</div></div>`;
   try {
-    const voiceHint   = voice.toLowerCase().includes("female") ? "female vocalist" : "male vocalist";
-    const langHint    = isKhmer ? "Lyrics must be in Khmer language." : "";
-    const lyriaPrompt = `Create a full ${style} song about: ${prompt}. ${voiceHint}, ${style} genre, full instrumental, verses, chorus and bridge. ${langHint}`.trim();
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${LYRIA_MODEL}:generateContent?key=${key}`,
-      { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: lyriaPrompt }] }] }) }
-    );
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+    const res = await fetch("/api/song", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, style, voice })
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`); }
     const data = await res.json();
-    let audioB64 = null, audioMime = "audio/mp3", lyricsText = "", songTitle = `${style} Song`;
-    for (const c of (data.candidates || []))
-      for (const p of (c.content?.parts || [])) {
-        if (p.inlineData?.data && !audioB64) { audioB64 = p.inlineData.data; audioMime = p.inlineData.mimeType || "audio/mp3"; }
-        if (p.text) lyricsText += p.text;
-      }
-    if (!audioB64) throw new Error("No audio generated. Please try again.");
-    const raw = atob(audioB64); const bytes = new Uint8Array(raw.length);
-    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-    const audioBlob    = new Blob([bytes], { type: audioMime });
-    const audioBlobUrl = URL.createObjectURL(audioBlob);
-    const m = lyricsText.match(/(?:title|song name)[:\s]+([^\n]+)/i);
-    if (m) songTitle = m[1].trim();
+
+    const { audio: audioB64, mimeType: audioMime, title: songTitle, lyrics: lyricsText, lyricsOnly } = data;
+
     const card = document.createElement("div"); card.className = "song-result-card";
-    card.innerHTML = `
-      <div class="song-result-title">
-        <i class="fas fa-music"></i> ${escapeHtml(songTitle)}
-        <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:auto">${escapeHtml(style)} · ${escapeHtml(voiceHint)}</span>
-      </div>
-      <audio controls preload="auto" style="width:100%;margin-bottom:10px"></audio>
-      ${lyricsText ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);max-height:140px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;margin:0 14px 10px">${escapeHtml(lyricsText)}</div>` : ""}`;
-    card.querySelector("audio").src = audioBlobUrl;
-    const a = document.createElement("a"); a.className = "btn-download";
-    a.href = audioBlobUrl; a.download = `jeethy-song-${Date.now()}.mp3`;
-    a.innerHTML = '<i class="fas fa-download"></i> Download Song';
-    card.appendChild(a);
+
+    // ── Header ──
+    const header = document.createElement("div"); header.className = "song-result-title";
+    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} · ${escapeHtml(voiceHint)}</span>`;
+    card.appendChild(header);
+
+    // ── Audio player (only when audio is available) ──
+    if (audioB64) {
+      const raw = atob(audioB64); const bytes = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+      const audioBlob    = new Blob([bytes], { type: audioMime || "audio/wav" });
+      const audioBlobUrl = URL.createObjectURL(audioBlob);
+      const audioEl = document.createElement("audio");
+      audioEl.controls = true; audioEl.preload = "auto";
+      audioEl.style.cssText = "width:100%;padding:10px 14px 0;accent-color:var(--green);";
+      audioEl.src = audioBlobUrl;
+      card.appendChild(audioEl);
+      // Download button
+      const a = document.createElement("a"); a.className = "btn-download";
+      const ext = (audioMime || "audio/wav").split("/")[1] || "wav";
+      a.href = audioBlobUrl; a.download = `jeethy-song-${Date.now()}.${ext}`;
+      a.innerHTML = '<i class="fas fa-download"></i> Download Audio';
+      card.appendChild(a);
+    } else {
+      // Lyrics-only notice
+      const notice = document.createElement("div");
+      notice.style.cssText = "display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);border-bottom:1px solid var(--border);";
+      notice.innerHTML = '<i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0"></i> Audio generation is temporarily unavailable — your lyrics are ready below.';
+      card.appendChild(notice);
+    }
+
+    // ── Lyrics ──
+    if (lyricsText) {
+      const lyricsWrap = document.createElement("div");
+      lyricsWrap.style.cssText = "background:var(--surface2);border-top:1px solid var(--border);padding:14px;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.75;max-height:320px;overflow-y:auto;";
+      lyricsWrap.textContent = lyricsText;
+      card.appendChild(lyricsWrap);
+    }
+
     resultsEl.innerHTML = ""; resultsEl.appendChild(card);
     document.querySelector(".panel-song .panel-inner-scroll")?.scrollTo({ top: 99999, behavior: "smooth" });
     incrementRequest();
