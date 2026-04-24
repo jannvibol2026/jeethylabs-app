@@ -2,7 +2,7 @@
 
 // ── MODELS ─────────────────────────────────────────────────
 const GEMINI_CHAT_MODEL  = "gemini-2.5-flash";
-const GEMINI_IMAGE_MODEL = "gemini-2.0-flash-preview-image-generation";
+const GEMINI_IMAGE_MODEL = "imagen-3.0-generate-002";
 
 // ── PLAN LIMITS ────────────────────────────────────────────
 const PLAN_LIMITS = {
@@ -662,13 +662,13 @@ async function _generateSong() {
   const btn       = document.getElementById("songGenBtn");
   const resultsEl = document.getElementById("songResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
-  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating audio… (~20–40s)</div></div>`;
+  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with Lyria… (~20–40s)</div></div>`;
 
-  // Show "retrying" hint after 15s if still loading
+  // Show "retrying" hint after 20s if still loading
   const retryHintTimer = setTimeout(() => {
     const lbl = document.getElementById("songLoadingLabel");
-    if (lbl) lbl.textContent = "Retrying audio models due to high demand… please wait";
-  }, 15000);
+    if (lbl) lbl.textContent = "Lyria is composing… if slow, falling back to TTS — please wait";
+  }, 20000);
 
   try {
     const res = await fetch("/api/song", {
@@ -680,13 +680,17 @@ async function _generateSong() {
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`); }
     const data = await res.json();
 
-    const { audio: audioB64, mimeType: audioMime, title: songTitle, lyrics: lyricsText, lyricsOnly, ttsMessage } = data;
+    const { audio: audioB64, mimeType: audioMime, title: songTitle, lyrics: lyricsText, lyricsOnly, ttsMessage, audioSource } = data;
 
     const card = document.createElement("div"); card.className = "song-result-card";
 
     // ── Header ──
     const header = document.createElement("div"); header.className = "song-result-title";
-    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} · ${escapeHtml(voiceHint)}</span>`;
+    const isLyria = audioSource && audioSource.toLowerCase().includes("lyria");
+    const sourceBadge = audioSource
+      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "🎵 Lyria" : "🔊 TTS"}</span>`
+      : "";
+    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} · ${escapeHtml(voiceHint)}</span>`;
     card.appendChild(header);
 
     // ── Audio player (only when audio is available) ──
