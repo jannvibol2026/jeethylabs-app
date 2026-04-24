@@ -344,75 +344,177 @@ async function withRetry(fn, { maxAttempts = 3, baseDelayMs = 1000, label = 'op'
   throw lastErr;
 }
 
-/* /api/image */
+/* /api/image
+   Uses Imagen 3 (:predict endpoint) — proven reliable.
+   Falls back to gemini-2.0-flash-preview-image-generation (:generateContent) if Imagen fails.
+*/
+const IMAGEN_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+
 app.post('/api/image', async (req, res) => {
   try {
     const key = geminiKey();
     const { prompt, aspectRatio = '1:1', style = '' } = req.body;
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
-    const fullPrompt = style ? `${prompt}, style: ${style}` : prompt;
+    const styleHint  = style && style.toLowerCase() !== 'none' ? `, style: ${style}` : '';
+    const fullPrompt = `${prompt}${styleHint}`;
     console.log('[/api/image] prompt:', fullPrompt.slice(0, 120), '| aspectRatio:', aspectRatio);
 
-    /* Attempt image generation with up to 3 retries */
+    /* ── Primary: Imagen 3 via :predict ── */
     const img = await withRetry(async (attempt) => {
-      if (attempt > 1) console.log(`[/api/image] retry attempt ${attempt}`);
+      if (attempt > 1) console.log(`[/api/image] Imagen3 retry attempt ${attempt}`);
 
       const body = JSON.stringify({
-        contents: [{ parts: [{ text: fullPrompt }] }],
-        generationConfig: {
-          responseModalities: ['IMAGE', 'TEXT'],
-          imageGenerationConfig: { aspectRatio }
+        instances:  [{ prompt: fullPrompt }],
+        parameters: {
+          sampleCount:      1,
+          aspectRatio:      aspectRatio,
+          personGeneration: 'allow_adult'
         }
       });
 
       const r = await fetch(
-        `${GEMINI}/gemini-2.0-flash-preview-image-generation:generateContent?key=${key}`,
+        `${IMAGEN_BASE}/imagen-3.0-generate-002:predict?key=${key}`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }
       );
       const d = await r.json();
 
       if (!r.ok) {
-        const msg = d.error?.message || `Gemini image API error (HTTP ${r.status})`;
-        console.error('[/api/image] Gemini error:', JSON.stringify(d.error || d));
+        const msg = d.error?.message || `Imagen API error (HTTP ${r.status})`;
+        console.error('[/api/image] Imagen3 error:', JSON.stringify(d.error || d));
         throw new Error(msg);
       }
 
-      console.log('[/api/image] candidates:', d.candidates?.length,
-        '| parts:', d.candidates?.[0]?.content?.parts?.map(p => Object.keys(p)).join(', '));
+      const predictions = d.predictions || [];
+      console.log('[/api/image] Imagen3 predictions:', predictions.length);
 
-      for (const c of (d.candidates || [])) {
-        for (const p of (c.content?.parts || [])) {
-          if (p.inlineData?.data) return p.inlineData;
-        }
+      if (predictions.length && predictions[0].bytesBase64Encoded) {
+        const pred = predictions[0];
+        return { data: pred.bytesBase64Encoded, mimeType: pred.mimeType || 'image/png' };
       }
 
-      /* No image data found — check why */
-      const reason = d.candidates?.[0]?.finishReason || 'UNKNOWN';
-      const text   = d.candidates?.[0]?.content?.parts?.find(p => p.text)?.text?.slice(0, 200);
-      console.error('[/api/image] No image in response. finishReason:', reason, '| text:', text);
-
-      if (reason === 'IMAGE_SAFETY')
-        throw new Error('Image blocked by safety filters. Please try a different prompt.');
-      throw new Error('No image returned by the model. Try a more descriptive prompt.');
-    }, { maxAttempts: 3, baseDelayMs: 1500, label: '/api/image' });
+      console.error('[/api/image] Imagen3 returned no predictions:', JSON.stringify(d));
+      throw new Error('No image returned by Imagen 3. Try a more descriptive prompt.');
+    }, { maxAttempts: 3, baseDelayMs: 1500, label: '/api/image Imagen3' });
 
     console.log('[/api/image] success — mimeType:', img.mimeType, '| bytes:', img.data?.length);
     res.json({ data: img.data, mimeType: img.mimeType || 'image/png' });
   } catch (e) {
-    console.error('[/api/image] exception:', e.message);
-    res.status(500).json({ error: e.message });
+    console.error('[/api/image] Imagen3 failed, trying flash fallback:', e.message);
+
+    /* ── Fallback: gemini-2.0-flash-preview-image-generation ── */
+    try {
+      const key = geminiKey();
+      const { prompt, aspectRatio = '1:1', style = '' } = req.body;
+      const styleHint  = style && style.toLowerCase() !== 'none' ? `, style: ${style}` : '';
+      const fullPrompt = `${prompt}${styleHint}`;
+
+      const fallbackImg = await withRetry(async (attempt) => {
+        if (attempt > 1) console.log(`[/api/image] flash fallback retry ${attempt}`);
+
+        const body = JSON.stringify({
+          contents: [{ parts: [{ text: fullPrompt }] }],
+          generationConfig: {
+            responseModalities: ['IMAGE', 'TEXT'],
+            imageGenerationConfig: { aspectRatio }
+          }
+        });
+
+        const r = await fetch(
+          `${GEMINI}/gemini-2.0-flash-preview-image-generation:generateContent?key=${key}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }
+        );
+        const d = await r.json();
+
+        if (!r.ok) {
+          const msg = d.error?.message || `Flash image API error (HTTP ${r.status})`;
+          console.error('[/api/image] flash fallback error:', JSON.stringify(d.error || d));
+          throw new Error(msg);
+        }
+
+        for (const c of (d.candidates || [])) {
+          for (const p of (c.content?.parts || [])) {
+            if (p.inlineData?.data) {
+              console.log('[/api/image] flash fallback success');
+              return p.inlineData;
+            }
+          }
+        }
+
+        const reason = d.candidates?.[0]?.finishReason || 'UNKNOWN';
+        if (reason === 'IMAGE_SAFETY')
+          throw new Error('Image blocked by safety filters. Please try a different prompt.');
+        throw new Error('No image returned by fallback model. Try a more descriptive prompt.');
+      }, { maxAttempts: 2, baseDelayMs: 1500, label: '/api/image flash-fallback' });
+
+      console.log('[/api/image] fallback success — mimeType:', fallbackImg.mimeType);
+      res.json({ data: fallbackImg.data, mimeType: fallbackImg.mimeType || 'image/png' });
+    } catch (fallbackErr) {
+      console.error('[/api/image] all models failed:', fallbackErr.message);
+      res.status(500).json({ error: fallbackErr.message });
+    }
   }
 });
 
 /* /api/song
    Strategy:
    1. Use gemini-2.5-flash to generate full song lyrics + metadata.
-   2. Try TTS models in order: gemini-2.5-flash-preview-tts → gemini-2.5-pro-preview-tts.
-   3. If all TTS models fail, return lyrics-only so the frontend can still display them.
+   2. PRIMARY: Try Lyria (lyria-realtime-exp) — Google's dedicated music generation model.
+   3. FALLBACK: Try TTS models (gemini-2.5-flash-preview-tts → gemini-2.5-pro-preview-tts).
+   4. If all audio models fail, return lyrics-only so the frontend can still display them.
 */
 
-/* TTS models to try in order — most available first */
+/* Lyria music generation — Google's dedicated AI music model */
+async function tryLyria(key, musicPrompt) {
+  const LYRIA_MODELS = [
+    'lyria-realtime-exp',
+  ];
+
+  for (const model of LYRIA_MODELS) {
+    try {
+      const result = await withRetry(async (attempt) => {
+        if (attempt > 1) console.log(`[/api/song] Lyria ${model} retry attempt ${attempt}`);
+        console.log(`[/api/song] Trying Lyria model: ${model} | attempt: ${attempt}`);
+
+        const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: musicPrompt }] }],
+            generationConfig: { responseModalities: ['AUDIO'] }
+          })
+        });
+        const d = await r.json();
+
+        if (!r.ok) {
+          const msg = d.error?.message || `Lyria HTTP ${r.status}`;
+          console.warn(`[/api/song] Lyria model ${model} failed (HTTP ${r.status}):`, msg);
+          throw new Error(msg);
+        }
+
+        for (const c of (d.candidates || [])) {
+          for (const p of (c.content?.parts || [])) {
+            if (p.inlineData?.data) {
+              console.log(`[/api/song] Lyria success with ${model} | mimeType: ${p.inlineData.mimeType}`);
+              return { data: p.inlineData.data, mimeType: p.inlineData.mimeType || 'audio/mp3', model };
+            }
+          }
+        }
+
+        const reason = d.candidates?.[0]?.finishReason;
+        console.warn(`[/api/song] Lyria model ${model} returned no audio. finishReason:`, reason,
+          '| response keys:', JSON.stringify(Object.keys(d)));
+        throw new Error(`No audio data from Lyria ${model} (finishReason: ${reason || 'UNKNOWN'})`);
+      }, { maxAttempts: 3, baseDelayMs: 1500, label: `/api/song Lyria ${model}` });
+
+      if (result) return result;
+    } catch (err) {
+      console.warn(`[/api/song] Lyria model ${model} exhausted retries:`, err.message);
+    }
+  }
+  return null;
+}
+
+/* TTS fallback models to try in order */
 const TTS_MODELS = [
   'gemini-2.5-flash-preview-tts',
   'gemini-2.5-pro-preview-tts',
@@ -448,7 +550,7 @@ async function tryTts(key, ttsText, voiceName) {
           for (const p of (c.content?.parts || [])) {
             if (p.inlineData?.data) {
               console.log(`[/api/song] TTS success with ${model} | mimeType: ${p.inlineData.mimeType}`);
-              return { data: p.inlineData.data, mimeType: p.inlineData.mimeType || 'audio/wav' };
+              return { data: p.inlineData.data, mimeType: p.inlineData.mimeType || 'audio/wav', model };
             }
           }
         }
@@ -503,21 +605,39 @@ app.post('/api/song', async (req, res) => {
     const titleMatch = lyricsText.match(/^Title:\s*(.+)$/im);
     const songTitle  = titleMatch ? titleMatch[1].trim() : `${style} Song`;
 
-    /* ── Step 2: Convert lyrics to audio via TTS ── */
-    const ttsText   = lyricsText.replace(/^Title:.*$/im, '').trim();
-    const ttsResult = await tryTts(key, ttsText, ttsVoiceName);
+    /* ── Step 2: Generate audio — try Lyria first, then TTS fallback ── */
+    const cleanLyrics = lyricsText.replace(/^Title:.*$/im, '').trim();
 
-    if (!ttsResult) {
-      console.warn('[/api/song] All TTS models exhausted — returning lyrics only');
+    /* Build a rich music prompt for Lyria */
+    const lyriaPrompt =
+      `Generate a ${style} song with ${voiceLabel.toLowerCase()} vocals.\n` +
+      `Lyrics:\n${cleanLyrics}`;
+
+    console.log(`[/api/song] Attempting Lyria music generation...`);
+    let audioResult = await tryLyria(key, lyriaPrompt);
+    let audioSource = audioResult ? `Lyria (${audioResult.model})` : null;
+
+    /* Fallback to TTS if Lyria is unavailable */
+    if (!audioResult) {
+      console.log(`[/api/song] Lyria unavailable — falling back to TTS...`);
+      audioResult = await tryTts(key, cleanLyrics, ttsVoiceName);
+      audioSource = audioResult ? `TTS (${audioResult.model})` : null;
+    }
+
+    if (!audioResult) {
+      console.warn('[/api/song] All audio models exhausted — returning lyrics only');
+    } else {
+      console.log(`[/api/song] Audio generated via ${audioSource}`);
     }
 
     res.json({
-      audio:      ttsResult ? ttsResult.data : null,
-      mimeType:   ttsResult ? ttsResult.mimeType : 'audio/wav',
-      title:      songTitle,
-      lyrics:     lyricsText,
-      lyricsOnly: !ttsResult,
-      ttsMessage: !ttsResult
+      audio:       audioResult ? audioResult.data : null,
+      mimeType:    audioResult ? audioResult.mimeType : 'audio/wav',
+      title:       songTitle,
+      lyrics:      lyricsText,
+      lyricsOnly:  !audioResult,
+      audioSource: audioSource,
+      ttsMessage:  !audioResult
         ? 'Audio generation is temporarily unavailable due to high demand. Your lyrics are ready — try again in a few minutes for audio.'
         : null
     });
