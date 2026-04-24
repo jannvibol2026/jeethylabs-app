@@ -612,25 +612,43 @@ textarea.field:focus,input.field:focus{border-color:var(--primary)}
   </div>
 </div>
 
-<!-- ══════════════ SETTINGS MODAL ══════════════ -->
+<!-- ══════════════ SETTINGS MODAL (Pro/Max only) ══════════════ -->
 <div id="settingsModal" class="modal-overlay" onclick="if(event.target===this)closeSettings()">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">Settings</div>
+    <div class="modal-title">⚙️ Pro Settings</div>
+    <div class="modal-sub">Configure your personal Gemini API key</div>
     <div class="auth-form" style="gap:14px">
+      <!-- Pro/Max badge info -->
+      <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.25);border-radius:10px;padding:12px 14px;">
+        <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:4px">
+          <i class="fas fa-crown"></i> Pro &amp; Max Feature
+        </div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5">
+          By default, JeeThy Labs owner key is used. You can optionally use your own key from
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline">Google AI Studio</a>.
+        </div>
+      </div>
+      <!-- Toggle -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
         <div>
-          <div style="font-size:14px;font-weight:600">Use own API key</div>
-          <div style="font-size:12px;color:var(--muted)">Pro feature</div>
+          <div style="font-size:14px;font-weight:600">Use my own API key</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Override JeeThy Labs owner key</div>
         </div>
-        <input type="checkbox" id="useOwnKeyToggle" onchange="updateSettingsUI()" style="width:20px;height:20px;accent-color:var(--primary)"/>
+        <input type="checkbox" id="useOwnKeyToggle" onchange="updateSettingsUI()" style="width:20px;height:20px;accent-color:var(--primary);cursor:pointer"/>
       </div>
+      <!-- Key input (shown when toggled) -->
       <div id="customKeySection" style="display:none">
-        <label class="lbl">Gemini API Key</label>
-        <input id="customKeyInput" type="text" class="field" placeholder="AIza..."/>
+        <label class="lbl">Your Gemini API Key</label>
+        <input id="customKeyInput" type="password" class="field" placeholder="AIzaSy..." autocomplete="off"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">
+          <i class="fas fa-shield-halved"></i> Stored in memory only, never sent to our servers.
+        </div>
       </div>
-      <button class="btn-primary" onclick="saveSettings()">Save Settings</button>
-      <button onclick="closeSettings()" style="color:var(--muted);font-size:14px;padding:8px">Cancel</button>
+      <button class="btn-primary" onclick="saveSettings()">
+        <i class="fas fa-floppy-disk"></i> Save Settings
+      </button>
+      <button onclick="closeSettings()" style="color:var(--muted);font-size:13px;padding:8px;background:none;border:none;cursor:pointer">Cancel</button>
     </div>
   </div>
 </div>
