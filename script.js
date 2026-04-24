@@ -1,9 +1,10 @@
 "use strict";
 
 // ── MODELS ─────────────────────────────────────────────────
-const GEMINI_CHAT_MODEL  = "gemini-2.5-flash";
-const GEMINI_IMAGE_MODEL = "gemini-2.0-flash-preview-image-generation";
-const GEMINI_IMAGE_FALLBACK = "gemini-2.0-flash-exp-image-generation";
+// Defaults used before /api/models responds, and as fallbacks if it fails.
+let GEMINI_CHAT_MODEL    = "gemini-2.5-flash";
+let GEMINI_IMAGE_MODELS  = [];   // populated from /api/models; empty = use server proxy
+let GEMINI_TTS_MODELS    = [];   // populated from /api/models
 
 // ── PLAN LIMITS ────────────────────────────────────────────
 const PLAN_LIMITS = {
@@ -34,6 +35,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initSwipe();
   renderPlanBadge();
   await fetchOwnerKey();
+  await fetchAvailableModels();   // discover real models before any generation
   await checkExistingSession();
 });
 
@@ -42,6 +44,30 @@ async function fetchOwnerKey() {
     const r = await fetch("/api/key");
     if (r.ok) { const d = await r.json(); ownerApiKey = d.key || ""; }
   } catch (e) { ownerApiKey = ""; }
+}
+
+async function fetchAvailableModels() {
+  try {
+    const r = await fetch("/api/models");
+    if (!r.ok) { console.warn("[models] /api/models returned HTTP", r.status, "— using defaults"); return; }
+    const d = await r.json();
+    if (d.error) { console.warn("[models] ListModels error:", d.error, "— using defaults"); }
+    // Update chat model if a better one is available
+    if (d.recommended?.chat)  GEMINI_CHAT_MODEL   = d.recommended.chat;
+    // Store ordered image model list (server proxy will also use these, but
+    // we keep a client-side copy so the direct-call path stays in sync)
+    if (Array.isArray(d.imageModels) && d.imageModels.length > 0) {
+      GEMINI_IMAGE_MODELS = d.imageModels;
+    }
+    if (Array.isArray(d.ttsModels) && d.ttsModels.length > 0) {
+      GEMINI_TTS_MODELS = d.ttsModels;
+    }
+    console.log("[models] chat:", GEMINI_CHAT_MODEL,
+                "| image:", GEMINI_IMAGE_MODELS[0] || "(server decides)",
+                "| tts:", GEMINI_TTS_MODELS[0] || "(server decides)");
+  } catch (e) {
+    console.warn("[models] Could not fetch model list:", e.message, "— using defaults");
+  }
 }
 
 async function checkExistingSession() {
@@ -578,48 +604,17 @@ async function _generateImage() {
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
   resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI...</div></div>`;
 
-  /* Call Gemini image generation API directly (same pattern as chat) */
+  /* Call server-side image proxy — it uses the live model catalogue */
   async function fetchOne() {
-    const models = [GEMINI_IMAGE_MODEL, GEMINI_IMAGE_FALLBACK];
-    let lastErr = null;
-    for (const model of models) {
-      try {
-        console.log(`[image] Trying model: ${model} | prompt: "${fullPrompt.slice(0, 80)}"`);
-        const r = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: fullPrompt }] }],
-              generationConfig: { responseModalities: ["IMAGE", "TEXT"] }
-            })
-          }
-        );
-        const d = await r.json();
-        if (!r.ok) {
-          const msg = d.error?.message || `HTTP ${r.status}`;
-          console.warn(`[image] ${model} error:`, msg);
-          throw new Error(msg);
-        }
-        for (const c of (d.candidates || [])) {
-          for (const p of (c.content?.parts || [])) {
-            if (p.inlineData?.data) {
-              console.log(`[image] success with ${model} | mimeType: ${p.inlineData.mimeType}`);
-              return { data: p.inlineData.data, mimeType: p.inlineData.mimeType || "image/png" };
-            }
-          }
-        }
-        const reason = d.candidates?.[0]?.finishReason || "UNKNOWN";
-        if (reason === "IMAGE_SAFETY") throw new Error("Image blocked by safety filters. Please try a different prompt.");
-        console.warn(`[image] ${model} returned no image data. finishReason: ${reason}`);
-        throw new Error(`No image returned by ${model}. Try a more descriptive prompt.`);
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[image] model ${model} failed:`, err.message);
-      }
-    }
-    throw lastErr || new Error("Image generation failed. Please try again.");
+    const r = await fetch("/api/image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: fullPrompt, aspectRatio: ratio, style })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    if (!d.data) throw new Error("No image returned. Try a more descriptive prompt.");
+    return { data: d.data, mimeType: d.mimeType || "image/png" };
   }
 
   try {
