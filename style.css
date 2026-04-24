@@ -508,3 +508,178 @@ audio{
   .form-row{gap:14px}
   .modal-box{border-radius:22px}
 }
+
+/* ══ DESKTOP — 768px ══════════════════════════════════════ */
+@media (min-width:768px){
+  :root{ --nav:60px; --tab:68px; }
+
+  /* Nav */
+  .app-nav{ padding:0 24px; gap:14px; }
+  .nav-brand{ font-size:18px; }
+  .brand-tag{ font-size:10px; }
+  .plan-badge-btn{ padding:4px 14px; font-size:11px; }
+  .nav-settings-btn{ width:36px; height:36px; font-size:14px; }
+
+  /* Tab bar */
+  .tab{ font-size:12px; gap:5px; }
+  .tab i{ font-size:20px; }
+
+  /* Panels — constrain width and center on wide screens */
+  .panels-wrap{
+    display:flex;
+    align-items:stretch;
+    justify-content:center;
+  }
+  .panels-track{
+    max-width:1200px;
+    width:100%;
+  }
+
+  /* Panel inner scroll — more breathing room */
+  .panel-inner-scroll{ padding:20px 24px; gap:16px; }
+
+  /* Chat */
+  .chat-messages{ padding:18px 20px; gap:14px; }
+  .msg{ max-width:78%; }
+  .msg-bubble{ font-size:14.5px; padding:12px 16px; }
+  .chat-input-wrap{ padding:12px 16px; }
+  .chat-input-box{ padding:10px 12px 10px 18px; border-radius:28px; }
+  .chat-textarea{ font-size:14.5px; }
+  .chat-send-btn{ width:40px; height:40px; font-size:15px; }
+
+  /* Panel header */
+  .panel-icon{ width:50px; height:50px; font-size:20px; border-radius:15px; }
+  .panel-title{ font-size:20px; }
+  .panel-subtitle{ font-size:13px; }
+
+  /* Forms */
+  .form-label{ font-size:12px; }
+  .form-textarea{ font-size:14.5px; padding:13px 16px; }
+  .form-input{ font-size:14.5px; padding:12px 16px; }
+  .chip{ font-size:13px; padding:7px 16px; }
+  .btn-generate{ padding:14px; font-size:15px; border-radius:14px; }
+
+  /* Modals */
+  .modal-overlay{ padding:24px; }
+  .modal-box{ max-width:420px; }
+  .modal-wide{ max-width:520px; }
+  .modal-header{ padding:18px 22px; }
+  .modal-header h3{ font-size:17px; }
+  .modal-body{ padding:20px 22px; gap:14px; }
+  .modal-desc{ font-size:14px; }
+
+  /* Profile dropdown */
+  .profile-dropdown{ width:240px; }
+
+  /* Profile sheet — centered dialog on desktop */
+  #ppSheet{
+    max-width:520px;
+    left:50%;right:auto;
+    border-radius:22px 22px 0 0;
+    transform:translateX(-50%) translateY(100%);
+  }
+  #ppOverlay.open #ppSheet{ transform:translateX(-50%) translateY(0); }
+
+  /* Song result */
+  .song-result-title{ font-size:15px; padding:14px 16px; }
+  audio{ padding:12px 16px 0; }
+
+  /* Error / loading cards */
+  .error-card{ font-size:14px; padding:16px; }
+  .loading-card{ padding:40px 24px; gap:16px; }
+  .loading-label{ font-size:14px; }
+}
+
+/* ══ DESKTOP — 1024px ═════════════════════════════════════ */
+@media (min-width:1024px){
+  :root{ --nav:64px; --tab:72px; }
+
+  /* Nav */
+  .app-nav{ padding:0 32px; }
+  .nav-brand{ font-size:19px; }
+
+  /* Panels — side-by-side layout: show all 3 panels at once */
+  .panels-wrap{
+    overflow:visible;
+    justify-content:center;
+  }
+  .panels-track{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    width:100%;
+    max-width:1280px;
+    transform:none !important; /* disable swipe translation on desktop */
+    gap:0;
+  }
+  .panel{
+    flex:unset;
+    border-right:1px solid var(--border);
+    overflow:hidden;
+  }
+  .panel:last-child{ border-right:none; }
+
+  /* Tab bar — becomes a sidebar-style top indicator on desktop */
+  .tab-bar{
+    left:50%;
+    transform:translateX(-50%);
+    max-width:1280px;
+    width:100%;
+    border-radius:0;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .tab{ font-size:13px; gap:6px; }
+
+  /* Chat messages wider */
+  .msg{ max-width:72%; }
+
+  /* Panel inner scroll */
+  .panel-inner-scroll{ padding:22px 28px; }
+
+  /* Modals — slightly larger */
+  .modal-box{ max-width:440px; }
+  .modal-wide{ max-width:560px; }
+
+  /* Profile sheet */
+  #ppSheet{
+    max-width:560px;
+    bottom:auto;
+    top:50%;
+    transform:translateX(-50%) translateY(-50%) scale(.96);
+    border-radius:22px;
+    max-height:88vh;
+  }
+  #ppOverlay.open #ppSheet{
+    transform:translateX(-50%) translateY(-50%) scale(1);
+  }
+}
+
+/* ══ DESKTOP — 1280px ═════════════════════════════════════ */
+@media (min-width:1280px){
+  :root{ --nav:66px; }
+
+  /* Nav */
+  .app-nav{ padding:0 40px; }
+
+  /* Panels */
+  .panels-track{ max-width:1440px; }
+
+  /* Tab bar */
+  .tab-bar{ max-width:1440px; }
+
+  /* Panel inner scroll — generous padding on large screens */
+  .panel-inner-scroll{ padding:28px 36px; gap:20px; }
+  .chat-messages{ padding:22px 28px; }
+  .chat-input-wrap{ padding:14px 24px; }
+
+  /* Larger form elements */
+  .form-textarea{ font-size:15px; }
+  .form-input{ font-size:15px; }
+  .btn-generate{ padding:15px; font-size:15px; }
+
+  /* Modals */
+  .modal-box{ max-width:460px; }
+  .modal-wide{ max-width:600px; }
+
+  /* Profile sheet */
+  #ppSheet{ max-width:600px; }
+}
