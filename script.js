@@ -1,952 +1,363 @@
-/* ══════════════════════════════════════════
-   JEETHY LABS APP — script.js  (FIXED)
-   All AI calls go through server proxy:
-   /api/chat  /api/image  /api/song
-══════════════════════════════════════════ */
-
 'use strict';
 
-// ── MODELS ───────────────────────────────
-const GEMINI_CHAT_MODEL  = 'gemini-2.5-flash';
-const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-preview-04-17';
-const GEMINI_TTS_MODEL   = 'gemini-2.5-pro-preview-tts';
-const HOME_URL = 'https://jeethylabs.site';
-const LYRIA_MODEL = 'lyria-realtime-exp';
+/* ════════════════════════════════════════════════════════════════
+   script.js — JeeThy Labs  (FINAL CLEAN VERSION)
+   ‣ All API calls go through server proxy  (/api/chat, /api/image, /api/song)
+   ‣ GEMINI_API_KEY is read from Railway env var on the server — never in client
+   ‣ Auth token stored in memory (authToken) + passed via Authorization header
+   ‣ User profile: avatar upload, plan badge, sign out — all wired
+   ════════════════════════════════════════════════════════════════ */
 
-// ── PLAN LIMITS ──────────────────────────
-const PLAN_LIMITS = {
-  free: { requests: 10,  label: 'Free', color: '#a78bfa' },
-  pro:  { requests: 100, label: 'Pro',  color: '#06b6d4' },
-  max:  { requests: 500, label: 'Max',  color: '#fbbf24' }
+/* ── 1. GLOBALS ────────────────────────────────────────────────── */
+var currentUser   = null;
+var authToken     = null;          // JWT stored in memory
+var userPlan      = 'free';
+var requestCount  = 0;
+
+var PLAN_LIMITS = {
+  free : { label:'Free', requests:10  },
+  pro  : { label:'Pro',  requests:100 },
+  max  : { label:'Max',  requests:500 }
 };
 
-// ── STATE ────────────────────────────────
-let currentPanel  = 0;
-let userPlan      = 'free';
-let proCustomKey  = '';
-let useOwnKey     = false;
-let requestCount  = 0;
-let chatHistory   = [];
-let isChatLoading = false;
-let touchStartX   = 0;
-let touchStartY   = 0;
-let currentUser   = null;
-let pendingAction = null;
-let _otpPendingData = null;
-let _resendCountdown = null;
+var chatHistory = [];              // [{role,parts}]
 
-// ── INIT ─────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  setWelcomeTime();
-  initSwipe();
-  renderPlanBadge();
-  injectAuthModal();
-  await checkExistingSession();
-  bindGlobalProfileClose();
-  injectProfileActionButton();
-});
-
-function saveState() {}
-function loadState() {}
-
-// getActiveApiKey — returns custom key if pro+useOwnKey, else empty (server uses owner key)
-function getActiveApiKey() {
-  if (userPlan === 'pro' && useOwnKey && proCustomKey) return proCustomKey;
-  return ''; // server will use owner key
+/* ── 2. API HELPER ─────────────────────────────────────────────── */
+/* All server calls go here — adds Bearer token automatically */
+async function apiCall(path, body) {
+  var headers = { 'Content-Type': 'application/json' };
+  if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+  var res = await fetch(path, {
+    method  : 'POST',
+    headers : headers,
+    body    : JSON.stringify(body || {})
+  });
+  return res;
 }
 
+async function apiGet(path) {
+  var headers = {};
+  if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+  return fetch(path, { headers: headers });
+}
+
+/* ── 3. TOKEN PERSIST (memory only — no localStorage) ─────────── */
+/* Token lives only while page is open (Railway sandbox safe) */
+function saveToken(token) { authToken = token; }
+function clearToken()     { authToken = null; }
+
+/* ── 4. SESSION RESTORE — disabled (manual login only) ────────── */
+/* We block auto-session to force login screen */
+window.checkExistingSession = function() { /* intentionally empty */ };
+
+/* ── 5. PLAN BADGE ─────────────────────────────────────────────── */
+function renderPlanBadge() {
+  var el = document.getElementById('planBadge');
+  if (!el) return;
+  var info = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+  el.textContent = info.label;
+  el.style.background = userPlan === 'pro' ? 'rgba(6,182,212,.15)'
+                      : userPlan === 'max' ? 'rgba(251,191,36,.15)'
+                      : 'rgba(167,139,250,.15)';
+  el.style.color = userPlan === 'pro' ? '#22d3ee'
+                 : userPlan === 'max' ? '#fbbf24'
+                 : '#a78bfa';
+}
+
+/* ── 6. TOAST ──────────────────────────────────────────────────── */
+function showToast(msg, type) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);' +
+    'padding:10px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:99999;' +
+    'color:#fff;pointer-events:none;opacity:0;transition:opacity .3s;' +
+    'background:' + (type==='error'?'rgba(239,68,68,.9)':type==='success'?'rgba(16,185,129,.9)':'rgba(99,102,241,.9)');
+  document.body.appendChild(t);
+  requestAnimationFrame(function(){ t.style.opacity='1'; });
+  setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 400); }, 2800);
+}
+
+/* ── 7. QUOTA CHECK ────────────────────────────────────────────── */
 function checkQuota() {
-  const limit = PLAN_LIMITS[userPlan]?.requests ?? 10;
+  var limit = (PLAN_LIMITS[userPlan] || PLAN_LIMITS.free).requests;
   if (requestCount >= limit) {
-    showUpgradeModal();
+    var m = document.getElementById('upgradeModal');
+    if (m) m.classList.add('open');
     return false;
   }
   return true;
 }
 
-function incrementRequest() {
-  requestCount++;
+/* ── 8. CHAT ───────────────────────────────────────────────────── */
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
 }
 
-function setWelcomeTime() {
-  const el = document.getElementById('welcomeTime');
-  if (el) el.textContent = formatTime(new Date());
-}
-
-function renderPlanBadge() {
-  const badge = document.getElementById('planBadge');
-  if (!badge) return;
-  const plan = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
-  badge.textContent = plan.label;
-  badge.style.color = plan.color;
-  badge.style.borderColor = plan.color + '66';
-}
-
-// ══════════════════════════════════════════
-// PROFILE DROPDOWN
-// ══════════════════════════════════════════
-function getPlanBadgeClass(plan) {
-  if (plan === 'pro') return 'plan-badge-pro';
-  if (plan === 'max') return 'plan-badge-max';
-  return 'plan-badge-free';
-}
-
-function closeProfileDropdown() {
-  const dd = document.getElementById('profileDropdown');
-  if (dd) dd.classList.remove('open');
-}
-
-function toggleProfileDropdown(event) {
-  if (event) { event.preventDefault(); event.stopPropagation(); }
-  const dd = document.getElementById('profileDropdown');
-  if (!dd) return;
-  const shouldOpen = !dd.classList.contains('open');
-  closeProfileDropdown();
-  if (shouldOpen) dd.classList.add('open');
-}
-
-function bindGlobalProfileClose() {
-  document.addEventListener('click', (e) => {
-    const wrap = document.getElementById('userProfileWrap');
-    if (!wrap) return;
-    if (!wrap.contains(e.target)) closeProfileDropdown();
-  }, true);
-  document.addEventListener('touchstart', (e) => {
-    const wrap = document.getElementById('userProfileWrap');
-    if (!wrap) return;
-    if (!wrap.contains(e.target)) closeProfileDropdown();
-  }, { passive: true, capture: true });
-  const dd = document.getElementById('profileDropdown');
-  if (dd) {
-    dd.addEventListener('click', e => e.stopPropagation(), true);
-    dd.addEventListener('touchstart', e => e.stopPropagation(), { passive: true, capture: true });
-  }
-}
-
-function updateProfileUI(user) {
-  if (!user) return;
-  const wrap = document.getElementById('userProfileWrap');
-  const avatarBtn = document.getElementById('userAvatarBtn');
-  const initial = (user.name || 'U').charAt(0).toUpperCase();
-  const plan = user.plan || 'free';
-  const planInfo = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
-
-  if (wrap) { wrap.style.display = 'flex'; }
-  if (avatarBtn) {
-    avatarBtn.setAttribute('type', 'button');
-    avatarBtn.onclick = toggleProfileDropdown;
-    avatarBtn.innerHTML = user.avatar_url
-      ? `<img src="${user.avatar_url}" alt="${escapeHtml(initial)}" />`
-      : `<span id="userAvatarInitial">${escapeHtml(initial)}</span>`;
-  }
-
-  const nameEl  = document.getElementById('profileNameDisplay');
-  const emailEl = document.getElementById('profileEmailDisplay');
-  const planBadgeEl = document.getElementById('profilePlanBadge');
-  const pdName  = document.getElementById('pdName');
-  const pdEmail = document.getElementById('pdEmail');
-  const pdBadge = document.getElementById('pdBadge');
-  const pdAv    = document.getElementById('pdAv');
-
-  if (nameEl)  nameEl.textContent  = user.name  || '';
-  if (emailEl) emailEl.textContent = user.email || '';
-  if (pdName)  pdName.textContent  = user.name  || '';
-  if (pdEmail) pdEmail.textContent = user.email || '';
-  if (pdBadge) pdBadge.textContent = planInfo.label;
-  if (pdAv)    pdAv.innerHTML = user.avatar_url
-    ? `<img src="${user.avatar_url}" alt="${escapeHtml(initial)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`
-    : `<span>${escapeHtml(initial)}</span>`;
-
-  if (planBadgeEl) {
-    planBadgeEl.textContent = planInfo.label;
-    planBadgeEl.className = `profile-plan-badge ${getPlanBadgeClass(plan)}`;
-  }
-}
-
-function injectProfileActionButton() {
-  const dd = document.getElementById('profileDropdown');
-  if (!dd || document.getElementById('profileOpenAccountBtn')) return;
-  const body = dd.querySelector('.profile-dropdown-body, .pd-body');
-  if (!body) return;
-  const btn = document.createElement('button');
-  btn.id = 'profileOpenAccountBtn';
-  btn.className = 'pd-btn';
-  btn.innerHTML = '<i class="fas fa-user"></i> Profile';
-  btn.onclick = () => { closeProfileDropdown(); if (typeof openProfileSheet === 'function') openProfileSheet(); };
-  body.prepend(btn);
-}
-
-// ══════════════════════════════════════════
-// PANEL NAVIGATION
-// ══════════════════════════════════════════
-function goToPanel(index) {
-  currentPanel = index;
-  const track = document.getElementById('panelsTrack');
-  if (track) track.style.transform = `translateX(-${index * 33.333}%)`;
-  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === index));
-  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === index));
-}
-
-function initSwipe() {
-  const wrap = document.getElementById('panelsWrap');
+function addMsg(role, text, time) {
+  var wrap = document.getElementById('chatMessages');
   if (!wrap) return;
-  wrap.addEventListener('touchstart', e => {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, { passive: true });
-  wrap.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-      if (dx < 0 && currentPanel < 2) goToPanel(currentPanel + 1);
-      if (dx > 0 && currentPanel > 0) goToPanel(currentPanel - 1);
+  var isBot = role === 'bot';
+  var div = document.createElement('div');
+  div.className = 'msg ' + (isBot ? 'msg-bot' : 'msg-user');
+  var t = time || new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  div.innerHTML = isBot
+    ? '<div class="msg-avatar"><i class="fas fa-brain"></i></div>' +
+      '<div class="msg-bubble"><p>' + escHtml(text) + '</p><span class="msg-time">' + t + '</span></div>'
+    : '<div class="msg-bubble msg-bubble-user"><p>' + escHtml(text) + '</p><span class="msg-time">' + t + '</span></div>';
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+
+async function sendChat() {
+  if (!currentUser) { openAuthModal('chat'); return; }
+  if (!checkQuota()) return;
+
+  var inp = document.getElementById('chatInput');
+  var msg = inp ? inp.value.trim() : '';
+  if (!msg) return;
+
+  inp.value = '';
+  inp.style.height = 'auto';
+  addMsg('user', msg);
+
+  chatHistory.push({ role:'user', parts:[{text: msg}] });
+
+  // typing indicator
+  var wrap = document.getElementById('chatMessages');
+  var typing = document.createElement('div');
+  typing.className = 'msg msg-bot';
+  typing.id = 'typingIndicator';
+  typing.innerHTML = '<div class="msg-avatar"><i class="fas fa-brain"></i></div>' +
+    '<div class="msg-bubble"><span class="msg-time">...</span></div>';
+  if (wrap) { wrap.appendChild(typing); wrap.scrollTop = wrap.scrollHeight; }
+
+  try {
+    var res  = await apiCall('/api/chat', { history: chatHistory });
+    var data = await res.json();
+
+    if (typing) typing.remove();
+
+    if (res.ok) {
+      var reply = data.reply || 'No response.';
+      chatHistory.push({ role:'model', parts:[{text: reply}] });
+      addMsg('bot', reply);
+      requestCount++;
+    } else {
+      addMsg('bot', '❌ ' + (data.error || 'Server error. Please try again.'));
     }
-  }, { passive: true });
-}
-
-// ══════════════════════════════════════════
-// AUTH MODAL
-// ══════════════════════════════════════════
-function injectAuthModal() {
-  if (document.getElementById('authModal')) return;
-  const html = `
-  <div class="modal-overlay" id="authModal">
-    <div class="modal-box" style="max-width:420px">
-      <div class="modal-header">
-        <h3><i class="fas fa-lock"></i> <span id="authModalTitle">Sign in to continue</span></h3>
-        <button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-xmark"></i></button>
-      </div>
-      <div class="modal-body" style="gap:10px">
-        <div style="display:flex;gap:6px;background:var(--surface2);border:1px solid var(--border);padding:4px;border-radius:30px;">
-          <button id="authTabLogin" onclick="switchAuthTab('login')"
-            style="flex:1;padding:8px;border-radius:30px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#7c3aed,var(--purple));color:#fff;">
-            Login
-          </button>
-          <button id="authTabSignup" onclick="switchAuthTab('signup')"
-            style="flex:1;padding:8px;border-radius:30px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--muted);">
-            Sign Up
-          </button>
-        </div>
-        <div id="authMsg" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;"></div>
-        <form id="authLoginForm" onsubmit="submitLogin(event)" style="display:flex;flex-direction:column;gap:10px;">
-          <div>
-            <label class="form-label">Email</label>
-            <input type="email" id="authLoginEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
-          </div>
-          <div>
-            <label class="form-label">Password</label>
-            <input type="password" id="authLoginPass" class="form-input" placeholder="Your password" required autocomplete="current-password"/>
-          </div>
-          <button type="submit" id="authLoginBtn" class="btn-generate btn-purple" style="margin-bottom:0">
-            <i class="fas fa-arrow-right-to-bracket"></i> Login
-          </button>
-        </form>
-        <form id="authSignupForm" onsubmit="submitSignup(event)" style="display:none;flex-direction:column;gap:10px;">
-          <div>
-            <label class="form-label">Full Name</label>
-            <input type="text" id="authSignupName" class="form-input" placeholder="Your name" required autocomplete="name"/>
-          </div>
-          <div>
-            <label class="form-label">Email</label>
-            <input type="email" id="authSignupEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
-          </div>
-          <div>
-            <label class="form-label">Password</label>
-            <input type="password" id="authSignupPass" class="form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password"/>
-          </div>
-          <button type="submit" id="authSignupBtn" class="btn-generate btn-purple" style="margin-bottom:0">
-            <i class="fas fa-paper-plane"></i> Send Verification Code
-          </button>
-        </form>
-        <div id="authOtpForm" style="display:none;flex-direction:column;gap:12px;">
-          <div style="text-align:center;padding:8px 0;">
-            <i class="fas fa-envelope-circle-check" style="font-size:2rem;color:var(--purple);margin-bottom:8px;display:block;"></i>
-            <p style="font-size:13px;color:var(--muted);margin:0;">Code បានផ្ញើទៅ</p>
-            <p id="otpEmailDisplay" style="font-size:14px;font-weight:700;color:var(--text);margin:4px 0 0;"></p>
-          </div>
-          <div>
-            <label class="form-label">Verification Code (6 digits)</label>
-            <input type="text" id="authOtpInput" class="form-input"
-              placeholder="_ _ _ _ _ _" maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
-              style="text-align:center;font-size:1.5rem;font-weight:700;letter-spacing:0.4em;"
-              oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
-          </div>
-          <div style="display:flex;gap:8px;">
-            <button type="button" onclick="backToSignup()" class="btn-generate" style="flex:1;margin-bottom:0;background:var(--surface2);color:var(--muted);">
-              <i class="fas fa-arrow-left"></i> Back
-            </button>
-            <button type="button" onclick="submitOtp()" id="authOtpBtn" class="btn-generate btn-purple" style="flex:2;margin-bottom:0">
-              <i class="fas fa-check-circle"></i> Verify & Create Account
-            </button>
-          </div>
-          <div style="text-align:center;">
-            <button type="button" onclick="resendOtp()" id="resendOtpBtn"
-              style="background:none;border:none;color:var(--purple);font-size:12px;cursor:pointer;text-decoration:underline;">
-              Resend code
-            </button>
-            <span id="resendTimer" style="font-size:12px;color:var(--muted);display:none;"></span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function openAuthModal(action) {
-  pendingAction = action;
-  const modal = document.getElementById('authModal');
-  if (modal) modal.classList.add('open');
-  clearAuthMsg();
-  switchAuthTab('login');
-}
-
-function closeAuthModal() {
-  const modal = document.getElementById('authModal');
-  if (modal) modal.classList.remove('open');
-  pendingAction = null;
-}
-
-function switchAuthTab(tab) {
-  const loginForm  = document.getElementById('authLoginForm');
-  const signupForm = document.getElementById('authSignupForm');
-  const otpForm    = document.getElementById('authOtpForm');
-  const tabLogin   = document.getElementById('authTabLogin');
-  const tabSignup  = document.getElementById('authTabSignup');
-  clearAuthMsg();
-  if (otpForm) otpForm.style.display = 'none';
-  if (tab === 'login') {
-    if (loginForm)  loginForm.style.display  = 'flex';
-    if (signupForm) signupForm.style.display = 'none';
-    if (tabLogin)  { tabLogin.style.background  = 'linear-gradient(135deg,#7c3aed,#a855f7)'; tabLogin.style.color  = '#fff'; }
-    if (tabSignup) { tabSignup.style.background = 'transparent'; tabSignup.style.color = 'var(--muted)'; }
-  } else {
-    if (loginForm)  loginForm.style.display  = 'none';
-    if (signupForm) signupForm.style.display = 'flex';
-    if (tabSignup) { tabSignup.style.background = 'linear-gradient(135deg,#7c3aed,#a855f7)'; tabSignup.style.color = '#fff'; }
-    if (tabLogin)  { tabLogin.style.background  = 'transparent'; tabLogin.style.color  = 'var(--muted)'; }
+  } catch (ex) {
+    if (typing) typing.remove();
+    addMsg('bot', '❌ Network error. Check your connection.');
   }
 }
 
-function showAuthMsg(msg, type) {
-  const el = document.getElementById('authMsg');
-  if (!el) return;
-  el.style.display   = 'block';
-  el.style.background = type === 'error' ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)';
-  el.style.color      = type === 'error' ? '#f87171' : '#34d399';
-  el.style.border     = `1px solid ${type === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`;
-  el.textContent      = msg;
+/* ── 9. IMAGE GENERATE ─────────────────────────────────────────── */
+function selectChip(btn, groupId) {
+  var group = document.getElementById(groupId);
+  if (!group) return;
+  group.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('active'); });
+  btn.classList.add('active');
 }
 
-function clearAuthMsg() {
-  const el = document.getElementById('authMsg');
-  if (el) { el.style.display = 'none'; el.textContent = ''; }
+function requirePro(btn, groupId) {
+  if (userPlan === 'pro' || userPlan === 'max') { selectChip(btn, groupId); return; }
+  var m = document.getElementById('planModal');
+  if (m) m.classList.add('open');
 }
 
-async function checkExistingSession() {
+async function generateImage() {
+  if (!currentUser) { openAuthModal('image'); return; }
+  if (!checkQuota()) return;
+
+  var prompt = (document.getElementById('imgPrompt') || {}).value || '';
+  if (!prompt.trim()) { showToast('Please enter a prompt','error'); return; }
+
+  var style = '', ratio = '1:1';
+  var sg = document.getElementById('imgStyleGroup');
+  if (sg) { var sc = sg.querySelector('.chip.active'); if (sc) style = sc.textContent.trim(); }
+  var rg = document.getElementById('imgRatioGroup');
+  if (rg) { var rc = rg.querySelector('.chip.active'); if (rc) ratio = rc.textContent.trim(); }
+
+  var fullPrompt = style && style !== 'Other' ? style + ' style: ' + prompt : prompt;
+
+  var btn = document.getElementById('imgGenBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...'; }
+
+  var results = document.getElementById('imgResults');
+  if (results) results.innerHTML = '<div style="text-align:center;padding:32px;color:#9ca3af;"><i class="fas fa-spinner fa-spin" style="font-size:2rem;color:#22d3ee;"></i><p style="margin-top:12px;font-size:13px;">Creating your image...</p></div>';
+
   try {
-    const res = await fetch('/api/me', { credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json();
-      onAuthSuccess(data.user, false);
+    var res  = await apiCall('/api/image', { prompt: fullPrompt, aspectRatio: ratio });
+    var data = await res.json();
+
+    if (res.ok && data.data) {
+      var src = 'data:' + (data.mimeType||'image/png') + ';base64,' + data.data;
+      if (results) results.innerHTML =
+        '<div style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);">' +
+        '<img src="' + src + '" style="width:100%;display:block;" alt="Generated image"/></div>' +
+        '<a download="jeethylabs-image.png" href="' + src + '" ' +
+        'style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;' +
+        'padding:10px;border-radius:10px;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);' +
+        'color:#22d3ee;font-size:13px;font-weight:600;text-decoration:none;">' +
+        '<i class="fas fa-download"></i> Download Image</a>';
+      requestCount++;
+    } else {
+      if (results) results.innerHTML = '<div style="text-align:center;padding:24px;color:#f87171;">❌ ' + (data.error||'Generation failed') + '</div>';
     }
-  } catch (e) {}
-}
-
-function onAuthSuccess(user, runPending = true) {
-  currentUser = user;
-  if (user.plan && PLAN_LIMITS[user.plan]) {
-    userPlan = user.plan;
-    renderPlanBadge();
+  } catch (ex) {
+    if (results) results.innerHTML = '<div style="text-align:center;padding:24px;color:#f87171;">❌ Network error.</div>';
   }
-  updateProfileUI(user);
-  injectProfileActionButton();
-  closeAuthModal();
-  if (runPending && pendingAction) {
-    const action = pendingAction;
-    pendingAction = null;
-    if (action === 'chat')  setTimeout(() => sendChat(),       100);
-    if (action === 'image') setTimeout(() => generateImage(),  100);
-    if (action === 'song')  setTimeout(() => generateSong(),   100);
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Image'; }
+}
+
+/* ── 10. SONG GENERATE ─────────────────────────────────────────── */
+async function generateSong() {
+  if (!currentUser) { openAuthModal('song'); return; }
+  if (!checkQuota()) return;
+
+  var prompt = (document.getElementById('songPrompt') || {}).value || '';
+  if (!prompt.trim()) { showToast('Please describe the song','error'); return; }
+
+  var style = 'Pop', voice = 'Female';
+  var sg = document.getElementById('songStyleGroup');
+  if (sg) { var sc = sg.querySelector('.chip.active'); if (sc) style = sc.textContent.trim(); }
+  var vg = document.getElementById('songVoiceGroup');
+  if (vg) { var vc = vg.querySelector('.chip.active'); if (vc) voice = vc.textContent.trim(); }
+
+  var btn = document.getElementById('songGenBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...'; }
+
+  var results = document.getElementById('songResults');
+  if (results) results.innerHTML = '<div style="text-align:center;padding:32px;color:#9ca3af;"><i class="fas fa-spinner fa-spin" style="font-size:2rem;color:#22d3ee;"></i><p style="margin-top:12px;font-size:13px;">Composing your song...</p></div>';
+
+  try {
+    var res  = await apiCall('/api/song', { prompt, style, voice });
+    var data = await res.json();
+
+    if (res.ok && data.audio) {
+      var src = 'data:' + (data.mimeType||'audio/mp3') + ';base64,' + data.audio;
+      var lyricsHtml = data.lyrics
+        ? '<div style="margin-top:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;">' +
+          '<p style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;margin:0 0 8px;">Lyrics</p>' +
+          '<pre style="font-size:12px;color:#d1d5db;white-space:pre-wrap;margin:0;font-family:inherit;">' + escHtml(data.lyrics) + '</pre></div>'
+        : '';
+      if (results) results.innerHTML =
+        '<div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:14px;padding:16px;">' +
+        '<p style="font-size:13px;font-weight:700;color:#34d399;margin:0 0 12px;"><i class="fas fa-music"></i> ' + escHtml(data.title||'Your Song') + '</p>' +
+        '<audio controls style="width:100%;" src="' + src + '"></audio>' +
+        '<a download="jeethylabs-song.mp3" href="' + src + '" ' +
+        'style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;' +
+        'padding:10px;border-radius:10px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);' +
+        'color:#34d399;font-size:13px;font-weight:600;text-decoration:none;">' +
+        '<i class="fas fa-download"></i> Download Song</a></div>' + lyricsHtml;
+      requestCount++;
+    } else {
+      if (results) results.innerHTML = '<div style="text-align:center;padding:24px;color:#f87171;">❌ ' + (data.error||'Song generation failed') + '</div>';
+    }
+  } catch (ex) {
+    if (results) results.innerHTML = '<div style="text-align:center;padding:24px;color:#f87171;">❌ Network error.</div>';
   }
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song'; }
 }
 
-async function logoutUser() {
-  closeProfileDropdown();
-  try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); } catch (e) {}
-  currentUser = null;
-  const wrap = document.getElementById('userProfileWrap');
-  if (wrap) wrap.style.display = 'none';
-  showToast('Logged out', 'error');
+/* ── 11. TABS / PANELS ─────────────────────────────────────────── */
+var _activeTab = 0;
+function goToPanel(idx) {
+  _activeTab = idx;
+  var track = document.getElementById('panelsTrack');
+  if (track) track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+  document.querySelectorAll('.tab').forEach(function(t,i){ t.classList.toggle('active', i===idx); });
 }
 
-async function submitSignup(e) {
-  e.preventDefault();
-  clearAuthMsg();
-  const btn   = document.getElementById('authSignupBtn');
-  const name  = document.getElementById('authSignupName').value.trim();
-  const email = document.getElementById('authSignupEmail').value.trim();
-  const pass  = document.getElementById('authSignupPass').value;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAuthMsg('Please enter a valid email address.', 'error');
-  if (pass.length < 8) return showAuthMsg('Password must be at least 8 characters.', 'error');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending code...';
-  try {
-    const res  = await fetch('/api/send-otp', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({name,email,password:pass}) });
-    const data = await res.json();
-    if (res.ok) {
-      _otpPendingData = { name, email, password: pass };
-      document.getElementById('otpEmailDisplay').textContent = email;
-      document.getElementById('authSignupForm').style.display = 'none';
-      document.getElementById('authOtpForm').style.display   = 'flex';
-      document.getElementById('authOtpInput').value = '';
-      startResendTimer(60);
-      showAuthMsg('Code ត្រូវបានផ្ញើ! សូមពិនិត្យ Email.', 'success');
-    } else { showAuthMsg(data.error || 'Failed to send code.', 'error'); }
-  } catch (e) { showAuthMsg('Network error. Check your connection.', 'error'); }
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Verification Code';
-}
-
-async function submitOtp() {
-  clearAuthMsg();
-  const otp = document.getElementById('authOtpInput').value.trim();
-  const btn = document.getElementById('authOtpBtn');
-  if (!otp || otp.length !== 6) return showAuthMsg('Please enter the 6-digit code.', 'error');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
-  try {
-    const res  = await fetch('/api/verify-otp', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({..._otpPendingData, otp}) });
-    const data = await res.json();
-    if (res.ok) {
-      _otpPendingData = null;
-      showAuthMsg(`Welcome, ${data.user.name}! 🎉 Account created!`, 'success');
-      setTimeout(() => onAuthSuccess(data.user, true), 900);
-    } else { showAuthMsg(data.error || 'Invalid or expired code.', 'error'); }
-  } catch (e) { showAuthMsg('Network error.', 'error'); }
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-check-circle"></i> Verify & Create Account';
-}
-
-async function resendOtp() {
-  if (!_otpPendingData) return;
-  clearAuthMsg();
-  try {
-    const res  = await fetch('/api/send-otp', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(_otpPendingData) });
-    const data = await res.json();
-    if (res.ok) { showAuthMsg('Code ថ្មីត្រូវបានផ្ញើ!', 'success'); startResendTimer(60); }
-    else showAuthMsg(data.error || 'Failed to resend.', 'error');
-  } catch (e) { showAuthMsg('Network error.', 'error'); }
-}
-
-function startResendTimer(seconds) {
-  const btn = document.getElementById('resendOtpBtn');
-  const timer = document.getElementById('resendTimer');
-  if (!btn || !timer) return;
-  btn.style.display = 'none'; timer.style.display = 'inline';
-  let s = seconds;
-  if (_resendCountdown) clearInterval(_resendCountdown);
-  _resendCountdown = setInterval(() => {
-    timer.textContent = `Resend in ${s}s`; s--;
-    if (s < 0) { clearInterval(_resendCountdown); btn.style.display = 'inline'; timer.style.display = 'none'; }
-  }, 1000);
-}
-
-function backToSignup() {
-  document.getElementById('authOtpForm').style.display   = 'none';
-  document.getElementById('authSignupForm').style.display = 'flex';
-  clearAuthMsg();
-  if (_resendCountdown) clearInterval(_resendCountdown);
-}
-
-async function submitLogin(e) {
-  e.preventDefault();
-  clearAuthMsg();
-  const btn   = document.getElementById('authLoginBtn');
-  const email = document.getElementById('authLoginEmail').value.trim();
-  const pass  = document.getElementById('authLoginPass').value;
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
-  try {
-    const res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({email, password:pass}) });
-    const data = await res.json();
-    if (res.ok) {
-      showAuthMsg(`Welcome back, ${data.user.name}! ✅`, 'success');
-      setTimeout(() => onAuthSuccess(data.user, true), 800);
-    } else { showAuthMsg(data.error || 'Invalid email or password.', 'error'); }
-  } catch (e) { showAuthMsg('Network error. Check your connection.', 'error'); }
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Login';
-}
-
-// ══════════════════════════════════════════
-// PLAN MODAL
-// ══════════════════════════════════════════
-function openPlanModal() {
-  const m = document.getElementById('planModal');
-  if (!m) return;
-  m.classList.add('open');
-  document.querySelectorAll('.plan-card').forEach(c => {
-    c.classList.toggle('selected', c.dataset.plan === userPlan);
-  });
-}
-function closePlanModal() { const m = document.getElementById('planModal'); if (m) m.classList.remove('open'); }
+/* ── 12. PLAN MODAL ────────────────────────────────────────────── */
+function openPlanModal()  { var m=document.getElementById('planModal'); if(m) m.classList.add('open'); }
+function closePlanModal() { var m=document.getElementById('planModal'); if(m) m.classList.remove('open'); }
 
 function selectPlan(plan) {
+  document.querySelectorAll('.plan-card').forEach(function(c){ c.classList.remove('selected'); });
+  var card = document.querySelector('.plan-card[data-plan="'+plan+'"]');
+  if (card) card.classList.add('selected');
+  var ps = document.getElementById('proSettingsInModal');
+  if (ps) ps.style.display = plan==='pro'||plan==='max' ? 'block' : 'none';
+}
+
+function confirmPlan() {
+  var card = document.querySelector('.plan-card.selected');
+  if (!card) return;
+  var plan = card.dataset.plan || 'free';
   userPlan = plan;
-  document.querySelectorAll('.plan-card').forEach(c => c.classList.toggle('selected', c.dataset.plan === plan));
   renderPlanBadge();
-  const proSettings = document.getElementById('proSettingsInModal');
-  if (proSettings) proSettings.style.display = plan === 'pro' ? 'block' : 'none';
+  closePlanModal();
+  showToast(PLAN_LIMITS[plan].label + ' plan selected ✅','success');
 }
 
-function confirmPlan() { closePlanModal(); showToast(`${PLAN_LIMITS[userPlan].label} plan activated!`, 'success'); }
-
-// ══════════════════════════════════════════
-// SETTINGS
-// ══════════════════════════════════════════
-function openSettings() {
-  if (userPlan !== 'pro') { showToast('Settings available on Pro plan', 'error'); openPlanModal(); return; }
-  const m = document.getElementById('settingsModal');
-  if (!m) return;
-  m.classList.add('open');
-  document.getElementById('customKeyInput').value = proCustomKey;
-  document.getElementById('useOwnKeyToggle').checked = useOwnKey;
-  updateSettingsUI();
-}
-function closeSettings() { const m = document.getElementById('settingsModal'); if (m) m.classList.remove('open'); }
+/* ── 13. SETTINGS MODAL ────────────────────────────────────────── */
+function openSettings()  { var m=document.getElementById('settingsModal'); if(m) m.classList.add('open'); }
+function closeSettings() { var m=document.getElementById('settingsModal'); if(m) m.classList.remove('open'); }
 function updateSettingsUI() {
-  const toggle = document.getElementById('useOwnKeyToggle');
-  const keySection = document.getElementById('customKeySection');
-  if (toggle && keySection) keySection.style.display = toggle.checked ? 'block' : 'none';
+  var on = document.getElementById('useOwnKeyToggle');
+  var ks = document.getElementById('customKeySection');
+  if (ks) ks.style.display = (on && on.checked) ? 'block' : 'none';
 }
 function saveSettings() {
-  const toggle   = document.getElementById('useOwnKeyToggle');
-  const keyInput = document.getElementById('customKeyInput').value.trim();
-  if (!toggle) return;
-  useOwnKey = toggle.checked;
-  if (useOwnKey) {
-    if (!keyInput) return showToast('Enter your API key first', 'error');
-    proCustomKey = keyInput;
-    showToast('Using your own API key', 'success');
-  } else {
-    proCustomKey = keyInput;
-    showToast('Using JeeThy Labs owner key', 'success');
-  }
+  showToast('Settings saved ✅','success');
   closeSettings();
 }
 
-// ══════════════════════════════════════════
-// UPGRADE MODAL
-// ══════════════════════════════════════════
-function showUpgradeModal() { const m = document.getElementById('upgradeModal'); if (m) m.classList.add('open'); }
-function closeUpgradeModal() { const m = document.getElementById('upgradeModal'); if (m) m.classList.remove('open'); }
-function upgradeNow() { closeUpgradeModal(); if (userPlan === 'free') openPlanModal(); }
-function requirePro(btn, groupId) {
-  if (userPlan === 'pro') selectChip(btn, groupId);
-  else { showUpgradeModal(); showToast('1080p is available on Pro plan only', 'error'); }
-}
+/* ── 14. UPGRADE MODAL ─────────────────────────────────────────── */
+function closeUpgradeModal() { var m=document.getElementById('upgradeModal'); if(m) m.classList.remove('open'); }
+function upgradeNow()        { closeUpgradeModal(); openPlanModal(); }
 
-// ══════════════════════════════════════════
-// CHAT  →  calls /api/chat (server proxy)
-// ══════════════════════════════════════════
-function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
-function handleChatKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
+/* ── 15. CLOSE MODALS ON BACKDROP ─────────────────────────────── */
+document.addEventListener('click', function(e) {
+  ['planModal','settingsModal','upgradeModal'].forEach(function(id){
+    var m = document.getElementById(id);
+    if (m && e.target === m) m.classList.remove('open');
+  });
+});
 
-function sendChat() {
-  if (!currentUser) { openAuthModal('chat'); return; }
-  _sendChat();
-}
+/* ── 16. WELCOME TIME ──────────────────────────────────────────── */
+(function(){
+  var wt = document.getElementById('welcomeTime');
+  if (!wt) return;
+  var now=new Date(), h=now.getHours(), min=now.getMinutes(), ap=h>=12?'PM':'AM';
+  h=h%12||12;
+  wt.textContent = h+':'+(min<10?'0'+min:min)+' '+ap;
+})();
 
-async function _sendChat() {
-  if (isChatLoading) return;
-  if (!checkQuota()) return;
-  const input = document.getElementById('chatInput');
-  const text  = input.value.trim();
-  if (!text) return;
-
-  appendMessage('user', text);
-  input.value = ''; input.style.height = 'auto';
-  isChatLoading = true;
-  const sendBtn = document.getElementById('chatSendBtn');
-  if (sendBtn) sendBtn.disabled = true;
-  chatHistory.push({ role: 'user', parts: [{ text }] });
-  const typingId = appendTyping();
-
-  try {
-    const body = { history: chatHistory, customKey: getActiveApiKey() };
-    const res  = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body)
-    });
-    removeTyping(typingId);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Server error ${res.status}`);
-    }
-    const data  = await res.json();
-    const reply = data.reply || 'Sorry, no response.';
-    chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-    appendMessage('bot', reply);
-    incrementRequest();
-  } catch (err) {
-    removeTyping(typingId);
-    appendMessage('bot', `❌ ${err.message}`);
-  }
-
-  isChatLoading = false;
-  if (sendBtn) sendBtn.disabled = false;
-}
-
-function appendMessage(role, text) {
-  const container = document.getElementById('chatMessages');
-  if (!container) return;
-  const isUser = role === 'user';
-  const div    = document.createElement('div');
-  div.className = `msg ${isUser ? 'msg-user' : 'msg-bot'}`;
-  const avatar  = document.createElement('div');
-  avatar.className = 'msg-avatar';
-  if (isUser && currentUser) {
-    avatar.textContent = (currentUser.name || 'U').charAt(0).toUpperCase();
-    avatar.style.cssText = 'font-size:13px;font-weight:700;';
-  } else {
-    avatar.innerHTML = isUser ? '<i class="fas fa-user"></i>' : '<i class="fas fa-brain"></i>';
-  }
-  const bubble = document.createElement('div');
-  bubble.className = 'msg-bubble';
-  if (isUser) bubble.textContent = text;
-  else        bubble.innerHTML   = `<div class="prose-response">${formatMarkdown(text)}</div>`;
-  const time   = document.createElement('span');
-  time.className = 'msg-time';
-  time.textContent = formatTime(new Date());
-  bubble.appendChild(time);
-  div.appendChild(avatar); div.appendChild(bubble);
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-}
-
-function appendTyping() {
-  const container = document.getElementById('chatMessages');
-  if (!container) return null;
-  const id  = 'typing-' + Date.now();
-  const div = document.createElement('div');
-  div.className = 'msg msg-bot'; div.id = id;
-  const avatar  = document.createElement('div'); avatar.className = 'msg-avatar';
-  avatar.innerHTML = '<i class="fas fa-brain"></i>';
-  const bubble  = document.createElement('div'); bubble.className = 'msg-bubble';
-  bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
-  div.appendChild(avatar); div.appendChild(bubble);
-  container.appendChild(div); container.scrollTop = container.scrollHeight;
-  return id;
-}
-function removeTyping(id) { if (!id) return; const el = document.getElementById(id); if (el) el.remove(); }
-
-function formatMarkdown(text) {
-  return text
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>')
-    .replace(/`([^`]+)`/g,'<code>$1</code>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/^### (.+)$/gm,'<h4 style="font-size:14px;font-weight:700;margin:8px 0 4px">$1</h4>')
-    .replace(/^## (.+)$/gm,'<h3 style="font-size:15px;font-weight:700;margin:8px 0 4px">$1</h3>')
-    .replace(/^- (.+)$/gm,'<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/gs,'<ul>$1</ul>')
-    .replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br/>')
-    .replace(/^(.)/gm,(m,p)=>p==='<'?m:`<p>${m}`)
-    .replace(/([^>])$/gm,m=>`${m}</p>`)
-    .replace(/<p><\/p>/g,'').replace(/<p>(<[uoh])/g,'$1')
-    .replace(/(<\/[uoh][l4]>)<\/p>/g,'$1');
-}
-
-// ══════════════════════════════════════════
-// IMAGE  →  calls /api/image (server proxy)
-// ══════════════════════════════════════════
-function generateImage() {
-  if (!currentUser) { openAuthModal('image'); return; }
-  _generateImage();
-}
-
-async function _generateImage() {
-  if (!checkQuota()) return;
-  const prompt = document.getElementById('imgPrompt').value.trim();
-  if (!prompt) return showToast('Please enter a prompt', 'error');
-
-  const style       = getActiveChip('imgStyleGroup');
-  const ratio       = getActiveChip('imgRatioGroup');
-  const quality     = getActiveChip('imgQualityGroup');
-  const qty         = parseInt(getActiveChip('imgQtyGroup')) || 1;
-  const aspectRatio = { '1:1':'1:1','9:16':'9:16','16:9':'16:9' }[ratio] || '1:1';
-  const qualityHint = quality === '1080p' ? 'ultra high resolution, sharp details, professional photography' : 'high quality';
-  const fullPrompt  = `${prompt}, style: ${style}, ${qualityHint}`;
-
-  const btn       = document.getElementById('imgGenBtn');
-  const resultsEl = document.getElementById('imgResults');
-  btn.disabled    = true;
-  btn.innerHTML   = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-  resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty>1?'s':''} with AI...</div></div>`;
-
-  try {
-    const requests = Array.from({ length: qty }, () =>
-      fetch('/api/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ prompt: fullPrompt, aspectRatio, customKey: getActiveApiKey() })
-      }).then(async r => {
-        if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error || `Server error ${r.status}`); }
-        return r.json();
-      })
-    );
-
-    const results    = await Promise.allSettled(requests);
-    const imageParts = results.filter(r => r.status === 'fulfilled').map(r => r.value);
-    if (!imageParts.length) {
-      const firstErr = results.find(r => r.status === 'rejected');
-      throw new Error(firstErr?.reason?.message || 'No images generated. Try a different prompt.');
-    }
-
-    const card = document.createElement('div'); card.className = 'img-result-card';
-    const grid = document.createElement('div'); grid.className = `img-grid qty-${imageParts.length}`;
-    const blobUrls = [];
-
-    imageParts.forEach((item, i) => {
-      const base64   = item.data;
-      const mime     = item.mimeType || 'image/png';
-      const byteChars = atob(base64);
-      const byteArr  = new Uint8Array(byteChars.length);
-      for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
-      const blob    = new Blob([byteArr], { type: mime });
-      const blobUrl = URL.createObjectURL(blob);
-      blobUrls.push({ blobUrl, mime });
-      const img = document.createElement('img');
-      img.src = blobUrl; img.alt = `Generated image ${i+1}`;
-      img.onclick = () => openImageFullscreen(blobUrl);
-      grid.appendChild(img);
-    });
-
-    card.appendChild(grid);
-    const dlWrap = document.createElement('div');
-    dlWrap.style.cssText = 'padding:12px;display:flex;flex-direction:column;gap:8px;';
-    blobUrls.forEach(({ blobUrl, mime }, i) => {
-      const ext = mime.split('/')[1] || 'png';
-      const a   = document.createElement('a');
-      a.className = 'btn-download'; a.href = blobUrl;
-      a.download  = `jeethy-image-${Date.now()}-${i+1}.${ext}`;
-      a.innerHTML = `<i class="fas fa-download"></i> Download Image${blobUrls.length>1?' '+(i+1):''}`;
-      dlWrap.appendChild(a);
-    });
-    card.appendChild(dlWrap);
-    resultsEl.innerHTML = ''; resultsEl.appendChild(card);
-    const panel = document.querySelector('.panel-image .panel-inner-scroll');
-    if (panel) panel.scrollTo({ top: 99999, behavior: 'smooth' });
-    incrementRequest();
-  } catch (err) {
-    resultsEl.innerHTML = `<div class="error-card"><i class="fas fa-circle-exclamation"></i> ${escapeHtml(err.message)}</div>`;
-  }
-
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Image';
-}
-
-function openImageFullscreen(src) {
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:pointer;';
-  const img = document.createElement('img');
-  img.src = src; img.style.cssText = 'max-width:100%;max-height:100%;border-radius:12px;object-fit:contain;';
-  overlay.appendChild(img); overlay.onclick = () => overlay.remove();
-  document.body.appendChild(overlay);
-}
-
-// ══════════════════════════════════════════
-// SONG  →  calls /api/song (server proxy)
-// ══════════════════════════════════════════
-function generateSong() {
-  if (!currentUser) { openAuthModal('song'); return; }
-  _generateSong();
-}
-
-async function _generateSong() {
-  if (!checkQuota()) return;
-  const prompt = document.getElementById('songPrompt').value.trim();
-  if (!prompt) return showToast('Please enter a song description', 'error');
-
-  const style   = getActiveChip('songStyleGroup');
-  const voiceEl = getActiveChip('songVoiceGroup');
-  const voice   = voiceEl.replace(/[^\w\s]/g,'').trim();
-  const isKhmer = /[\u1780-\u17FF]/.test(prompt);
-  const btn       = document.getElementById('songGenBtn');
-  const resultsEl = document.getElementById('songResults');
-
-  btn.disabled    = true;
-  btn.innerHTML   = '<i class="fas fa-spinner fa-spin"></i> Composing...';
-  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label">Generating song... (~20s)</div></div>`;
-
-  try {
-    const res = await fetch('/api/song', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ prompt, style, voice, isKhmer, customKey: getActiveApiKey() })
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Server error ${res.status}`);
-    }
-    const data = await res.json();
-    if (!data.audio) throw new Error('No audio generated. Please try again.');
-
-    const raw   = atob(data.audio);
-    const bytes = new Uint8Array(raw.length);
-    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-    const audioBlob = new Blob([bytes], { type: data.mimeType || 'audio/mp3' });
-    const audioBlobUrl = URL.createObjectURL(audioBlob);
-
-    const songTitle = data.title || `${style} Song`;
-    const voiceHint = voice.toLowerCase().includes('female') ? 'female vocalist' : 'male vocalist';
-    const lyricsText = data.lyrics || '';
-
-    const card = document.createElement('div'); card.className = 'song-result-card';
-    card.innerHTML = `
-      <div class="song-result-title">
-        <i class="fas fa-music"></i> ${escapeHtml(songTitle)}
-        <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:auto">${escapeHtml(style)} · ${escapeHtml(voiceHint)}</span>
-      </div>
-      <audio controls preload="auto" style="width:100%;margin-bottom:10px"></audio>
-      ${lyricsText ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);max-height:140px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;margin-bottom:10px">${escapeHtml(lyricsText)}</div>` : ''}
-    `;
-    card.querySelector('audio').src = audioBlobUrl;
-    const a = document.createElement('a');
-    a.className = 'btn-download'; a.href = audioBlobUrl;
-    a.download  = `jeethy-song-${Date.now()}.mp3`;
-    a.innerHTML = '<i class="fas fa-download"></i> Download Song';
-    card.appendChild(a);
-
-    resultsEl.innerHTML = ''; resultsEl.appendChild(card);
-    const panel = document.querySelector('.panel-song .panel-inner-scroll');
-    if (panel) panel.scrollTo({ top: 99999, behavior: 'smooth' });
-    incrementRequest();
-  } catch (err) {
-    resultsEl.innerHTML = `<div class="error-card"><i class="fas fa-circle-exclamation"></i> ${escapeHtml(err.message)}</div>`;
-  }
-
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
-}
-
-// ══════════════════════════════════════════
-// AVATAR UPLOAD (profile sheet)
-// ══════════════════════════════════════════
-async function handleAvatarUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (file.size > 5 * 1024 * 1024) return showAvatarStatus('File too large (max 5MB)', 'error');
-  const reader = new FileReader();
-  reader.onload = async (ev) => {
-    const base64 = ev.target.result;
-    showAvatarStatus('Uploading...', 'info');
-    try {
-      const res  = await fetch('/api/avatar', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ avatar: base64 }) });
-      const data = await res.json();
-      if (res.ok) {
-        if (currentUser) { currentUser.avatar_url = data.avatar_url; window.currentUser = currentUser; }
-        updateProfileUI(currentUser);
-        syncProfileSheet();
-        showAvatarStatus('Avatar updated! ✅', 'success');
-      } else { showAvatarStatus(data.error || 'Upload failed', 'error'); }
-    } catch (ex) { showAvatarStatus('Network error', 'error'); }
-  };
-  reader.readAsDataURL(file);
-}
-
-function showAvatarStatus(msg, type) {
-  const el = document.getElementById('ppAvatarStatus');
-  if (!el) return;
-  el.style.display = 'block';
-  el.style.background = type === 'error' ? 'rgba(239,68,68,.12)' : type === 'success' ? 'rgba(16,185,129,.12)' : 'rgba(99,102,241,.12)';
-  el.style.color = type === 'error' ? '#f87171' : type === 'success' ? '#34d399' : '#a78bfa';
-  el.textContent = msg;
-  if (type === 'success') setTimeout(() => { el.style.display = 'none'; }, 3000);
-}
-
-function syncProfileSheet() {
-  const u      = currentUser || window._currentUser;
-  const plan   = (u && u.plan) || userPlan || 'free';
-  const limits = PLAN_LIMITS;
-  const limit  = (limits[plan] || limits.free).requests;
-  const used   = requestCount || 0;
-  const pct    = Math.min(100, Math.round(used / limit * 100));
-  const planLbl= (limits[plan] || limits.free).label;
-
-  if (u) {
-    const init = (u.name || 'U').charAt(0).toUpperCase();
-    const set  = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v || '—'; };
-    set('ppHeroName',  u.name);
-    set('ppHeroEmail', u.email);
-    set('ppInfoName',  u.name);
-    set('ppInfoEmail', u.email);
-    set('ppInfoPlan',  planLbl);
-    set('ppInfoJoined', u.created_at
-      ? new Date(u.created_at).toLocaleDateString([], { year:'numeric', month:'short', day:'numeric' })
-      : 'Today');
-    const av = document.getElementById('ppAvatarEl');
-    if (av) av.innerHTML = u.avatar_url
-      ? `<img src="${u.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="${init}"/>`
-      : `<span id="ppInitial">${init}</span>`;
-    const badge = document.getElementById('ppPlanBadge');
-    if (badge) {
-      const colors = {
-        free: 'rgba(167,139,250,.15);color:#a78bfa;border-color:rgba(167,139,250,.4)',
-        pro:  'rgba(6,182,212,.15);color:#22d3ee;border-color:rgba(6,182,212,.4)',
-        max:  'rgba(251,191,36,.15);color:#fbbf24;border-color:rgba(251,191,36,.4)'
-      };
-      badge.setAttribute('style', `display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;background:${colors[plan] || colors.free}`);
-      badge.innerHTML = `<i class="fas fa-${plan==='max'?'bolt':plan==='pro'?'crown':'star'}"></i> ${planLbl} Plan`;
-    }
-  }
-  const countEl = document.getElementById('ppUsageCount');
-  const barEl   = document.getElementById('ppUsageBar');
-  if (countEl) countEl.textContent = `${used} / ${limit}`;
-  if (barEl)   barEl.style.width   = pct + '%';
-  barEl && (barEl.style.background = pct > 80 ? '#f87171' : pct > 50 ? '#fbbf24' : '#a855f7');
-  const upgBanner = document.getElementById('ppUpgradeBanner');
-  if (upgBanner) upgBanner.style.display = plan === 'free' ? 'flex' : 'none';
-}
-
-function openProfileSheet()  { syncProfileSheet(); document.getElementById('ppOverlay').classList.add('open'); }
-function closeProfileSheet() { document.getElementById('ppOverlay').classList.remove('open'); }
-function closePPif(e) { if (e.target === document.getElementById('ppOverlay')) closeProfileSheet(); }
-
-// ══════════════════════════════════════════
-// UTILITIES
-// ══════════════════════════════════════════
-function selectChip(btn, groupId) {
-  document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove('active'));
-  btn.classList.add('active');
-}
-function getActiveChip(groupId) {
-  const active = document.querySelector(`#${groupId} .chip.active`);
-  return active ? active.textContent.trim() : '';
-}
-function escapeHtml(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function formatTime(date) {
-  return date.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-}
-function showToast(msg, type = 'success') {
-  let t = document.getElementById('toast');
-  if (!t) {
-    t = document.createElement('div'); t.id = 'toast';
-    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);padding:10px 18px;border-radius:30px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;max-width:90vw;text-align:center;';
-    document.body.appendChild(t);
-  }
-  t.textContent = msg;
-  t.style.background = type === 'error' ? 'rgba(239,68,68,0.9)' : 'rgba(16,185,129,0.9)';
-  t.style.color = '#fff';
-  t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)';
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; }, 3000);
-}
+/* ── 17. EXPOSE GLOBALS ────────────────────────────────────────── */
+window.sendChat      = sendChat;
+window.generateImage = generateImage;
+window.generateSong  = generateSong;
+window.goToPanel     = goToPanel;
+window.selectChip    = selectChip;
+window.requirePro    = requirePro;
+window.handleChatKey = handleChatKey;
+window.autoResize    = autoResize;
+window.openPlanModal    = openPlanModal;
+window.closePlanModal   = closePlanModal;
+window.selectPlan       = selectPlan;
+window.confirmPlan      = confirmPlan;
+window.openSettings     = openSettings;
+window.closeSettings    = closeSettings;
+window.updateSettingsUI = updateSettingsUI;
+window.saveSettings     = saveSettings;
+window.closeUpgradeModal= closeUpgradeModal;
+window.upgradeNow       = upgradeNow;
+window.showToast        = showToast;
+window.requestCount     = requestCount;
+window.userPlan         = userPlan;
+window.PLAN_LIMITS      = PLAN_LIMITS;
+window.renderPlanBadge  = renderPlanBadge;
+window.currentUser      = currentUser;
