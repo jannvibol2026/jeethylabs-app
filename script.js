@@ -76,13 +76,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ── OWNER KEY ────────────────────────────────────────
 async function fetchOwnerKey(){
+  // Fetch owner key from Railway server (used by Free users)
   try {
-    const r = await fetch('/api/key');
+    const r = await fetch('/api/key', {credentials:'include'});
     if(r.ok){ const d = await r.json(); ownerApiKey = d.key||''; }
   } catch(e){ ownerApiKey=''; }
 }
 function getActiveApiKey(){
-  if(userPlan==='pro' && useOwnKey && proCustomKey) return proCustomKey;
+  // Pro/Max with own key enabled → use their personal key
+  if((userPlan==='pro'||userPlan==='max') && useOwnKey && proCustomKey) return proCustomKey;
+  // All users (including Free) → use owner Railway key
   return ownerApiKey;
 }
 
@@ -519,7 +522,7 @@ window.confirmPlan=confirmPlan;
 // SETTINGS MODAL (Pro only)
 // ══════════════════════════════════════════════════════
 function openSettings(){
-  if(userPlan!=='pro'){ showToast('Settings available on Pro plan','error'); openPlanModal(); return; }
+  if(userPlan==='free'){ showToast('Settings is available for Pro & Max users only 👑','error'); openPlanModal(); return; }
   const m=$('settingsModal'); if(!m) return;
   m.classList.add('open');
   if($('customKeyInput')) $('customKeyInput').value=proCustomKey;
@@ -536,9 +539,9 @@ function saveSettings(){
   const key=$('customKeyInput')?$('customKeyInput').value.trim():'';
   if(!t) return;
   useOwnKey=t.checked;
-  if(useOwnKey&&!key) return showToast('Enter your API key first','error');
-  proCustomKey=key;
-  showToast(useOwnKey?'Using your own API key':'Using JeeThy Labs owner key','success');
+  if(key) proCustomKey=key;
+  if(useOwnKey && !proCustomKey) return showToast('Please enter your Gemini API key first','error');
+  showToast(useOwnKey && proCustomKey ? 'Using your own API key ✅' : 'Using JeeThy Labs owner key ✅','success');
   closeSettings();
 }
 window.openSettings=openSettings; window.closeSettings=closeSettings;
@@ -579,7 +582,12 @@ async function sendChat(){
   chatHistory.push({role:'user',parts:[{text}]});
   try {
     const key=getActiveApiKey();
-    if(!key){ removeTyping(typingId); appendMessage('bot','❌ No API key configured.'); isChatLoading=false; return; }
+    if(!key){
+      removeTyping(typingId);
+      if(userPlan==='free') appendMessage('bot','❌ Owner API key not configured. Please contact the admin.');
+      else { appendMessage('bot','❌ No API key. Go to Settings → add your Gemini API key.'); openSettings(); }
+      isChatLoading=false; return;
+    }
     const body={
       contents: chatHistory,
       generationConfig:{temperature:.9,maxOutputTokens:2048}
@@ -659,7 +667,9 @@ async function generateImage(){
   resultsEl.innerHTML='<div class="loading-card"><div class="loading-spinner cyan"></div><div class="loading-label">Creating your image…</div></div>';
   incrementRequest();
   const key=getActiveApiKey();
-  if(!key){ resultsEl.innerHTML='<div class="error-card">❌ No API key configured.</div>'; if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Image';} return; }
+  if(!key){
+    if(userPlan!=='free') openSettings();
+    resultsEl.innerHTML='<div class="error-card">'+(userPlan==='free'?'❌ Owner API key not configured. Contact admin.':'❌ No API key. Go to Settings → add your Gemini API key.')+'</div>'; if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Image';} return; }
   const fullPrompt=`${style} style: ${prompt}`;
   try {
     const promises=Array.from({length:qty},()=>fetch(
@@ -713,7 +723,9 @@ async function generateSong(){
   resultsEl.innerHTML='<div class="loading-card green-loader"><div class="loading-spinner green"></div><div class="loading-label">Composing your song…</div></div>';
   incrementRequest();
   const key=getActiveApiKey();
-  if(!key){ resultsEl.innerHTML='<div class="error-card">❌ No API key configured.</div>'; if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Song';} return; }
+  if(!key){
+    if(userPlan!=='free') openSettings();
+    resultsEl.innerHTML='<div class="error-card">'+(userPlan==='free'?'❌ Owner API key not configured. Contact admin.':'❌ No API key. Go to Settings → add your Gemini API key.')+'</div>'; if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Song';} return; }
   const fullPrompt=`Create a ${style} song with ${voice.toLowerCase()} vocalist about: ${prompt}`;
   try {
     const r=await fetch(
