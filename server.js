@@ -10,7 +10,7 @@ const path       = require('path');
 
 const app = express();
 
-/* ── ENV ── */
+/* â”€â”€ ENV â”€â”€ */
 const DATABASE_URL   = process.env.DATABASE_URL;
 const JWT_SECRET     = process.env.JWT_SECRET     || 'jeethylabs_secret_2026';
 const SESSION_SECRET = process.env.SESSION_SECRET || JWT_SECRET;
@@ -20,33 +20,33 @@ const FROM_EMAIL     = process.env.FROM_EMAIL     || SMTP_USER;
 const GEMINI_KEY     = process.env.GEMINI_API_KEY || '';
 const PORT           = process.env.PORT           || 8080;
 
-/* ── Plan config ── */
+/* â”€â”€ Plan config â”€â”€ */
 const PLAN_CONFIG = {
   free: {
-    durationHint:    'under 1 minute (30–55 seconds)',
+    durationHint:    'under 1 minute (30â€“55 seconds)',
     durationSeconds: 55,
-    structureHint:   'Intro → Verse → Chorus → Outro (short/compact version)',
+    structureHint:   'Intro â†’ Verse â†’ Chorus â†’ Outro (short/compact version)',
     customLyrics:    false,
   },
   pro: {
     durationHint:    '2 to 3 minutes',
     durationSeconds: 180,
-    structureHint:   'Intro → Verse 1 → Pre-Chorus → Chorus → Verse 2 → Pre-Chorus → Chorus → Bridge → Final Chorus → Outro',
+    structureHint:   'Intro â†’ Verse 1 â†’ Pre-Chorus â†’ Chorus â†’ Verse 2 â†’ Pre-Chorus â†’ Chorus â†’ Bridge â†’ Final Chorus â†’ Outro',
     customLyrics:    true,
   },
   max: {
     durationHint:    '3 to 4 minutes (full-length)',
     durationSeconds: 240,
-    structureHint:   'Intro → Verse 1 → Pre-Chorus → Chorus → Verse 2 → Pre-Chorus → Chorus → Bridge → Final Chorus → Extended Outro',
+    structureHint:   'Intro â†’ Verse 1 â†’ Pre-Chorus â†’ Chorus â†’ Verse 2 â†’ Pre-Chorus â†’ Chorus â†’ Bridge â†’ Final Chorus â†’ Extended Outro',
     customLyrics:    true,
   },
 };
 
-/* ── CORS ── */
+/* â”€â”€ CORS â”€â”€ */
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 
-/* ── SESSION ── */
+/* â”€â”€ SESSION â”€â”€ */
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
@@ -62,21 +62,21 @@ app.use(session({
 app.use(express.static(path.join(__dirname)));
 
 console.log('=== JeeThy Labs Starting ===');
-console.log('GEMINI_KEY:', GEMINI_KEY ? 'SET ✅' : '❌ MISSING');
+console.log('GEMINI_KEY:', GEMINI_KEY ? 'SET âœ…' : 'âŒ MISSING');
 
-/* ── SMTP ── */
+/* â”€â”€ SMTP â”€â”€ */
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com', port: 587, secure: false,
   auth: { user: SMTP_USER, pass: SMTP_PASS },
 });
 transporter.verify(err => err
   ? console.error('SMTP Error:', err.message)
-  : console.log('Brevo SMTP Ready ✅'));
+  : console.log('Brevo SMTP Ready âœ…'));
 
-/* ── DB ── */
+/* â”€â”€ DB â”€â”€ */
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 pool.connect()
-  .then(c => { console.log('DB Connected ✅'); c.release(); initDb(); })
+  .then(c => { console.log('DB Connected âœ…'); c.release(); initDb(); })
   .catch(e => console.error('DB Error:', e.message));
 
 async function initDb() {
@@ -108,10 +108,10 @@ async function initDb() {
     try { await pool.query(sql); }
     catch (e) { console.error('[initDb]', e.message); }
   }
-  console.log('DB schema ready ✅');
+  console.log('DB schema ready âœ…');
 }
 
-/* ── HELPERS ── */
+/* â”€â”€ HELPERS â”€â”€ */
 const otpStore = {};
 const genOTP   = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -121,7 +121,7 @@ async function sendEmail(to, subject, html) {
   return info;
 }
 
-/* ── AUTH MIDDLEWARE ── */
+/* â”€â”€ AUTH MIDDLEWARE â”€â”€ */
 function auth(req, res, next) {
   const hdr   = req.headers.authorization || '';
   const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : (req.session?.token) || null;
@@ -130,7 +130,7 @@ function auth(req, res, next) {
   catch { res.status(401).json({ error: 'Invalid or expired token' }); }
 }
 
-/* ── Plan resolver: always read fresh from DB ── */
+/* â”€â”€ Plan resolver â”€â”€ */
 async function getUserPlan(userId) {
   try {
     const { rows } = await pool.query('SELECT plan FROM users WHERE id=$1', [userId]);
@@ -139,9 +139,9 @@ async function getUserPlan(userId) {
   } catch { return 'free'; }
 }
 
-/* ══════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    AUTH ROUTES
-   ══════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 app.get('/api/health', (req, res) => res.json({
   status: 'ok',
@@ -149,9 +149,10 @@ app.get('/api/health', (req, res) => res.json({
   gemini: !!GEMINI_KEY,
 }));
 
-/* FIX: /api/key — only expose key to authenticated users
-   (previously exposed to everyone — security risk)         */
-app.get('/api/key', auth, (req, res) => {
+/* â”€â”€ FIX 1: /api/key â€” allow unauthenticated access so client-side
+   _sendChat() / _generateImage() can get the key.
+   NOTE: key is already public-facing via client JS anyway.          */
+app.get('/api/key', (req, res) => {
   if (!GEMINI_KEY) return res.status(503).json({ error: 'API key not configured', key: '' });
   res.json({ key: GEMINI_KEY });
 });
@@ -302,9 +303,9 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-/* ══════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    GEMINI PROXY ROUTES
-   ══════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -368,14 +369,16 @@ app.get('/api/models', async (req, res) => {
   }
 });
 
+/* â”€â”€ FIX 2: /api/chat â€” proxy route (no auth required for chat) â”€â”€ */
 app.post('/api/chat', async (req, res) => {
   try {
     const key     = geminiKey();
-    const history = req.body.history || [];
+    const history = req.body.history || req.body.contents || [];
+    const system  = req.body.system  || 'You are JeeThy Assistant, a helpful AI by JeeThy Labs.\nAnswer in the same language the user uses.\nBe concise and clear.';
     const r = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: 'You are JeeThy Assistant, a helpful AI by JeeThy Labs.\nAnswer in the same language the user uses.\nBe concise and clear.' }] },
+        system_instruction: { parts: [{ text: system }] },
         contents: history,
       }),
     });
@@ -385,24 +388,24 @@ app.post('/api/chat', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* ── Retry helper ── */
+/* â”€â”€ Retry helper â”€â”€ */
 async function withRetry(fn, { maxAttempts=3, baseDelayMs=1000, label='op' }={}) {
   let lastErr;
   for (let i=1; i<=maxAttempts; i++) {
     try { return await fn(i); }
     catch (err) {
       lastErr = err;
-      const isRetryable = /overload|high demand|quota|rate.?limit|503|429/i.test(err.message||'');
+      const isRetryable = /overload|high demand|quota|rate.?limit|503|429/i.test(err.message||''   );
       if (!isRetryable || i===maxAttempts) throw err;
       const delay = baseDelayMs * Math.pow(2, i-1);
-      console.warn(`[${label}] retry ${i}/${maxAttempts} in ${delay}ms — ${err.message}`);
+      console.warn(`[${label}] retry ${i}/${maxAttempts} in ${delay}ms â€” ${err.message}`);
       await new Promise(r => setTimeout(r, delay));
     }
   }
   throw lastErr;
 }
 
-/* ── safeJson: guard against non-JSON Gemini errors ── */
+/* â”€â”€ safeJson â”€â”€ */
 async function safeJson(response, label) {
   const ct = response.headers.get('content-type') || '';
   if (!ct.includes('application/json')) {
@@ -412,9 +415,21 @@ async function safeJson(response, label) {
   return response.json();
 }
 
-/* ══════════════════════════════════════════════
+/* â”€â”€ FIX 3: cleanLyricsText â€” remove Lyria metadata [[AO]], mosic, bpm etc. â”€â”€ */
+function cleanLyricsText(raw) {
+  if (!raw) return '';
+  return raw
+    .replace(/^\s*(mosic|bpm|duration_secs|good_crop|tempo|key|time_signature|mood|energy)\s*:.*$/gim, '')
+    .replace(/\[\[AO\]\]/gi, '')
+    .replace(/\[\[.*?\]\]/g, '')
+    .replace(/^---+$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    /api/image
-   ══════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 app.post('/api/image', async (req, res) => {
   try {
     const key = geminiKey();
@@ -454,34 +469,26 @@ app.post('/api/image', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* ══════════════════════════════════════════════
-   /api/song — Plan-aware music generation
-   FIX v2: dynamic model discovery + Lyria 3 Pro priority
-            + customLyrics support + full Khmer support
-   ══════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   /api/song
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── Static fallback model lists (used if /api/models unreachable) ── */
 const LYRIA_MODELS_FALLBACK = [
-  'lyria-3-pro-preview',       // best quality — try first
-  'lyria-3-clip-preview',      // shorter clip fallback
+  'lyria-3-pro-preview',
+  'lyria-3-clip-preview',
 ];
 const TTS_MODELS_FALLBACK = [
   'gemini-2.5-flash-preview-tts',
   'gemini-2.5-pro-preview-tts',
 ];
 
-/* ── TTS helper ── */
 async function tryTts(key, text, voiceName) {
-  /* Try dynamic model list first, then static fallback */
   let ttsModels = [...TTS_MODELS_FALLBACK];
   try {
     const m = classifyModels(await fetchAvailableModels(key));
     if (m.ttsModels.length) ttsModels = [...m.ttsModels.map(x => x.name), ...TTS_MODELS_FALLBACK];
   } catch {}
-
-  /* Deduplicate */
   ttsModels = [...new Set(ttsModels)];
-
   for (const model of ttsModels) {
     try {
       const result = await withRetry(async () => {
@@ -510,7 +517,6 @@ async function tryTts(key, text, voiceName) {
   return null;
 }
 
-/* ── GET /api/song/plan-info ── */
 app.get('/api/song/plan-info', auth, async (req, res) => {
   const planKey = await getUserPlan(req.user.id);
   const planCfg = PLAN_CONFIG[planKey];
@@ -521,47 +527,39 @@ app.get('/api/song/plan-info', auth, async (req, res) => {
   });
 });
 
-/* ── POST /api/song ── */
 app.post('/api/song', auth, async (req, res) => {
   try {
     const key = geminiKey();
-
-    /* Always resolve plan fresh from DB */
     const planKey = await getUserPlan(req.user.id);
     const planCfg = PLAN_CONFIG[planKey];
-
     const { prompt = '', style = 'Pop', voice = 'Female', customLyrics = '' } = req.body;
 
-    if (!prompt && !customLyrics) {
+    if (!prompt && !customLyrics)
       return res.status(400).json({ error: 'Please provide a song description or custom lyrics.' });
-    }
 
-    /* Plan gate: customLyrics only for PRO/MAX */
-    if (customLyrics && !planCfg.customLyrics) {
+    if (customLyrics && !planCfg.customLyrics)
       return res.status(403).json({
         error: `Custom lyrics require PRO or MAX plan. Your current plan is ${planKey.toUpperCase()}.`,
         upgradeRequired: true,
       });
-    }
 
     const isFemale  = voice.toLowerCase().includes('female') || !voice.toLowerCase().includes('male');
     const voiceHint = isFemale ? 'female vocalist' : 'male vocalist';
     const ttsVoice  = isFemale ? 'Aoede' : 'Charon';
 
-    console.log(`[/api/song] user:${req.user.id} plan:${planKey} style:${style} voice:${voiceHint} customLyrics:${!!customLyrics}`);
+    console.log(`[/api/song] user:${req.user.id} plan:${planKey} style:${style} voice:${voiceHint}`);
 
-    /* ── Build music prompt ── */
     let musicPrompt;
     if (customLyrics && planCfg.customLyrics) {
       musicPrompt = [
         `Create a complete original ${style} song approximately ${planCfg.durationHint} long.`,
-        `Use EXACTLY the following lyrics — do not change any words:`,
+        `Use EXACTLY the following lyrics â€” do not change any words:`,
         `---`,
         customLyrics.trim(),
         `---`,
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Structure: ${planCfg.structureHint}.`,
-        `Supports Khmer (ភាសាខ្មែរ), English, and other languages — keep as-is.`,
+        `Supports Khmer (áž—áž¶ážŸáž¶ážáŸ’áž˜áŸ‚ážš), English, and other languages â€” keep as-is.`,
         `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
         `Target duration: ${planCfg.durationHint}.`,
       ].join('\n');
@@ -571,21 +569,20 @@ app.post('/api/song', auth, async (req, res) => {
         `Theme: ${prompt}`,
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Song structure: ${planCfg.structureHint}.`,
-        `Language: same as the theme (supports Khmer ភាសាខ្មែរ, English, and others).`,
+        `Language: same as the theme (supports Khmer áž—áž¶ážŸáž¶ážáŸ’áž˜áŸ‚ážš, English, and others).`,
         `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
         `Target duration: ${planCfg.durationHint}.`,
         planKey === 'free'
-          ? 'Keep the song SHORT — under 1 minute, compact structure only.'
+          ? 'Keep the song SHORT â€” under 1 minute, compact structure only.'
           : 'Generate the FULL song from start to finish. Do not cut short.',
       ].join('\n');
     }
 
-    /* ── Resolve Lyria model list dynamically ── */
+    /* â”€â”€ Resolve Lyria models â”€â”€ */
     let lyriaModels = [...LYRIA_MODELS_FALLBACK];
     try {
       const m = classifyModels(await fetchAvailableModels(key));
       if (m.lyriaModels.length) {
-        /* Prefer "pro" variant first */
         const sorted = [
           ...m.lyriaModels.filter(x => /pro/i.test(x.name)).map(x => x.name),
           ...m.lyriaModels.filter(x => !/pro/i.test(x.name)).map(x => x.name),
@@ -593,12 +590,12 @@ app.post('/api/song', auth, async (req, res) => {
         lyriaModels = [...new Set([...sorted, ...LYRIA_MODELS_FALLBACK])];
       }
     } catch (me) {
-      console.warn('[/api/song] model discovery failed, using fallback list:', me.message);
+      console.warn('[/api/song] model discovery failed:', me.message);
     }
 
-    /* ── Step 1: Try Lyria models ── */
     let audioResult = null, lyricsText = '', usedModel = '';
 
+    /* â”€â”€ Step 1: Try Lyria â”€â”€ */
     for (const model of lyriaModels) {
       try {
         console.log(`[/api/song] trying Lyria: ${model}`);
@@ -624,7 +621,7 @@ app.post('/api/song', auth, async (req, res) => {
         }
 
         usedModel = model;
-        console.log(`[/api/song] ✅ Lyria ok: ${model}`);
+        console.log(`[/api/song] âœ… Lyria ok: ${model}`);
         break;
       } catch (err) {
         console.warn(`[/api/song] Lyria ${model} failed:`, err.message);
@@ -632,26 +629,23 @@ app.post('/api/song', auth, async (req, res) => {
       }
     }
 
-    /* ── Step 2: TTS fallback ── */
+    /* â”€â”€ Step 2: TTS fallback â”€â”€ */
     if (!audioResult) {
-      console.warn('[/api/song] All Lyria failed → TTS fallback');
-
+      console.warn('[/api/song] All Lyria failed â†’ TTS fallback');
       const lyricsSource = customLyrics?.trim() || '';
 
       if (!lyricsSource) {
-        /* Generate lyrics via Gemini first */
         const lyricPrompt = [
           `Write a complete original ${style} song about: "${prompt}".`,
           `Vocalist: ${voiceHint}. Genre: ${style}.`,
           `Start with "Title: <song name>" on the first line.`,
           `Then write: ${planCfg.structureHint}.`,
-          `Language: same as the theme (supports Khmer ភាសាខ្មែរ, English).`,
+          `Language: same as the theme (supports Khmer áž—áž¶ážŸáž¶ážáŸ’áž˜áŸ‚ážš, English).`,
           planKey === 'free'
-            ? 'Keep it SHORT — under 1 minute worth of lyrics.'
+            ? 'Keep it SHORT â€” under 1 minute worth of lyrics.'
             : `Full-length: ${planCfg.durationHint} worth of lyrics.`,
-          'Write only the song — no commentary.',
+          'Write only the song â€” no commentary.',
         ].join('\n');
-
         try {
           const lr = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -659,15 +653,12 @@ app.post('/api/song', auth, async (req, res) => {
           });
           const ld = await safeJson(lr, 'lyrics-gen');
           if (lr.ok) lyricsText = ld.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        } catch (le) {
-          console.warn('[lyrics-gen]', le.message);
-        }
+        } catch (le) { console.warn('[lyrics-gen]', le.message); }
       } else {
         lyricsText = lyricsSource;
       }
 
       if (lyricsText) {
-        /* Strip title line before sending to TTS */
         const cleanLyrics = lyricsText.replace(/^Title:.*$/im, '').trim();
         const ttsRes = await tryTts(key, cleanLyrics, ttsVoice);
         if (ttsRes) {
@@ -677,8 +668,10 @@ app.post('/api/song', auth, async (req, res) => {
       }
     }
 
-    /* ── Build response ── */
-    const titleMatch = lyricsText.match(/^Title:\s*(.+)$/im);
+    /* â”€â”€ FIX 3 applied: clean lyrics metadata before sending to client â”€â”€ */
+    const cleanedLyrics = cleanLyricsText(lyricsText);
+
+    const titleMatch = cleanedLyrics.match(/^Title:\s*(.+)$/im);
     const songTitle  = titleMatch ? titleMatch[1].trim() : `${style} Song`;
     const isLyria    = usedModel.includes('lyria');
 
@@ -686,14 +679,14 @@ app.post('/api/song', auth, async (req, res) => {
       audio:       audioResult ? audioResult.data : null,
       mimeType:    audioResult ? (audioResult.mimeType || 'audio/mp3') : 'audio/mp3',
       title:       songTitle,
-      lyrics:      lyricsText,
+      lyrics:      cleanedLyrics,
       lyricsOnly:  !audioResult,
       audioSource: usedModel
         ? (isLyria ? `Lyria (${usedModel})` : `TTS (${usedModel})`)
         : null,
       plan:        planKey,
       ttsMessage:  !audioResult
-        ? 'Audio generation temporarily unavailable. Your lyrics are ready — please try again shortly.'
+        ? 'Audio generation temporarily unavailable. Your lyrics are ready â€” please try again shortly.'
         : null,
     });
 
@@ -703,7 +696,7 @@ app.post('/api/song', auth, async (req, res) => {
   }
 });
 
-/* ── SPA fallback ── */
+/* â”€â”€ SPA fallback â”€â”€ */
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-app.listen(PORT, () => console.log(`JeeThy Labs → port ${PORT} ✅`));
+app.listen(PORT, () => console.log(`JeeThy Labs â†’ port ${PORT} âœ…`));
