@@ -44,6 +44,10 @@ const PLAN_CONFIG = {
 
 /* â”€â”€ CORS â”€â”€ */
 app.use(cors({ origin: true, credentials: true }));
+
+/* â”€â”€ STRIPE WEBHOOK: raw body MUST come BEFORE express.json() â”€â”€ */
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json({ limit: '10mb' }));
 
 /* â”€â”€ SESSION â”€â”€ */
@@ -63,6 +67,7 @@ app.use(express.static(path.join(__dirname)));
 
 console.log('=== JeeThy Labs Starting ===');
 console.log('GEMINI_KEY:', GEMINI_KEY ? 'SET âœ…' : 'âŒ MISSING');
+console.log('STRIPE_KEY:', process.env.STRIPE_SECRET_KEY ? 'SET âœ…' : 'âŒ NOT SET (Stripe disabled)');
 
 /* â”€â”€ SMTP â”€â”€ */
 const transporter = nodemailer.createTransport({
@@ -144,14 +149,12 @@ async function getUserPlan(userId) {
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 app.get('/api/health', (req, res) => res.json({
-  status: 'ok',
-  smtp:   !!SMTP_USER && !!SMTP_PASS,
-  gemini: !!GEMINI_KEY,
+  status:  'ok',
+  smtp:    !!SMTP_USER && !!SMTP_PASS,
+  gemini:  !!GEMINI_KEY,
+  stripe:  !!process.env.STRIPE_SECRET_KEY,
 }));
 
-/* â”€â”€ FIX 1: /api/key â€” allow unauthenticated access so client-side
-   _sendChat() / _generateImage() can get the key.
-   NOTE: key is already public-facing via client JS anyway.          */
 app.get('/api/key', (req, res) => {
   if (!GEMINI_KEY) return res.status(503).json({ error: 'API key not configured', key: '' });
   res.json({ key: GEMINI_KEY });
@@ -369,7 +372,6 @@ app.get('/api/models', async (req, res) => {
   }
 });
 
-/* â”€â”€ FIX 2: /api/chat â€” proxy route (no auth required for chat) â”€â”€ */
 app.post('/api/chat', async (req, res) => {
   try {
     const key     = geminiKey();
@@ -395,7 +397,7 @@ async function withRetry(fn, { maxAttempts=3, baseDelayMs=1000, label='op' }={})
     try { return await fn(i); }
     catch (err) {
       lastErr = err;
-      const isRetryable = /overload|high demand|quota|rate.?limit|503|429/i.test(err.message||''   );
+      const isRetryable = /overload|high demand|quota|rate.?limit|503|429/i.test(err.message||'');
       if (!isRetryable || i===maxAttempts) throw err;
       const delay = baseDelayMs * Math.pow(2, i-1);
       console.warn(`[${label}] retry ${i}/${maxAttempts} in ${delay}ms â€” ${err.message}`);
@@ -415,7 +417,7 @@ async function safeJson(response, label) {
   return response.json();
 }
 
-/* â”€â”€ FIX 3: cleanLyricsText â€” remove Lyria metadata [[AO]], mosic, bpm etc. â”€â”€ */
+/* â”€â”€ cleanLyricsText: strip Lyria metadata [[AO]], mosic:, bpm: etc. â”€â”€ */
 function cleanLyricsText(raw) {
   if (!raw) return '';
   return raw
@@ -578,7 +580,6 @@ app.post('/api/song', auth, async (req, res) => {
       ].join('\n');
     }
 
-    /* â”€â”€ Resolve Lyria models â”€â”€ */
     let lyriaModels = [...LYRIA_MODELS_FALLBACK];
     try {
       const m = classifyModels(await fetchAvailableModels(key));
@@ -595,7 +596,6 @@ app.post('/api/song', auth, async (req, res) => {
 
     let audioResult = null, lyricsText = '', usedModel = '';
 
-    /* â”€â”€ Step 1: Try Lyria â”€â”€ */
     for (const model of lyriaModels) {
       try {
         console.log(`[/api/song] trying Lyria: ${model}`);
@@ -629,7 +629,6 @@ app.post('/api/song', auth, async (req, res) => {
       }
     }
 
-    /* â”€â”€ Step 2: TTS fallback â”€â”€ */
     if (!audioResult) {
       console.warn('[/api/song] All Lyria failed â†’ TTS fallback');
       const lyricsSource = customLyrics?.trim() || '';
@@ -668,12 +667,10 @@ app.post('/api/song', auth, async (req, res) => {
       }
     }
 
-    /* â”€â”€ FIX 3 applied: clean lyrics metadata before sending to client â”€â”€ */
     const cleanedLyrics = cleanLyricsText(lyricsText);
-
-    const titleMatch = cleanedLyrics.match(/^Title:\s*(.+)$/im);
-    const songTitle  = titleMatch ? titleMatch[1].trim() : `${style} Song`;
-    const isLyria    = usedModel.includes('lyria');
+    const titleMatch    = cleanedLyrics.match(/^Title:\s*(.+)$/im);
+    const songTitle     = titleMatch ? titleMatch[1].trim() : `${style} Song`;
+    const isLyria       = usedModel.includes('lyria');
 
     return res.json({
       audio:       audioResult ? audioResult.data : null,
@@ -694,6 +691,107 @@ app.post('/api/song', auth, async (req, res) => {
     console.error('[/api/song] exception:', e.message, e.stack);
     res.status(500).json({ error: e.message });
   }
+});
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   STRIPE PAYMENT ROUTES
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+/* Lazy-load Stripe only when the key is present */
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return null;
+  try { return require('stripe')(key); } catch { return null; }
+}
+
+const APP_URL = process.env.APP_URL || 'https://app.jeethylabs.site';
+
+const STRIPE_PRICES = {
+  pro: process.env.STRIPE_PRICE_PRO || '',
+  max: process.env.STRIPE_PRICE_MAX || '',
+};
+
+/* GET /api/stripe/plans â€” returns plan info + test-mode flag */
+app.get('/api/stripe/plans', (req, res) => {
+  const key = process.env.STRIPE_SECRET_KEY || '';
+  res.json({
+    configured: !!key,
+    testMode:   key.startsWith('sk_test'),
+    plans: {
+      pro: { name: 'PRO',  price: '$9.99/mo',  priceId: STRIPE_PRICES.pro  || 'NOT_SET' },
+      max: { name: 'MAX',  price: '$19.99/mo', priceId: STRIPE_PRICES.max  || 'NOT_SET' },
+    },
+  });
+});
+
+/* POST /api/stripe/checkout â€” create Stripe Checkout session */
+app.post('/api/stripe/checkout', auth, async (req, res) => {
+  const stripe = getStripe();
+  if (!stripe) return res.status(503).json({ error: 'Stripe is not configured. Add STRIPE_SECRET_KEY to Railway ENV.' });
+
+  const { plan } = req.body;
+  if (!STRIPE_PRICES[plan] || !STRIPE_PRICES[plan].startsWith('price_'))
+    return res.status(400).json({ error: `Invalid plan or STRIPE_PRICE_${plan?.toUpperCase()} not set in Railway ENV.` });
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode:                 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: STRIPE_PRICES[plan], quantity: 1 }],
+      success_url: `${APP_URL}/?upgraded=1&plan=${plan}`,
+      cancel_url:  `${APP_URL}/?cancelled=1`,
+      metadata:    { userId: String(req.user.id), plan },
+    });
+    res.json({ url: session.url });
+  } catch (e) {
+    console.error('[stripe/checkout]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/* POST /api/stripe/webhook â€” Stripe event handler */
+app.post('/api/stripe/webhook', async (req, res) => {
+  const stripe = getStripe();
+  if (!stripe) return res.status(503).json({ error: 'Stripe not configured.' });
+
+  const sig    = req.headers['stripe-signature'];
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) return res.status(503).json({ error: 'STRIPE_WEBHOOK_SECRET not set.' });
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, secret);
+  } catch (e) {
+    console.error('[stripe/webhook] signature error:', e.message);
+    return res.status(400).json({ error: 'Webhook signature invalid: ' + e.message });
+  }
+
+  console.log('[stripe/webhook] event:', event.type);
+
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const { userId, plan } = event.data.object.metadata || {};
+        if (userId && plan) {
+          await pool.query(
+            'UPDATE users SET plan=$1, last_active=$2 WHERE id=$3',
+            [plan, new Date(), Number(userId)]
+          );
+          console.log(`[stripe] âœ… user ${userId} upgraded â†’ ${plan}`);
+        }
+        break;
+      }
+      case 'customer.subscription.deleted': {
+        /* Optional: auto-downgrade on cancellation */
+        console.warn('[stripe] subscription cancelled:', event.data.object.customer);
+        break;
+      }
+    }
+  } catch (e) {
+    console.error('[stripe/webhook] handler error:', e.message);
+  }
+
+  res.json({ received: true });
 });
 
 /* â”€â”€ SPA fallback â”€â”€ */
