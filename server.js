@@ -10,21 +10,21 @@ const path       = require('path');
 
 const app = express();
 
-/* ── ENV ── */
+/* â”€â”€ ENV â”€â”€ */
 const DATABASE_URL  = process.env.DATABASE_URL;
 const JWT_SECRET    = process.env.JWT_SECRET    || 'jeethylabs_secret_2026';
 const SESSION_SECRET= process.env.SESSION_SECRET|| JWT_SECRET;
 const SMTP_USER     = process.env.SMTP_USER     || '';
 const SMTP_PASS     = process.env.SMTP_PASS     || '';
 const FROM_EMAIL    = process.env.FROM_EMAIL    || SMTP_USER;
-const GEMINI_KEY    = process.env.GEMINI_API_KEY|| '';   // ← Railway env var
+const GEMINI_KEY    = process.env.GEMINI_API_KEY|| '';
 const PORT          = process.env.PORT          || 8080;
 
-/* ── CORS: allow all origins + Authorization header ── */
+/* â”€â”€ CORS â”€â”€ */
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 
-/* ── SESSION: cookie-based, 30-day persistent ── */
+/* â”€â”€ SESSION â”€â”€ */
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
@@ -33,7 +33,7 @@ app.use(session({
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000   // 30 days
+    maxAge: 30 * 24 * 60 * 60 * 1000
   }
 }));
 
@@ -42,24 +42,23 @@ app.use(express.static(path.join(__dirname)));
 console.log('=== JeeThy Labs Starting ===');
 console.log('SMTP_USER:',  SMTP_USER  || 'MISSING');
 console.log('SMTP_PASS:',  SMTP_PASS  ? 'SET' : 'MISSING');
-console.log('GEMINI_KEY:', GEMINI_KEY ? 'SET ✅' : '❌ MISSING — add GEMINI_API_KEY in Railway');
+console.log('GEMINI_KEY:', GEMINI_KEY ? 'SET âœ…' : 'âŒ MISSING â€” add GEMINI_API_KEY in Railway');
 
-/* ── SMTP ── */
+/* â”€â”€ SMTP â”€â”€ */
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com', port: 587, secure: false,
   auth: { user: SMTP_USER, pass: SMTP_PASS }
 });
 transporter.verify(err => err
   ? console.error('SMTP Error:', err.message)
-  : console.log('Brevo SMTP Ready ✅'));
+  : console.log('Brevo SMTP Ready âœ…'));
 
-/* ── DB ── */
+/* â”€â”€ DB â”€â”€ */
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 pool.connect()
-  .then(c => { console.log('DB Connected ✅'); c.release(); initDb(); })
+  .then(c => { console.log('DB Connected âœ…'); c.release(); initDb(); })
   .catch(e => console.error('DB Error:', e.message));
 
-/* ── DB MIGRATION: ensure all required columns exist ── */
 async function initDb() {
   const migrations = [
     `CREATE TABLE IF NOT EXISTS users (
@@ -89,10 +88,10 @@ async function initDb() {
     try { await pool.query(sql); }
     catch (e) { console.error('[initDb] migration error:', e.message); }
   }
-  console.log('DB schema ready ✅');
+  console.log('DB schema ready âœ…');
 }
 
-/* ── HELPERS ── */
+/* â”€â”€ HELPERS â”€â”€ */
 const otpStore = {};
 const genOTP   = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -102,11 +101,7 @@ async function sendEmail(to, subject, html) {
   return info;
 }
 
-/* ── AUTH MIDDLEWARE ── */
-/* Accepts JWT from:
-   1. Authorization: Bearer <token>  header  (API calls)
-   2. req.session.token               cookie  (browser sessions)
-*/
+/* â”€â”€ AUTH MIDDLEWARE â”€â”€ */
 function auth(req, res, next) {
   const hdr   = req.headers.authorization || '';
   const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : (req.session && req.session.token) || null;
@@ -115,9 +110,9 @@ function auth(req, res, next) {
   catch { res.status(401).json({ error: 'Invalid or expired token' }); }
 }
 
-/* ════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    AUTH ROUTES
-   ════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 app.get('/api/health', (req, res) => res.json({
   status: 'ok',
@@ -125,19 +120,17 @@ app.get('/api/health', (req, res) => res.json({
   gemini: !!GEMINI_KEY
 }));
 
-/* /api/key  — return owner Gemini API key for frontend use */
 app.get('/api/key', (req, res) => {
   if (!GEMINI_KEY) return res.status(503).json({ error: 'API key not configured', key: '' });
   res.json({ key: GEMINI_KEY });
 });
 
-/* /api/send-otp */
 app.post('/api/send-otp', async (req, res) => {
   const { email, name, password } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
   const otp = genOTP();
   otpStore[email] = { otp, name: name||'', password: password||'', expires: Date.now() + 10*60*1000 };
-  console.log('[otp] →', email, '| code:', otp);
+  console.log('[otp] â†’', email, '| code:', otp);
   try {
     await sendEmail(email, 'Your Verification Code - JeeThy Labs',
       `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px;">
@@ -154,12 +147,11 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
-/* /api/verify-otp  → creates account + returns token */
 app.post('/api/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
   const rec = otpStore[email];
-  if (!rec)                         return res.status(400).json({ error: 'No OTP found. Request a new one.' });
-  if (Date.now() > rec.expires)     { delete otpStore[email]; return res.status(400).json({ error: 'OTP expired.' }); }
+  if (!rec)                              return res.status(400).json({ error: 'No OTP found. Request a new one.' });
+  if (Date.now() > rec.expires)          { delete otpStore[email]; return res.status(400).json({ error: 'OTP expired.' }); }
   if (rec.otp !== String(otp||'').trim()) return res.status(400).json({ error: 'Invalid OTP.' });
   const rawPw = req.body.password || rec.password || '';
   if (!rawPw) return res.status(400).json({ error: 'Password missing.' });
@@ -175,7 +167,7 @@ app.post('/api/verify-otp', async (req, res) => {
       [req.body.name||rec.name||'User', email, hash, now]);
     const u = rows[0];
     const token = jwt.sign({ id:u.id, email:u.email }, JWT_SECRET, { expiresIn:'30d' });
-    req.session.token = token;   // persist in httpOnly cookie
+    req.session.token = token;
     res.json({ success:true, token, user:{ id:u.id, name:u.name, email:u.email, plan:u.plan||'free', avatar_url:u.avatar_url||null, created_at:u.created_at } });
   } catch (e) {
     console.error('[verify-otp]', e.message);
@@ -183,7 +175,6 @@ app.post('/api/verify-otp', async (req, res) => {
   }
 });
 
-/* /api/login */
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -194,14 +185,13 @@ app.post('/api/login', async (req, res) => {
     if (!await bcrypt.compare(password||'', u.password_hash)) return res.status(401).json({ error: 'Wrong password.' });
     await pool.query('UPDATE users SET last_active=$1 WHERE id=$2', [new Date(), u.id]);
     const token = jwt.sign({ id:u.id, email:u.email }, JWT_SECRET, { expiresIn:'30d' });
-    req.session.token = token;   // persist in httpOnly cookie
+    req.session.token = token;
     res.json({ success:true, token, user:{ id:u.id, name:u.name, email:u.email, plan:u.plan||'free', avatar_url:u.avatar_url||null, created_at:u.created_at } });
   } catch (e) {
     res.status(500).json({ error: 'Login failed: ' + e.message });
   }
 });
 
-/* /api/me  — restore session from stored token */
 app.get('/api/me', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -211,7 +201,6 @@ app.get('/api/me', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* /api/forgot-password */
 app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body;
   const { rows } = await pool.query('SELECT id FROM users WHERE email=$1', [email]).catch(()=>({rows:[]}));
@@ -229,7 +218,6 @@ app.post('/api/forgot-password', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* /api/reset-password */
 app.post('/api/reset-password', async (req, res) => {
   const { email, otp, newPassword } = req.body;
   const rec = otpStore[email];
@@ -245,7 +233,6 @@ app.post('/api/reset-password', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* /api/profile  GET / POST */
 app.get('/api/profile', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -266,7 +253,6 @@ app.post('/api/profile', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* /api/avatar  — dedicated avatar upload */
 app.post('/api/avatar', auth, async (req, res) => {
   const { avatar } = req.body;
   if (!avatar) return res.status(400).json({ error: 'No avatar data' });
@@ -276,7 +262,6 @@ app.post('/api/avatar', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* /api/upload-avatar  — alias used by frontend (accepts avatar_url field) */
 app.post('/api/upload-avatar', auth, async (req, res) => {
   const { avatar_url } = req.body;
   if (!avatar_url) return res.status(400).json({ error: 'No avatar data' });
@@ -292,30 +277,26 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-/* ════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    GEMINI PROXY ROUTES
-   Uses  GEMINI_API_KEY  from Railway env — never exposed to client
-   ════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-/* helper: get API key — server key only (no client key) */
 function geminiKey() {
   if (!GEMINI_KEY) throw new Error('GEMINI_API_KEY is not set in Railway environment variables.');
   return GEMINI_KEY;
 }
 
-/* ── Model discovery cache ── */
+/* â”€â”€ Model discovery cache â”€â”€ */
 let _modelsCache     = null;
 let _modelsCacheTime = 0;
-const MODELS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const MODELS_CACHE_TTL = 10 * 60 * 1000;
 
 async function fetchAvailableModels(key) {
   const now = Date.now();
-  if (_modelsCache && (now - _modelsCacheTime) < MODELS_CACHE_TTL) {
-    return _modelsCache;
-  }
-  console.log('[models] Fetching available models from Gemini ListModels API...');
+  if (_modelsCache && (now - _modelsCacheTime) < MODELS_CACHE_TTL) return _modelsCache;
+  console.log('[models] Fetching available models...');
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}&pageSize=100`);
   if (!r.ok) {
     const text = await r.text();
@@ -323,9 +304,9 @@ async function fetchAvailableModels(key) {
   }
   const data = await r.json();
   const models = (data.models || []).map(m => ({
-    name:               m.name?.replace('models/', '') || '',
-    displayName:        m.displayName || '',
-    supportedMethods:   m.supportedGenerationMethods || [],
+    name:             m.name?.replace('models/', '') || '',
+    displayName:      m.displayName || '',
+    supportedMethods: m.supportedGenerationMethods || [],
   }));
   _modelsCache     = models;
   _modelsCacheTime = now;
@@ -333,53 +314,49 @@ async function fetchAvailableModels(key) {
   return models;
 }
 
-/* Classify models by capability */
 function classifyModels(models) {
   const generateContent = models.filter(m => m.supportedMethods.includes('generateContent'));
   const imageModels = generateContent.filter(m =>
     /image.gen|imagen|flash.*image|image.*flash/i.test(m.name) ||
     /image.gen|imagen/i.test(m.displayName)
   );
+  const lyriaModels = generateContent.filter(m =>
+    /lyria/i.test(m.name) || /lyria/i.test(m.displayName)
+  );
   const ttsModels = generateContent.filter(m =>
     /tts|text.to.speech/i.test(m.name) ||
     /tts|text.to.speech/i.test(m.displayName)
   );
   const chatModels = generateContent.filter(m =>
-    !imageModels.includes(m) && !ttsModels.includes(m)
+    !imageModels.includes(m) && !ttsModels.includes(m) && !lyriaModels.includes(m)
   );
-  return { imageModels, ttsModels, chatModels, all: generateContent };
+  return { imageModels, lyriaModels, ttsModels, chatModels, all: generateContent };
 }
 
-/* /api/models — list available Gemini models and their capabilities */
 app.get('/api/models', async (req, res) => {
   try {
     const key    = geminiKey();
     const models = await fetchAvailableModels(key);
-    const { imageModels, ttsModels, chatModels } = classifyModels(models);
+    const { imageModels, lyriaModels, ttsModels, chatModels } = classifyModels(models);
     res.json({
       all:         models,
       imageModels: imageModels.map(m => m.name),
+      lyriaModels: lyriaModels.map(m => m.name),
       ttsModels:   ttsModels.map(m => m.name),
       chatModels:  chatModels.map(m => m.name),
       recommended: {
-        chat:  chatModels.find(m => /2\.5.flash/i.test(m.name))?.name  || chatModels[0]?.name  || 'gemini-2.5-flash',
+        chat:  chatModels.find(m => /2\.5.flash/i.test(m.name))?.name || chatModels[0]?.name || 'gemini-2.5-flash',
         image: imageModels[0]?.name || null,
-        tts:   ttsModels.find(m => /flash/i.test(m.name))?.name        || ttsModels[0]?.name   || null,
+        lyria: lyriaModels.find(m => /pro/i.test(m.name))?.name      || lyriaModels[0]?.name || 'lyria-3-pro-preview',
+        tts:   ttsModels.find(m => /flash/i.test(m.name))?.name      || ttsModels[0]?.name   || null,
       }
     });
   } catch (e) {
     console.error('[/api/models]', e.message);
-    /* Return safe defaults so the frontend can still function */
     res.json({
-      all:         [],
-      imageModels: [],
-      ttsModels:   [],
-      chatModels:  ['gemini-2.5-flash'],
-      recommended: {
-        chat:  'gemini-2.5-flash',
-        image: null,
-        tts:   null,
-      },
+      all: [], imageModels: [], lyriaModels: [], ttsModels: [],
+      chatModels: ['gemini-2.5-flash'],
+      recommended: { chat: 'gemini-2.5-flash', image: null, lyria: 'lyria-3-pro-preview', tts: null },
       error: e.message
     });
   }
@@ -388,7 +365,7 @@ app.get('/api/models', async (req, res) => {
 /* /api/chat */
 app.post('/api/chat', async (req, res) => {
   try {
-    const key = geminiKey();
+    const key     = geminiKey();
     const history = req.body.history || [];
     const r = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -406,42 +383,35 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-/* ── Shared retry helper: exponential backoff ── */
+/* â”€â”€ Retry helper â”€â”€ */
 async function withRetry(fn, { maxAttempts = 3, baseDelayMs = 1000, label = 'op' } = {}) {
   let lastErr;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn(attempt);
-    } catch (err) {
+    try { return await fn(attempt); }
+    catch (err) {
       lastErr = err;
       const isOverload = /overload|high demand|quota|rate.?limit|503|429/i.test(err.message || '');
       if (!isOverload || attempt === maxAttempts) throw err;
       const delay = baseDelayMs * Math.pow(2, attempt - 1);
-      console.warn(`[${label}] attempt ${attempt} failed (${err.message}) — retrying in ${delay}ms`);
+      console.warn(`[${label}] attempt ${attempt} failed â€” retrying in ${delay}ms`);
       await new Promise(r => setTimeout(r, delay));
     }
   }
   throw lastErr;
 }
 
-/* ── Safe JSON parser: guards against HTML error pages from the API ── */
+/* â”€â”€ Safe JSON parser â”€â”€ */
 async function safeJson(response, label) {
   const ct = response.headers.get('content-type') || '';
   if (!ct.includes('application/json')) {
     const text = await response.text();
-    console.error(`[${label}] Non-JSON response (HTTP ${response.status}):`, text.slice(0, 300));
+    console.error(`[${label}] Non-JSON (HTTP ${response.status}):`, text.slice(0, 300));
     throw new Error(`API returned non-JSON (HTTP ${response.status}). Check API key and endpoint.`);
   }
   return response.json();
 }
 
-/* /api/image
-   Dynamically discovers available image-generation models via ListModels,
-   then tries each in order with exponential-backoff retries.
-   Safe fallback: gemini-2.0-flash if no image model is found in the catalogue.
-*/
-
-/* Known-good image model fallbacks (used only when ListModels fails) */
+/* /api/image */
 const IMAGE_MODEL_FALLBACKS = [
   'gemini-2.0-flash-preview-image-generation',
   'gemini-2.0-flash',
@@ -457,20 +427,15 @@ app.post('/api/image', async (req, res) => {
     const fullPrompt = `${prompt}${styleHint}`;
     console.log('[/api/image] prompt:', fullPrompt.slice(0, 120), '| aspectRatio:', aspectRatio);
 
-    /* ── Resolve image models from live catalogue, fall back to safe defaults ── */
     let IMAGE_MODELS;
     try {
       const allModels = await fetchAvailableModels(key);
       const { imageModels } = classifyModels(allModels);
       IMAGE_MODELS = imageModels.map(m => m.name);
-      if (IMAGE_MODELS.length === 0) {
-        console.warn('[/api/image] No image models found in catalogue — using fallbacks');
-        IMAGE_MODELS = IMAGE_MODEL_FALLBACKS;
-      } else {
-        console.log('[/api/image] Available image models:', IMAGE_MODELS);
-      }
+      if (!IMAGE_MODELS.length) IMAGE_MODELS = IMAGE_MODEL_FALLBACKS;
+      else console.log('[/api/image] models:', IMAGE_MODELS);
     } catch (catalogErr) {
-      console.warn('[/api/image] Could not fetch model catalogue:', catalogErr.message, '— using fallbacks');
+      console.warn('[/api/image] catalogue error:', catalogErr.message);
       IMAGE_MODELS = IMAGE_MODEL_FALLBACKS;
     }
 
@@ -478,83 +443,64 @@ app.post('/api/image', async (req, res) => {
     for (const model of IMAGE_MODELS) {
       try {
         const img = await withRetry(async (attempt) => {
-          if (attempt > 1) console.log(`[/api/image] ${model} retry attempt ${attempt}`);
-          console.log(`[/api/image] Trying model: ${model}`);
-
-          const body = JSON.stringify({
-            contents: [{ parts: [{ text: fullPrompt }] }],
-            generationConfig: {
-              responseModalities: ['IMAGE', 'TEXT'],
-            }
+          if (attempt > 1) console.log(`[/api/image] ${model} retry ${attempt}`);
+          const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: fullPrompt }] }],
+              generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+            })
           });
-
-          const r = await fetch(
-            `${GEMINI}/${model}:generateContent?key=${key}`,
-            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }
-          );
           const d = await safeJson(r, `/api/image ${model}`);
-
-          if (!r.ok) {
-            const msg = d.error?.message || `Image API error (HTTP ${r.status})`;
-            console.error(`[/api/image] ${model} error:`, JSON.stringify(d.error || d));
-            throw new Error(msg);
-          }
-
-          for (const c of (d.candidates || [])) {
-            for (const p of (c.content?.parts || [])) {
-              if (p.inlineData?.data) {
-                console.log(`[/api/image] success with ${model} | mimeType: ${p.inlineData.mimeType}`);
-                return p.inlineData;
-              }
-            }
-          }
-
+          if (!r.ok) throw new Error(d.error?.message || `HTTP ${r.status}`);
+          for (const c of (d.candidates || []))
+            for (const p of (c.content?.parts || []))
+              if (p.inlineData?.data) return p.inlineData;
           const reason = d.candidates?.[0]?.finishReason || 'UNKNOWN';
-          if (reason === 'IMAGE_SAFETY')
-            throw new Error('Image blocked by safety filters. Please try a different prompt.');
-          console.error(`[/api/image] ${model} returned no image data. finishReason: ${reason}`, JSON.stringify(d).slice(0, 300));
-          throw new Error(`No image returned by ${model}. Try a more descriptive prompt.`);
+          if (reason === 'IMAGE_SAFETY') throw new Error('Image blocked by safety filters.');
+          throw new Error(`No image returned by ${model}.`);
         }, { maxAttempts: 3, baseDelayMs: 1500, label: `/api/image ${model}` });
 
-        console.log('[/api/image] success — mimeType:', img.mimeType, '| bytes:', img.data?.length);
         return res.json({ data: img.data, mimeType: img.mimeType || 'image/png' });
       } catch (err) {
         lastErr = err;
-        console.warn(`[/api/image] model ${model} failed:`, err.message);
+        console.warn(`[/api/image] ${model} failed:`, err.message);
       }
     }
-
-    console.error('[/api/image] all models failed:', lastErr?.message);
-    res.status(500).json({ error: lastErr?.message || 'Image generation failed. Please try again.' });
+    res.status(500).json({ error: lastErr?.message || 'Image generation failed.' });
   } catch (e) {
     console.error('[/api/image] exception:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-/* /api/song
-   Strategy:
-   1. Use gemini-2.5-flash to generate full song lyrics + metadata.
-   2. Try TTS models (gemini-2.5-flash-preview-tts → gemini-2.5-pro-preview-tts) for audio.
-   3. If all audio models fail, return lyrics-only so the frontend can still display them.
-   Note: Lyria (lyria-realtime-exp) uses a WebSocket/streaming API incompatible with
-         the standard :generateContent REST endpoint — it is not used here.
-*/
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   /api/song â€” Lyria 3 Pro  (~2â€“3 minute full song)
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   Flow:
+     1. lyria-3-pro-preview  â†’ full 2-3 min song (music + vocals + lyrics)
+     2. lyria-3-clip-preview â†’ 30-sec clip fallback
+     3. gemini-2.5-flash-preview-tts / gemini-2.5-pro-preview-tts â†’ TTS fallback
+     4. Lyrics only          â†’ if all audio methods fail
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* TTS models to try in order */
+const LYRIA_MODELS = [
+  'lyria-3-pro-preview',   // Full song 2â€“3 min | vocals + instruments + lyrics
+  'lyria-3-clip-preview',  // 30-sec clip fallback
+];
+
 const TTS_MODELS = [
   'gemini-2.5-flash-preview-tts',
   'gemini-2.5-pro-preview-tts',
 ];
 
-/* Try each TTS model with exponential backoff retries per model */
+/* TTS fallback helper */
 async function tryTts(key, ttsText, voiceName) {
   for (const model of TTS_MODELS) {
     try {
       const result = await withRetry(async (attempt) => {
-        if (attempt > 1) console.log(`[/api/song] TTS ${model} retry attempt ${attempt}`);
-        console.log(`[/api/song] Trying TTS model: ${model} | voice: ${voiceName} | attempt: ${attempt}`);
-
+        if (attempt > 1) console.log(`[/api/song] TTS ${model} retry ${attempt}`);
+        console.log(`[/api/song] TTS fallback: ${model} | voice: ${voiceName}`);
         const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -566,32 +512,17 @@ async function tryTts(key, ttsText, voiceName) {
           })
         });
         const d = await safeJson(r, `/api/song TTS ${model}`);
-
-        if (!r.ok) {
-          const msg = d.error?.message || `TTS HTTP ${r.status}`;
-          console.warn(`[/api/song] TTS model ${model} failed (HTTP ${r.status}):`, msg);
-          throw new Error(msg);
-        }
-
-        for (const c of (d.candidates || [])) {
-          for (const p of (c.content?.parts || [])) {
-            if (p.inlineData?.data) {
-              console.log(`[/api/song] TTS success with ${model} | mimeType: ${p.inlineData.mimeType}`);
+        if (!r.ok) throw new Error(d.error?.message || `TTS HTTP ${r.status}`);
+        for (const c of (d.candidates || []))
+          for (const p of (c.content?.parts || []))
+            if (p.inlineData?.data)
               return { data: p.inlineData.data, mimeType: p.inlineData.mimeType || 'audio/wav', model };
-            }
-          }
-        }
-
         const reason = d.candidates?.[0]?.finishReason;
-        console.warn(`[/api/song] TTS model ${model} returned no audio. finishReason:`, reason,
-          '| parts:', JSON.stringify(d.candidates?.[0]?.content?.parts?.map(p => Object.keys(p))));
-        throw new Error(`No audio data from ${model} (finishReason: ${reason || 'UNKNOWN'})`);
+        throw new Error(`No TTS audio from ${model} (${reason || 'UNKNOWN'})`);
       }, { maxAttempts: 3, baseDelayMs: 1000, label: `/api/song TTS ${model}` });
-
       if (result) return result;
     } catch (err) {
-      console.warn(`[/api/song] TTS model ${model} exhausted retries:`, err.message);
-      /* Continue to next model */
+      console.warn(`[/api/song] TTS ${model} exhausted:`, err.message);
     }
   }
   return null;
@@ -600,69 +531,155 @@ async function tryTts(key, ttsText, voiceName) {
 app.post('/api/song', async (req, res) => {
   try {
     const key = geminiKey();
-    const { prompt, style='Pop', voice='Female' } = req.body;
+    const { prompt, style = 'Pop', voice = 'Female' } = req.body;
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
-    const isFemaleVoice = !voice.toLowerCase().includes('male') || voice.toLowerCase().includes('female');
-    const voiceLabel    = isFemaleVoice ? 'Female' : 'Male';
-    const ttsVoiceName  = isFemaleVoice ? 'Aoede' : 'Charon';
+    const isFemale  = !voice.toLowerCase().includes('male') || voice.toLowerCase().includes('female');
+    const voiceHint = isFemale ? 'female vocalist' : 'male vocalist';
+    const ttsVoice  = isFemale ? 'Aoede' : 'Charon';
 
-    console.log(`[/api/song] prompt: "${prompt.slice(0,80)}" | style: ${style} | voice: ${voiceLabel}`);
+    console.log(`[/api/song] "${prompt.slice(0,80)}" | style:${style} | voice:${voiceHint}`);
 
-    /* ── Step 1: Generate song lyrics via Gemini Flash ── */
-    const lyricsPrompt =
-      `You are a professional songwriter. Write a complete, original ${style} song about: "${prompt}".\nInclude:\n- A creative song title (prefix with "Title: ")\n- Verse 1 (label as [Verse 1])\n- Pre-Chorus or Bridge (label as [Pre-Chorus] or [Bridge])\n- Chorus (label as [Chorus])\n- Verse 2 (label as [Verse 2])\n- Final Chorus (label as [Chorus])\n- Outro (label as [Outro])\nVocalist style: ${voiceLabel}. Genre: ${style}.\nWrite only the song — no explanations or commentary.`;
+    /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+       Step 1: Build rich music prompt for Lyria
+       Lyria 3 Pro generates audio + lyrics together
+       from a descriptive music prompt.
+       Duration hint: "2 to 3 minutes" / "full-length"
+    â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    const musicPrompt = [
+      `Create a complete, full-length original ${style} song that is approximately 2 to 3 minutes long.`,
+      `Theme / description: ${prompt}`,
+      `Vocalist: ${voiceHint}.`,
+      `Genre: ${style}.`,
+      `Song structure: Intro â†’ Verse 1 â†’ Pre-Chorus â†’ Chorus â†’ Verse 2 â†’ Pre-Chorus â†’ Chorus â†’ Bridge â†’ Final Chorus â†’ Outro.`,
+      `Language: Use the same language as the theme/description.`,
+      `         Fully supports Khmer (áž—áž¶ážŸáž¶ážáŸ’áž˜áŸ‚ážš), English, and mixed-language lyrics.`,
+      `Audio quality: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
+      `Important: Generate the FULL song from start to finish â€” do not cut short. Target duration: 2â€“3 minutes.`,
+    ].join('\n');
 
-    const lyricsRes = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ contents:[{ parts:[{ text: lyricsPrompt }] }] })
-    });
-    const lyricsData = await safeJson(lyricsRes, '/api/song lyrics');
-    if (!lyricsRes.ok) {
-      console.error('[/api/song] Lyrics generation failed:', lyricsData.error?.message);
-      return res.status(lyricsRes.status).json({ error: lyricsData.error?.message || 'Lyrics generation failed' });
+    let audioResult = null;
+    let lyricsText  = '';
+    let usedModel   = '';
+
+    /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+       Step 2: Try Lyria models
+    â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    for (const model of LYRIA_MODELS) {
+      try {
+        console.log(`[/api/song] Trying Lyria: ${model}`);
+
+        const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: musicPrompt }] }],
+            generationConfig: {
+              responseModalities: ['AUDIO', 'TEXT'],
+            }
+          })
+        });
+
+        const d = await safeJson(r, `/api/song Lyria ${model}`);
+
+        if (!r.ok) {
+          const msg = d.error?.message || `HTTP ${r.status}`;
+          console.warn(`[/api/song] Lyria ${model} HTTP error:`, msg);
+          throw new Error(msg);
+        }
+
+        /* Parse parts: Lyria returns TEXT (lyrics) + AUDIO (music) */
+        for (const c of (d.candidates || []))
+          for (const p of (c.content?.parts || [])) {
+            if (p.text)             lyricsText  = p.text;
+            if (p.inlineData?.data) audioResult = p.inlineData;
+          }
+
+        if (!audioResult) {
+          const reason = d.candidates?.[0]?.finishReason || 'UNKNOWN';
+          console.warn(`[/api/song] Lyria ${model} no audio. finishReason: ${reason}`);
+          throw new Error(`No audio from Lyria ${model} (${reason})`);
+        }
+
+        usedModel = model;
+        console.log(`[/api/song] âœ… Lyria success: ${model} | mimeType: ${audioResult.mimeType}`);
+        break;
+
+      } catch (err) {
+        console.warn(`[/api/song] Lyria ${model} failed:`, err.message);
+        audioResult = null;
+      }
     }
 
-    const lyricsText = lyricsData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!lyricsText) return res.status(500).json({ error: 'No lyrics generated. Please try again.' });
+    /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+       Step 3: Lyria failed â†’ generate lyrics then TTS
+    â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    if (!audioResult) {
+      console.warn('[/api/song] All Lyria models failed â†’ TTS fallback');
 
-    console.log(`[/api/song] Lyrics generated (${lyricsText.length} chars)`);
+      /* Generate structured lyrics via Gemini Flash */
+      const lyricsPrompt = [
+        `You are a professional songwriter. Write a complete, original ${style} song about: "${prompt}".`,
+        `Vocalist: ${voiceHint}. Genre: ${style}.`,
+        `Language: use the same language as the theme (supports Khmer áž—áž¶ážŸáž¶ážáŸ’áž˜áŸ‚ážš, English, and others).`,
+        `Structure: Title (prefix "Title: "), [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Pre-Chorus], [Chorus], [Bridge], [Final Chorus], [Outro].`,
+        `Make it a full-length song (enough lyrics for 2â€“3 minutes of music).`,
+        `Write only the song â€” no explanations or commentary.`,
+      ].join('\n');
+
+      try {
+        const lr = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: lyricsPrompt }] }] })
+        });
+        const ld = await safeJson(lr, '/api/song lyrics-fallback');
+        if (lr.ok) {
+          lyricsText = ld.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          console.log(`[/api/song] Lyrics generated (${lyricsText.length} chars)`);
+        }
+      } catch (le) {
+        console.warn('[/api/song] Lyrics generation failed:', le.message);
+      }
+
+      if (lyricsText) {
+        const cleanLyrics = lyricsText.replace(/^Title:.*$/im, '').trim();
+        const ttsResult   = await tryTts(key, cleanLyrics, ttsVoice);
+        if (ttsResult) {
+          audioResult = { data: ttsResult.data, mimeType: ttsResult.mimeType };
+          usedModel   = ttsResult.model;
+          console.log(`[/api/song] TTS fallback success: ${usedModel}`);
+        }
+      }
+    }
+
+    if (!audioResult) console.warn('[/api/song] All audio methods failed â€” lyrics only');
 
     /* Extract title */
     const titleMatch = lyricsText.match(/^Title:\s*(.+)$/im);
     const songTitle  = titleMatch ? titleMatch[1].trim() : `${style} Song`;
-
-    /* ── Step 2: Generate audio via TTS ── */
-    const cleanLyrics = lyricsText.replace(/^Title:.*$/im, '').trim();
-
-    console.log(`[/api/song] Attempting TTS audio generation...`);
-    const audioResult = await tryTts(key, cleanLyrics, ttsVoiceName);
-    const audioSource = audioResult ? `TTS (${audioResult.model})` : null;
-
-    if (!audioResult) {
-      console.warn('[/api/song] All TTS models exhausted — returning lyrics only');
-    } else {
-      console.log(`[/api/song] Audio generated via ${audioSource}`);
-    }
+    const isLyria    = usedModel.includes('lyria');
 
     res.json({
       audio:       audioResult ? audioResult.data : null,
-      mimeType:    audioResult ? audioResult.mimeType : 'audio/wav',
+      mimeType:    audioResult ? (audioResult.mimeType || 'audio/mp3') : 'audio/mp3',
       title:       songTitle,
       lyrics:      lyricsText,
       lyricsOnly:  !audioResult,
-      audioSource: audioSource,
-      ttsMessage:  !audioResult
-        ? 'Audio generation is temporarily unavailable due to high demand. Your lyrics are ready — try again in a few minutes for audio.'
+      audioSource: usedModel
+        ? (isLyria ? `Lyria (${usedModel})` : `TTS (${usedModel})`)
+        : null,
+      ttsMessage: !audioResult
+        ? 'Audio generation is temporarily unavailable. Your lyrics are ready â€” please try again in a few minutes.'
         : null
     });
+
   } catch (e) {
     console.error('[/api/song] exception:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-/* ── SPA fallback ── */
+/* â”€â”€ SPA fallback â”€â”€ */
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-app.listen(PORT, () => console.log(`JeeThy Labs → port ${PORT}`));
+app.listen(PORT, () => console.log(`JeeThy Labs â†’ port ${PORT}`));
