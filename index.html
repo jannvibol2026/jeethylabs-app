@@ -127,6 +127,254 @@
             <button class="chip" onclick="selectChip(this,'songVoiceGroup')"><i class="fas fa-mars"></i> Male</button>
           </div>
         </div>
+        /**
+ * JeeThy Labs â€” Song Section Frontend Patch
+ * Drop this <script> block into index.html, replacing the existing song section JS.
+ * 
+ * Changes:
+ *  - Shows/hides "Custom Lyrics" panel based on plan (PRO/MAX only)
+ *  - Supports paste text + upload .txt/.lrc file
+ *  - Shows plan badge & duration hint
+ *  - Sends customLyrics to /api/song
+ */
+
+/* â”€â”€â”€ Song section initializer (call after DOM ready) â”€â”€â”€ */
+async function initSongSection() {
+  const token = getToken(); // your existing getToken() function
+
+  /* Fetch plan info */
+  let planInfo = { plan: 'free', durationHint: 'under 1 minute', customLyrics: false };
+  try {
+    const r = await fetch('/api/song/plan-info', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (r.ok) planInfo = await r.json();
+  } catch (e) { console.warn('plan-info error:', e.message); }
+
+  renderSongUI(planInfo);
+}
+
+function renderSongUI(planInfo) {
+  /* â”€â”€ Plan badge on song tab â”€â”€ */
+  const planBadge = document.getElementById('song-plan-badge');
+  if (planBadge) {
+    const colors = { free: '#6b7280', pro: '#7c3aed', max: '#f59e0b' };
+    planBadge.textContent  = planInfo.plan.toUpperCase();
+    planBadge.style.background = colors[planInfo.plan] || '#6b7280';
+    planBadge.style.display = 'inline-block';
+  }
+
+  /* â”€â”€ Duration hint label â”€â”€ */
+  const durationHintEl = document.getElementById('song-duration-hint');
+  if (durationHintEl) durationHintEl.textContent = `Duration: ~${planInfo.durationHint}`;
+
+  /* â”€â”€ Custom lyrics panel â”€â”€ */
+  const lyricsPanel = document.getElementById('custom-lyrics-panel');
+  if (lyricsPanel) {
+    if (planInfo.customLyrics) {
+      lyricsPanel.style.display = 'block';
+    } else {
+      lyricsPanel.style.display = 'none';
+      /* Show upgrade notice if user tries to interact */
+      const upgradeNotice = document.getElementById('custom-lyrics-upgrade-notice');
+      if (upgradeNotice) upgradeNotice.style.display = 'block';
+    }
+  }
+
+  /* â”€â”€ File upload handler â”€â”€ */
+  const fileInput = document.getElementById('lyrics-file-input');
+  const lyricsTextarea = document.getElementById('custom-lyrics-textarea');
+  if (fileInput && lyricsTextarea) {
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 50000) {
+        alert('File too large. Max 50KB.');
+        return;
+      }
+      const text = await file.text();
+      lyricsTextarea.value = text;
+      fileInput.value = '';
+      showToast('Lyrics loaded from file âœ…');
+    });
+  }
+}
+
+/* â”€â”€â”€ Updated generateSong function â”€â”€â”€ */
+async function generateSong() {
+  const token  = getToken();
+  const prompt = document.getElementById('song-prompt')?.value?.trim();
+  const style  = document.querySelector('.genre-btn.active')?.dataset?.genre || 'Pop';
+  const voice  = document.querySelector('.voice-btn.active')?.dataset?.voice || 'Female';
+  const customLyricsEl = document.getElementById('custom-lyrics-textarea');
+  const customLyrics   = customLyricsEl?.value?.trim() || '';
+
+  if (!prompt && !customLyrics) {
+    showToast('Please enter a song description');
+    return;
+  }
+
+  /* UI loading state */
+  const genBtn = document.getElementById('generate-song-btn');
+  if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'â³ Generating...'; }
+
+  const resultEl = document.getElementById('song-result');
+  if (resultEl) resultEl.style.display = 'none';
+
+  try {
+    const r = await fetch('/api/song', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ prompt: prompt || customLyrics, style, voice, customLyrics }),
+    });
+
+    const data = await r.json();
+
+    if (!r.ok) {
+      if (data.upgradeRequired) {
+        showUpgradeModal(data.error);
+      } else {
+        showToast('Error: ' + (data.error || 'Generation failed'));
+      }
+      return;
+    }
+
+    /* Render result */
+    displaySongResult(data);
+
+  } catch (e) {
+    showToast('Network error: ' + e.message);
+  } finally {
+    if (genBtn) { genBtn.disabled = false; genBtn.textContent = 'âœ¨ Generate Song'; }
+  }
+}
+
+function displaySongResult(data) {
+  const resultEl = document.getElementById('song-result');
+  if (!resultEl) return;
+
+  /* Audio player */
+  if (data.audio) {
+    const mimeType  = data.mimeType || 'audio/mp3';
+    const audioBlob = base64ToBlob(data.audio, mimeType);
+    const audioUrl  = URL.createObjectURL(audioBlob);
+
+    const player = document.getElementById('song-audio-player');
+    if (player) { player.src = audioUrl; player.style.display = 'block'; }
+
+    const dlBtn = document.getElementById('song-download-btn');
+    if (dlBtn) {
+      const ext = mimeType.includes('wav') ? 'wav' : 'mp3';
+      dlBtn.onclick = () => {
+        const a = document.createElement('a');
+        a.href     = audioUrl;
+        a.download = `${data.title || 'song'}.${ext}`;
+        a.click();
+      };
+      dlBtn.style.display = 'block';
+    }
+  }
+
+  /* Song info */
+  const titleEl = document.getElementById('song-title');
+  if (titleEl) titleEl.textContent = data.title || 'Generated Song';
+
+  const sourceEl = document.getElementById('song-audio-source');
+  if (sourceEl) sourceEl.textContent = data.audioSource || '';
+
+  const lyricsEl = document.getElementById('song-lyrics-output');
+  if (lyricsEl) lyricsEl.textContent = data.lyrics || '';
+
+  if (data.ttsMessage) showToast(data.ttsMessage, 5000);
+  if (data.lyricsOnly) showToast('Audio unavailable â€” lyrics ready. Try again shortly.', 5000);
+
+  resultEl.style.display = 'block';
+  resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function showUpgradeModal(message) {
+  const modal = document.getElementById('upgrade-modal');
+  if (modal) {
+    const msgEl = document.getElementById('upgrade-modal-message');
+    if (msgEl) msgEl.textContent = message || 'Upgrade to PRO or MAX to use this feature.';
+    modal.style.display = 'flex';
+  } else {
+    alert(message || 'Upgrade to PRO or MAX to use this feature.');
+  }
+}
+
+function base64ToBlob(base64, mimeType) {
+  const binary = atob(base64);
+  const bytes  = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mimeType });
+}
+
+function showToast(msg, duration = 3000) {
+  // Use your existing toast function, or fallback:
+  if (typeof window.showNotification === 'function') { window.showNotification(msg); return; }
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position:'fixed', bottom:'80px', left:'50%', transform:'translateX(-50%)',
+    background:'#1f2937', color:'#fff', padding:'10px 20px', borderRadius:'8px',
+    zIndex:9999, fontSize:'14px', maxWidth:'80vw', textAlign:'center',
+  });
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), duration);
+}
+
+/* â”€â”€â”€ HTML snippet to insert into your Song section â”€â”€â”€ */
+const SONG_HTML_SNIPPET = `
+<!-- Plan badge + duration hint -->
+<div class="song-plan-row" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+  <span id="song-plan-badge" style="font-size:11px;font-weight:700;color:#fff;padding:2px 8px;border-radius:99px;"></span>
+  <span id="song-duration-hint" style="font-size:12px;color:#9ca3af;"></span>
+</div>
+
+<!-- Custom Lyrics Panel (PRO/MAX only) -->
+<div id="custom-lyrics-panel" style="display:none;margin-bottom:12px;">
+  <label style="font-size:13px;color:#d1d5db;font-weight:600;display:block;margin-bottom:6px;">
+    ðŸŽµ Custom Lyrics (optional)
+  </label>
+  <textarea id="custom-lyrics-textarea"
+    placeholder="Paste your custom lyrics here... (supports Khmer áž—áž¶ážŸáž¶ážáŸ’áž˜áŸ‚ážš and English)"
+    rows="6"
+    style="width:100%;background:#1f2937;border:1px solid #374151;border-radius:8px;padding:10px;
+           color:#f3f4f6;font-size:13px;resize:vertical;line-height:1.6;"></textarea>
+  <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+    <label for="lyrics-file-input"
+      style="cursor:pointer;font-size:12px;color:#7c3aed;border:1px solid #7c3aed;
+             border-radius:6px;padding:4px 12px;display:inline-block;">
+      ðŸ“ Upload .txt / .lrc
+    </label>
+    <input type="file" id="lyrics-file-input" accept=".txt,.lrc,.text" style="display:none;">
+    <span style="font-size:11px;color:#6b7280;">or paste above</span>
+  </div>
+</div>
+
+<!-- Upgrade notice for FREE users -->
+<div id="custom-lyrics-upgrade-notice" style="display:none;background:#1f2937;border:1px solid #374151;
+     border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#9ca3af;">
+  ðŸ”’ Custom lyrics available on <strong style="color:#7c3aed;">PRO</strong> &amp;
+  <strong style="color:#f59e0b;">MAX</strong> plans.
+</div>
+
+<!-- Upgrade Modal -->
+<div id="upgrade-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);
+     z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#111827;border-radius:16px;padding:28px;max-width:320px;width:90%;text-align:center;">
+    <div style="font-size:32px;margin-bottom:12px;">ðŸš€</div>
+    <h3 style="color:#f3f4f6;margin-bottom:8px;">Upgrade Required</h3>
+    <p id="upgrade-modal-message" style="color:#9ca3af;font-size:13px;margin-bottom:20px;"></p>
+    <button onclick="document.getElementById('upgrade-modal').style.display='none'"
+      style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 24px;
+             font-size:14px;font-weight:600;cursor:pointer;">Got it</button>
+  </div>
+</div>
+`;
+
+console.log('[JeeThy Labs] Song patch loaded âœ…');
         <button class="btn-generate btn-green" id="songGenBtn" onclick="generateSong()"><i class="fas fa-wand-magic-sparkles"></i> Generate Song</button>
         <div class="results-wrap" id="songResults"></div>
       </div>
