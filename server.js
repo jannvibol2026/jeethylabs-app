@@ -19,6 +19,7 @@ const SMTP_PASS      = process.env.SMTP_PASS      || '';
 const FROM_EMAIL     = process.env.FROM_EMAIL     || SMTP_USER;
 const GEMINI_KEY     = process.env.GEMINI_API_KEY || '';
 const PORT           = process.env.PORT           || 8080;
+const ADMIN_SECRET   = process.env.ADMIN_SECRET   || '';
 
 /* â”€â”€ Plan config â”€â”€ */
 const PLAN_CONFIG = {
@@ -67,6 +68,7 @@ app.use(express.static(path.join(__dirname)));
 console.log('=== JeeThy Labs Starting ===');
 console.log('GEMINI_KEY:', GEMINI_KEY ? 'SET OK' : 'MISSING');
 console.log('STRIPE_KEY:', process.env.STRIPE_SECRET_KEY ? 'SET OK' : 'NOT SET (Stripe disabled)');
+console.log('ADMIN_SECRET:', ADMIN_SECRET ? 'SET OK' : 'NOT SET (manual upgrade blocked)');
 
 /* â”€â”€ SMTP â”€â”€ */
 const transporter = nodemailer.createTransport({
@@ -189,27 +191,20 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   FIX #1: /api/verify-otp
-   Root cause: passing `now` (Date object) as $4 caused
-   PostgreSQL to see inconsistent types across multiple
-   uses of the same parameter.
-   Fix: use NOW() server-side for all timestamp columns,
-        and pass each value as a separate typed parameter.
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€ FIX #1: /api/verify-otp â€” use NOW() server-side, no JS Date param â”€â”€ */
 app.post('/api/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
   const rec = otpStore[email];
-  if (!rec)                                  return res.status(400).json({ error: 'No OTP found. Request a new one.' });
-  if (Date.now() > rec.expires)              { delete otpStore[email]; return res.status(400).json({ error: 'OTP expired.' }); }
-  if (rec.otp !== String(otp || '').trim())  return res.status(400).json({ error: 'Invalid OTP.' });
+  if (!rec)                                 return res.status(400).json({ error: 'No OTP found. Request a new one.' });
+  if (Date.now() > rec.expires)             { delete otpStore[email]; return res.status(400).json({ error: 'OTP expired.' }); }
+  if (rec.otp !== String(otp || '').trim()) return res.status(400).json({ error: 'Invalid OTP.' });
   const rawPw = req.body.password || rec.password || '';
   if (!rawPw) return res.status(400).json({ error: 'Password missing.' });
   delete otpStore[email];
   try {
     const hash     = await bcrypt.hash(rawPw, 10);
     const userName = req.body.name || rec.name || 'User';
-    /* FIX: use NOW() for all timestamps â€” no JS Date passed as parameter */
+    /* Use NOW() for all timestamps â€” avoids $N type-inference conflict */
     const { rows } = await pool.query(
       `INSERT INTO users (name, email, password_hash, plan, status, email_verified,
                           avatar_url, country, created_at, last_active, updated_at)
@@ -226,16 +221,8 @@ app.post('/api/verify-otp', async (req, res) => {
     const token = jwt.sign({ id: u.id, email: u.email }, JWT_SECRET, { expiresIn: '30d' });
     req.session.token = token;
     res.json({
-      success: true,
-      token,
-      user: {
-        id:         u.id,
-        name:       u.name,
-        email:      u.email,
-        plan:       u.plan || 'free',
-        avatar_url: u.avatar_url || null,
-        created_at: u.created_at,
-      },
+      success: true, token,
+      user: { id: u.id, name: u.name, email: u.email, plan: u.plan || 'free', avatar_url: u.avatar_url || null, created_at: u.created_at },
     });
   } catch (e) {
     console.error('[verify-otp]', e.message);
@@ -243,46 +230,30 @@ app.post('/api/verify-otp', async (req, res) => {
   }
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   FIX #2: /api/login
-   Root cause: `new Date()` passed as $1 then reused as $2
-   (different column types TIMESTAMPTZ vs id INTEGER) caused
-   "inconsistent types deduced for parameter $1".
-   Fix: split into two separate typed parameters $1=timestamp
-        and $2=integer, which is what the query already does â€”
-        but also wrap in try/catch properly.
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€ FIX #2: /api/login â€” explicit column select + NOW() server-side â”€â”€ */
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
   try {
     const { rows } = await pool.query(
       'SELECT id, name, email, password_hash, plan, avatar_url, created_at FROM users WHERE email = $1',
-      [email]                    /* $1 = TEXT â€” no type ambiguity */
+      [email]  /* $1 = TEXT only â€” no ambiguity */
     );
     if (!rows.length) return res.status(401).json({ error: 'Email not found.' });
     const u = rows[0];
     if (!u.password_hash) return res.status(401).json({ error: 'Account has no password.' });
     const ok = await bcrypt.compare(password, u.password_hash);
     if (!ok) return res.status(401).json({ error: 'Wrong password.' });
-    /* FIX: use NOW() server-side; pass user id as its own parameter */
+    /* Use NOW() server-side; id as separate typed param */
     await pool.query(
       'UPDATE users SET last_active = NOW(), updated_at = NOW() WHERE id = $1',
-      [u.id]                     /* $1 = INTEGER only â€” no ambiguity */
+      [u.id]  /* $1 = INTEGER only â€” no ambiguity */
     );
     const token = jwt.sign({ id: u.id, email: u.email }, JWT_SECRET, { expiresIn: '30d' });
     req.session.token = token;
     res.json({
-      success: true,
-      token,
-      user: {
-        id:         u.id,
-        name:       u.name,
-        email:      u.email,
-        plan:       u.plan || 'free',
-        avatar_url: u.avatar_url || null,
-        created_at: u.created_at,
-      },
+      success: true, token,
+      user: { id: u.id, name: u.name, email: u.email, plan: u.plan || 'free', avatar_url: u.avatar_url || null, created_at: u.created_at },
     });
   } catch (e) {
     console.error('[login]', e.message);
@@ -363,8 +334,7 @@ app.post('/api/avatar', auth, async (req, res) => {
   const { avatar } = req.body;
   if (!avatar) return res.status(400).json({ error: 'No avatar data' });
   try {
-    await pool.query(
-      'UPDATE users SET avatar_url=$1, last_active=NOW(), updated_at=NOW() WHERE id=$2',
+    await pool.query('UPDATE users SET avatar_url=$1, last_active=NOW(), updated_at=NOW() WHERE id=$2',
       [avatar, req.user.id]);
     res.json({ success: true, avatar_url: avatar });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -374,8 +344,7 @@ app.post('/api/upload-avatar', auth, async (req, res) => {
   const { avatar_url } = req.body;
   if (!avatar_url) return res.status(400).json({ error: 'No avatar data' });
   try {
-    await pool.query(
-      'UPDATE users SET avatar_url=$1, last_active=NOW(), updated_at=NOW() WHERE id=$2',
+    await pool.query('UPDATE users SET avatar_url=$1, last_active=NOW(), updated_at=NOW() WHERE id=$2',
       [avatar_url, req.user.id]);
     res.json({ success: true, avatar_url });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -460,10 +429,7 @@ app.post('/api/chat', async (req, res) => {
     const system  = req.body.system  || 'You are JeeThy Assistant, a helpful AI by JeeThy Labs.\nAnswer in the same language the user uses.\nBe concise and clear.';
     const r = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: system }] },
-        contents: history,
-      }),
+      body: JSON.stringify({ system_instruction: { parts: [{ text: system }] }, contents: history }),
     });
     const d = await r.json();
     if (!r.ok) return res.status(r.status).json({ error: d.error?.message || 'Gemini error' });
@@ -553,7 +519,7 @@ app.post('/api/image', async (req, res) => {
 });
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   /api/song
+   /api/song  â€” with RHYME improvements
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 const LYRIA_MODELS_FALLBACK = ['lyria-3-pro-preview','lyria-3-clip-preview'];
@@ -620,17 +586,21 @@ app.post('/api/song', auth, async (req, res) => {
 
     console.log(`[/api/song] user:${req.user.id} plan:${planKey} style:${style} voice:${voiceHint}`);
 
+    /* â”€â”€ RHYME-enhanced prompts â”€â”€ */
     let musicPrompt;
     if (customLyrics && planCfg.customLyrics) {
       musicPrompt = [
         `Create a complete original ${style} song approximately ${planCfg.durationHint} long.`,
-        `Use EXACTLY the following lyrics - do not change any words:`,
+        `Use EXACTLY the following lyrics provided â€” do not change, add, or remove any words:`,
+        `Sing the lyrics with a strong RHYMING MELODY â€” match rhyming-sounding words to the same melodic cadence and pitch.`,
+        `Apply AABB or ABAB rhyme scheme to the melodic phrasing: ending syllables of paired lines must land on the same musical note or cadence.`,
+        `If the lyrics are in Khmer: match áž…áž½áž“ážŸáŸ’ážšáŸˆ (vowel rhyme) or áž…áž½áž“áž–áŸ’áž™áž‰áŸ’áž‡áž“áŸˆ (consonant rhyme) at line endings with the same melodic phrase.`,
         `---`,
         customLyrics.trim(),
         `---`,
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Structure: ${planCfg.structureHint}.`,
-        `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
+        `Audio: high-quality stereo, full band instrumentation, clear lead vocals, rich backing harmonies, melodic rhyming cadence throughout.`,
         `Target duration: ${planCfg.durationHint}.`,
       ].join('\n');
     } else {
@@ -640,7 +610,14 @@ app.post('/api/song', auth, async (req, res) => {
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Song structure: ${planCfg.structureHint}.`,
         `Language: same as the theme (supports Khmer, English, and others).`,
-        `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
+        `IMPORTANT â€” Rhyming & Lyric requirements:`,
+        `- Use a strong RHYME SCHEME throughout: AABB (lines 1&2 rhyme, lines 3&4 rhyme) or ABAB (alternating).`,
+        `- Every verse and chorus must have clear end-rhymes on the 2nd and 4th lines at minimum.`,
+        `- Chorus lines must rhyme with each other strongly â€” the hook must be catchy and melodically repetitive.`,
+        `- The melody must emphasize rhyming words with the same musical cadence/pitch at line endings.`,
+        `- If writing in Khmer: use áž…áž½áž“áž–áž¶áž€áŸ’áž™ (áž…áž½áž“ážŸáŸ’ážšáŸˆ or áž…áž½áž“áž–áŸ’áž™áž‰áŸ’áž‡áž“áŸˆ) â€” vowel or consonant endings must match per couplet.`,
+        `- Do NOT write free-verse. Every section must rhyme clearly.`,
+        `Audio: high-quality stereo, full band instrumentation, clear lead vocals with melodic rhyming cadence, rich backing harmonies.`,
         `Target duration: ${planCfg.durationHint}.`,
         planKey === 'free'
           ? 'Keep the song SHORT - under 1 minute, compact structure only.'
@@ -694,6 +671,7 @@ app.post('/api/song', auth, async (req, res) => {
       }
     }
 
+    /* â”€â”€ TTS fallback with rhyme-enhanced lyrics â”€â”€ */
     if (!audioResult) {
       console.warn('[/api/song] All Lyria failed -> TTS fallback');
       const lyricsSource = customLyrics?.trim() || '';
@@ -703,11 +681,16 @@ app.post('/api/song', auth, async (req, res) => {
           `Write a complete original ${style} song about: "${prompt}".`,
           `Vocalist: ${voiceHint}. Genre: ${style}.`,
           `Start with "Title: <song name>" on the first line.`,
+          `IMPORTANT â€” Rhyming rules (strictly follow):`,
+          `- Use AABB rhyme scheme: lines 1&2 rhyme together, lines 3&4 rhyme together throughout.`,
+          `- Every verse and chorus must have clear end-rhymes â€” no free-verse allowed.`,
+          `- Chorus must have strong, catchy rhyming hook that repeats.`,
+          `- If writing in Khmer: apply áž…áž½áž“áž–áž¶áž€áŸ’áž™ â€” match ážŸáŸ’ážšáŸˆ (vowel) or áž–áŸ’áž™áž‰áŸ’áž‡áž“áŸˆ (consonant) endings per couplet.`,
           `Then write: ${planCfg.structureHint}.`,
           planKey === 'free'
             ? 'Keep it SHORT - under 1 minute worth of lyrics.'
             : `Full-length: ${planCfg.durationHint} worth of lyrics.`,
-          'Write only the song - no commentary.',
+          'Write only the song lyrics â€” no commentary, no explanations.',
         ].join('\n');
         try {
           const lr = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
@@ -847,6 +830,16 @@ app.post('/api/stripe/webhook', async (req, res) => {
    SUBSCRIBE / CHECKOUT ROUTES
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
+/*
+  POST /api/subscribe
+  Body: { plan: 'free' | 'pro' | 'max' }
+
+  - plan='free'      â†’ downgrade immediately
+  - plan='pro'|'max' â†’ if Stripe configured  â†’ create Checkout session â†’ { checkoutUrl }
+                        if Stripe NOT set     â†’ check ADMIN_SECRET header
+                          header matches      â†’ manual upgrade (admin/test)
+                          no header / wrong   â†’ blocked (403)
+*/
 app.post('/api/subscribe', auth, async (req, res) => {
   try {
     const { plan } = req.body;
@@ -854,7 +847,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
     if (!['free','pro','max'].includes(planKey))
       return res.status(400).json({ error: 'Invalid plan. Choose: free, pro, max' });
 
-    /* â”€â”€ Downgrade to free â”€â”€ */
+    /* â”€â”€ Downgrade to free (always allowed) â”€â”€ */
     if (planKey === 'free') {
       await pool.query(
         `UPDATE users SET plan='free', plan_expires_at=NULL, pending_plan=NULL, updated_at=NOW() WHERE id=$1`,
@@ -884,12 +877,23 @@ app.post('/api/subscribe', auth, async (req, res) => {
         );
         return res.json({ success: true, checkoutUrl: session.url, plan: planKey });
       } catch (stripeErr) {
-        console.error('[subscribe] Stripe failed, falling back to manual:', stripeErr.message);
+        console.error('[subscribe] Stripe error:', stripeErr.message);
+        return res.status(500).json({ error: 'Payment system error: ' + stripeErr.message });
       }
     }
 
-    /* â”€â”€ Manual / test mode â”€â”€ */
-    console.log(`[subscribe] MANUAL mode: user ${req.user.id} -> ${planKey}`);
+    /* â”€â”€ No Stripe: Admin-only manual mode â”€â”€ */
+    const adminHeader = req.headers['x-admin-secret'] || '';
+    if (!ADMIN_SECRET || adminHeader !== ADMIN_SECRET) {
+      console.warn(`[subscribe] Blocked upgrade attempt â€” user ${req.user.id} -> ${planKey} (no Stripe, no admin key)`);
+      return res.status(403).json({
+        error: 'Payment system is not configured. Please contact admin to upgrade.',
+        stripeRequired: true,
+      });
+    }
+
+    /* â”€â”€ Admin confirmed: manual upgrade â”€â”€ */
+    console.log(`[subscribe] ADMIN manual mode: user ${req.user.id} -> ${planKey}`);
     const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await pool.query(
       `UPDATE users SET plan=$1, plan_expires_at=$2, pending_plan=NULL, updated_at=NOW() WHERE id=$3`,
@@ -907,6 +911,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
   }
 });
 
+/* POST /api/checkout/confirm â€” called after payment token received */
 app.post('/api/checkout/confirm', async (req, res) => {
   try {
     const { token } = req.body;
@@ -932,6 +937,7 @@ app.post('/api/checkout/confirm', async (req, res) => {
   }
 });
 
+/* GET /api/plan â€” returns current plan + expiry + pending */
 app.get('/api/plan', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(
