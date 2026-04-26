@@ -1,18 +1,18 @@
 "use strict";
 
-// ── MODELS ─────────────────────────────────────────────────
+// â”€â”€ MODELS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let GEMINI_CHAT_MODEL    = "gemini-2.5-flash";
 let GEMINI_IMAGE_MODELS  = [];
 let GEMINI_TTS_MODELS    = [];
 
-// ── PLAN LIMITS ────────────────────────────────────────────
+// â”€â”€ PLAN LIMITS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PLAN_LIMITS = {
   free: { requests: 10,  label: "Free", color: "#a78bfa" },
   pro:  { requests: 100, label: "Pro",  color: "#06b6d4" },
   max:  { requests: 500, label: "Max",  color: "#fbbf24" }
 };
 
-// ── STATE ──────────────────────────────────────────────────
+// â”€â”€ STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let currentPanel  = 0;
 let userPlan      = "free";
 let proCustomKey  = "";
@@ -24,12 +24,12 @@ let isChatLoading = false;
 let touchStartX   = 0;
 let touchStartY   = 0;
 let currentUser   = null;
-let authToken     = null;
 let pendingAction = null;
 let _otpPending   = null;
 let _resendTimer  = null;
+let authToken     = null;
 
-// ── INIT ───────────────────────────────────────────────────
+// â”€â”€ INIT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.addEventListener("DOMContentLoaded", async () => {
   setWelcomeTime();
   initSwipe();
@@ -49,39 +49,40 @@ async function fetchOwnerKey() {
 async function fetchAvailableModels() {
   try {
     const r = await fetch("/api/models");
-    if (!r.ok) { console.warn("[models] /api/models returned HTTP", r.status); return; }
+    if (!r.ok) { console.warn("[models] HTTP", r.status); return; }
     const d = await r.json();
-    if (d.error) { console.warn("[models] ListModels error:", d.error); }
-    if (d.recommended?.chat)  GEMINI_CHAT_MODEL  = d.recommended.chat;
+    if (d.recommended?.chat)  GEMINI_CHAT_MODEL   = d.recommended.chat;
     if (Array.isArray(d.imageModels) && d.imageModels.length > 0) GEMINI_IMAGE_MODELS = d.imageModels;
     if (Array.isArray(d.ttsModels)   && d.ttsModels.length   > 0) GEMINI_TTS_MODELS   = d.ttsModels;
     console.log("[models] chat:", GEMINI_CHAT_MODEL,
                 "| image:", GEMINI_IMAGE_MODELS[0] || "(server decides)",
-                "| tts:",   GEMINI_TTS_MODELS[0]   || "(server decides)");
-  } catch (e) {
-    console.warn("[models] Could not fetch model list:", e.message);
-  }
+                "| tts:", GEMINI_TTS_MODELS[0] || "(server decides)");
+  } catch (e) { console.warn("[models] fetch failed:", e.message); }
 }
 
 async function checkExistingSession() {
   try {
-    const stored  = localStorage.getItem("jl_token");
-    const headers = stored ? { "Authorization": "Bearer " + stored } : {};
+    const stored = localStorage.getItem("jl_token");
+    if (stored) authToken = stored;
+    const headers = authToken ? { "Authorization": "Bearer " + authToken } : {};
     const r = await fetch("/api/me", { credentials: "include", headers });
-    if (r.ok) {
-      const d = await r.json();
-      if (stored) authToken = stored;
-      onLoginSuccess(d.user, false);
-      return;
-    }
-    if (stored) { localStorage.removeItem("jl_token"); authToken = null; }
+    if (r.ok) { const d = await r.json(); onLoginSuccess(d.user, false); return; }
+    localStorage.removeItem("jl_token");
+    authToken = null;
   } catch (e) {}
+}
+
+function getAuthHeaders() {
+  const h = { "Content-Type": "application/json" };
+  if (authToken) h["Authorization"] = "Bearer " + authToken;
+  return h;
 }
 
 function getActiveApiKey() {
   if (userPlan === "pro" && useOwnKey && proCustomKey) return proCustomKey;
   return ownerApiKey;
 }
+
 function checkQuota() {
   const limit = PLAN_LIMITS[userPlan]?.requests ?? 10;
   if (requestCount >= limit) { showUpgradeModal(); return false; }
@@ -98,12 +99,13 @@ function renderPlanBadge() {
   const badge = document.getElementById("planBadge");
   if (!badge) return;
   const plan = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
-  badge.textContent       = plan.label;
+  badge.textContent       = plan.label.toUpperCase();
   badge.style.color       = plan.color;
   badge.style.borderColor = plan.color + "66";
+  badge.style.background  = plan.color + "18";
 }
 
-// ══ PANEL NAV ══════════════════════════════════════════════
+// â•â• PANEL NAV â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function goToPanel(index) {
   currentPanel = index;
   const track = document.getElementById("panelsTrack");
@@ -128,7 +130,7 @@ function initSwipe() {
   }, { passive: true });
 }
 
-// ══ AUTH MODAL ═════════════════════════════════════════════
+// â•â• AUTH MODAL â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function openAuthModal(action) {
   pendingAction = action || null;
   const m = document.getElementById("authModal");
@@ -175,7 +177,7 @@ function clearAuthMsg() {
   if (el) { el.style.display = "none"; el.textContent = ""; }
 }
 
-// ── SIGNUP ─────────────────────────────────────────────────
+// â”€â”€ SIGNUP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function submitSignup(e) {
   e.preventDefault(); clearAuthMsg();
   const btn   = document.getElementById("authSignupBtn");
@@ -183,7 +185,7 @@ async function submitSignup(e) {
   const email = document.getElementById("authSignupEmail").value.trim();
   const pass  = document.getElementById("authSignupPass").value;
   if (!name)  return showAuthMsg("Please enter your name.", "error");
-  if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) return showAuthMsg("Please enter a valid email.", "error");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAuthMsg("Please enter a valid email.", "error");
   if (pass.length < 8) return showAuthMsg("Password must be at least 8 characters.", "error");
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending code...';
@@ -201,7 +203,7 @@ async function submitSignup(e) {
       of.style.display = "flex";
       document.getElementById("authOtpInput").value = "";
       startResendTimer(60);
-      showAuthMsg("Code ត្រូវបានផ្ញើ! សូមពិនិត្យ Email.", "success");
+      showAuthMsg("Code ážáŸ’ážšáž¼ážœáž”áž¶áž“áž•áŸ’áž‰áž¾! ážŸáž¼áž˜áž–áž·áž“áž·ážáŸ’áž™ Email.", "success");
     } else { showAuthMsg(data.error || "Failed to send code.", "error"); }
   } catch (ex) { showAuthMsg("Network error. Check connection.", "error"); }
   btn.disabled = false;
@@ -223,7 +225,7 @@ async function submitOtp() {
     const data = await res.json();
     if (res.ok) {
       _otpPending = null;
-      if (data.token) { localStorage.setItem("jl_token", data.token); authToken = data.token; }
+      if (data.token) { authToken = data.token; localStorage.setItem("jl_token", data.token); }
       showAuthMsg("Welcome, " + data.user.name + "! Account created!", "success");
       setTimeout(() => onLoginSuccess(data.user, true), 900);
     } else { showAuthMsg(data.error || "Invalid or expired code.", "error"); }
@@ -241,13 +243,13 @@ async function resendOtp() {
       credentials: "include", body: JSON.stringify(_otpPending)
     });
     const data = await res.json();
-    if (res.ok) { showAuthMsg("Code ថ្មីត្រូវបានផ្ញើ!", "success"); startResendTimer(60); }
+    if (res.ok) { showAuthMsg("Code ážáŸ’áž˜áž¸ážáŸ’ážšáž¼ážœáž”áž¶áž“áž•áŸ’áž‰áž¾!", "success"); startResendTimer(60); }
     else showAuthMsg(data.error || "Failed to resend.", "error");
   } catch (ex) { showAuthMsg("Network error.", "error"); }
 }
 
 function backToSignup() {
-  document.getElementById("authOtpForm").style.display    = "none";
+  document.getElementById("authOtpForm").style.display   = "none";
   document.getElementById("authSignupForm").style.display = "flex";
   clearAuthMsg();
   if (_resendTimer) clearInterval(_resendTimer);
@@ -271,7 +273,7 @@ function startResendTimer(sec) {
   }, 1000);
 }
 
-// ── LOGIN ──────────────────────────────────────────────────
+// â”€â”€ LOGIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function submitLogin(e) {
   e.preventDefault(); clearAuthMsg();
   const btn   = document.getElementById("authLoginBtn");
@@ -286,7 +288,7 @@ async function submitLogin(e) {
     });
     const data = await res.json();
     if (res.ok) {
-      if (data.token) { localStorage.setItem("jl_token", data.token); authToken = data.token; }
+      if (data.token) { authToken = data.token; localStorage.setItem("jl_token", data.token); }
       showAuthMsg("Welcome back, " + data.user.name + "!", "success");
       setTimeout(() => onLoginSuccess(data.user, true), 800);
     } else { showAuthMsg(data.error || "Invalid email or password.", "error"); }
@@ -295,9 +297,9 @@ async function submitLogin(e) {
   btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Login';
 }
 
-// ── onLoginSuccess ─────────────────────────────────────────
+// â”€â”€ onLoginSuccess â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function onLoginSuccess(user, runPending) {
-  currentUser        = user;
+  currentUser = user;
   window.currentUser = user;
   if (user.plan && PLAN_LIMITS[user.plan]) {
     userPlan = user.plan;
@@ -313,10 +315,13 @@ function onLoginSuccess(user, runPending) {
   }
 }
 
-// ── LOGOUT ─────────────────────────────────────────────────
+// â”€â”€ LOGOUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function doLogout() {
-  currentUser = null; window.currentUser = null; authToken = null;
+  currentUser = null; window.currentUser = null;
+  authToken = null;
   localStorage.removeItem("jl_token");
+  userPlan = "free";
+  renderPlanBadge();
   const wrap = document.getElementById("userProfileWrap");
   if (wrap) wrap.style.display = "none";
   closeDd();
@@ -324,11 +329,11 @@ async function doLogout() {
   showToast("Signed out", "error");
 }
 
-// ── NAV AVATAR ─────────────────────────────────────────────
+// â”€â”€ NAV AVATAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function updateNavAvatar(user) {
-  const wrap     = document.getElementById("userProfileWrap");
-  const navBtn   = document.getElementById("userAvatarBtn");
-  const initial  = (user.name || "U").charAt(0).toUpperCase();
+  const wrap    = document.getElementById("userProfileWrap");
+  const navBtn  = document.getElementById("userAvatarBtn");
+  const initial = (user.name || "U").charAt(0).toUpperCase();
   const planInfo = PLAN_LIMITS[user.plan || "free"] || PLAN_LIMITS.free;
   if (wrap)   wrap.style.display = "flex";
   if (navBtn) {
@@ -346,7 +351,7 @@ function updateNavAvatar(user) {
   set("pdBadge", planInfo.label);
 }
 
-// ── DROPDOWN ───────────────────────────────────────────────
+// â”€â”€ DROPDOWN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function toggleDropdown(e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
   const dd = document.getElementById("profileDropdown");
@@ -361,7 +366,7 @@ document.addEventListener("click", e => {
   if (wrap && !wrap.contains(e.target)) closeDd();
 }, true);
 
-// ── PROFILE SHEET ──────────────────────────────────────────
+// â”€â”€ PROFILE SHEET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function openProfileSheet()  { syncProfileSheet(); document.getElementById("ppOverlay").classList.add("open"); }
 function closeProfileSheet() { document.getElementById("ppOverlay").classList.remove("open"); }
 function closePPif(e)        { if (e.target === document.getElementById("ppOverlay")) closeProfileSheet(); }
@@ -375,15 +380,13 @@ function syncProfileSheet() {
   const pct   = Math.min(100, Math.round(used / limit * 100));
   if (u) {
     const init = (u.name || "U").charAt(0).toUpperCase();
-    const set  = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || "—"; };
+    const set  = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || "â€”"; };
     set("ppHeroName",   u.name);
     set("ppHeroEmail",  u.email);
     set("ppInfoName",   u.name);
     set("ppInfoEmail",  u.email);
     set("ppInfoPlan",   info.label);
-    set("ppInfoJoined", u.created_at
-      ? new Date(u.created_at).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })
-      : "Today");
+    set("ppInfoJoined", u.created_at ? new Date(u.created_at).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" }) : "Today");
     const av = document.getElementById("ppAvatarEl");
     if (av) av.innerHTML = u.avatar_url
       ? `<img src="${u.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="${init}"/>`
@@ -408,10 +411,10 @@ async function handleAvatarUpload(e) {
   reader.onload = async ev => {
     const url = ev.target.result;
     try {
-      const headers = { "Content-Type": "application/json" };
-      if (authToken) headers["Authorization"] = "Bearer " + authToken;
       const r = await fetch("/api/upload-avatar", {
-        method: "POST", headers, credentials: "include",
+        method: "POST",
+        headers: getAuthHeaders(),
+        credentials: "include",
         body: JSON.stringify({ avatar_url: url })
       });
       if (r.ok) {
@@ -425,95 +428,55 @@ async function handleAvatarUpload(e) {
   reader.readAsDataURL(file);
 }
 
-// ══ PLAN MODAL ═════════════════════════════════════════════
+// â•â• PLAN MODAL â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function openPlanModal() {
   const m = document.getElementById("planModal");
   if (!m) return;
   m.classList.add("open");
-  document.querySelectorAll(".plan-card").forEach(c =>
-    c.classList.toggle("selected", c.dataset.plan === userPlan)
-  );
+  document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === userPlan));
 }
-function closePlanModal() {
-  const m = document.getElementById("planModal");
-  if (m) m.classList.remove("open");
-}
+function closePlanModal() { const m = document.getElementById("planModal"); if (m) m.classList.remove("open"); }
 
-// selectPlan — UI only, does NOT change userPlan until DB confirms
+let _selectedPlan = null;
 function selectPlan(plan) {
-  document.querySelectorAll(".plan-card").forEach(c =>
-    c.classList.toggle("selected", c.dataset.plan === plan)
-  );
+  _selectedPlan = plan;
+  document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === plan));
   const ps = document.getElementById("proSettingsInModal");
   if (ps) ps.style.display = plan === "pro" ? "block" : "none";
 }
 
-// confirmPlan — FIXED: async, calls /api/subscribe, saves to DB
 async function confirmPlan() {
-  const selected = document.querySelector(".plan-card.selected");
-  const plan     = selected?.dataset.plan || "free";
-
+  const plan = _selectedPlan || userPlan;
+  if (plan === userPlan && plan !== "free") { closePlanModal(); return; }
   if (!currentUser) { closePlanModal(); openAuthModal(); return; }
 
-  // Find confirm button (try multiple selectors)
-  const btn = document.querySelector('#planModal .btn-confirm-plan')
-           || document.querySelector('#planModal button.btn-primary')
-           || [...document.querySelectorAll('#planModal button')]
-                .find(b => b.textContent.includes("Confirm"));
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...'; }
-
   try {
-    const headers = { "Content-Type": "application/json" };
-    if (authToken) headers["Authorization"] = "Bearer " + authToken;
-
-    const r = await fetch("/api/subscribe", {
+    const res = await fetch("/api/subscribe", {
       method: "POST",
-      headers,
+      headers: getAuthHeaders(),
       credentials: "include",
       body: JSON.stringify({ plan })
     });
-    const d = await r.json();
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || "Upgrade failed", "error"); return; }
 
-    if (!r.ok) {
-      showToast(d.error || "Failed to update plan.", "error");
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Confirm Plan'; }
-      return;
-    }
+    // Stripe checkout redirect
+    if (data.checkoutUrl) { window.location.href = data.checkoutUrl; return; }
 
-    if (plan === "free") {
-      // Downgrade — no payment needed, update local immediately
-      currentUser.plan = "free";
-      userPlan = "free";
+    // Manual / test mode â€” backend returns updated user
+    if (data.user || data.plan) {
+      userPlan = data.user?.plan || data.plan || plan;
+      if (data.user) { currentUser = { ...currentUser, ...data.user }; updateNavAvatar(currentUser); }
       renderPlanBadge();
-      updateNavAvatar(currentUser);
       closePlanModal();
-      showToast("Downgraded to Free plan.", "success");
-    } else if (d.checkoutUrl) {
-      // Paid plan → redirect to Stripe Checkout
-      closePlanModal();
-      showToast("Redirecting to checkout…", "success");
-      setTimeout(() => { window.location.href = d.checkoutUrl; }, 800);
-    } else if (d.user) {
-      // Server returned updated user (test/manual mode without Stripe)
-      currentUser        = d.user;
-      window.currentUser = d.user;
-      userPlan           = d.user.plan || plan;
-      renderPlanBadge();
-      updateNavAvatar(currentUser);
-      closePlanModal();
-      showToast((PLAN_LIMITS[userPlan]?.label || plan) + " plan activated!", "success");
-    } else {
-      showToast("Plan updated!", "success");
-      closePlanModal();
+      showToast(PLAN_LIMITS[userPlan]?.label + " plan activated!", "success");
     }
   } catch (ex) {
-    showToast("Network error: " + ex.message, "error");
+    showToast("Network error. Try again.", "error");
   }
-
-  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Confirm Plan'; }
 }
 
-// ══ SETTINGS ═══════════════════════════════════════════════
+// â•â• SETTINGS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function openSettings() {
   if (userPlan !== "pro") { showToast("Settings available on Pro plan", "error"); openPlanModal(); return; }
   const m = document.getElementById("settingsModal"); if (!m) return;
@@ -540,16 +503,16 @@ function saveSettings() {
   closeSettings();
 }
 
-// ══ UPGRADE MODAL ══════════════════════════════════════════
+// â•â• UPGRADE MODAL â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function showUpgradeModal()  { const m = document.getElementById("upgradeModal"); if (m) m.classList.add("open"); }
 function closeUpgradeModal() { const m = document.getElementById("upgradeModal"); if (m) m.classList.remove("open"); }
 function upgradeNow()        { closeUpgradeModal(); if (userPlan === "free") openPlanModal(); }
 function requirePro(btn, groupId) {
-  if (userPlan === "pro") selectChip(btn, groupId);
+  if (userPlan === "pro" || userPlan === "max") selectChip(btn, groupId);
   else { showUpgradeModal(); showToast("HD is available on Pro plan only", "error"); }
 }
 
-// ══ CHAT ═══════════════════════════════════════════════════
+// â•â• CHAT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function autoResize(el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 100) + "px"; }
 function handleChatKey(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } }
 
@@ -579,9 +542,7 @@ async function _sendChat() {
       {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: "You are JeeThy Assistant, a helpful and friendly AI created by JeeThy Labs.
-Answer in the same language the user writes in.
-Be concise but thorough. Use markdown for formatting." }] },
+          system_instruction: { parts: [{ text: "You are JeeThy Assistant, a helpful and friendly AI created by JeeThy Labs.\nAnswer in the same language the user writes in.\nBe concise but thorough. Use markdown for formatting." }] },
           contents: chatHistory
         })
       }
@@ -595,7 +556,7 @@ Be concise but thorough. Use markdown for formatting." }] },
     incrementRequest();
   } catch (err) {
     removeTyping(typingId);
-    appendMessage("bot", "⚠️ " + err.message);
+    appendMessage("bot", "âš ï¸ " + err.message);
   }
   isChatLoading = false;
   if (sendBtn) sendBtn.disabled = false;
@@ -626,8 +587,7 @@ function appendTyping() {
   const container = document.getElementById("chatMessages"); if (!container) return null;
   const id  = "typing-" + Date.now();
   const div = document.createElement("div"); div.className = "msg msg-bot"; div.id = id;
-  const avatar = document.createElement("div"); avatar.className = "msg-avatar";
-  avatar.innerHTML = '<i class="fas fa-brain"></i>';
+  const avatar = document.createElement("div"); avatar.className = "msg-avatar"; avatar.innerHTML = '<i class="fas fa-brain"></i>';
   const bubble = document.createElement("div"); bubble.className = "msg-bubble";
   bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
   div.appendChild(avatar); div.appendChild(bubble);
@@ -639,21 +599,18 @@ function removeTyping(id) { if (!id) return; const el = document.getElementById(
 function formatMarkdown(text) {
   return text
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/```([sS]*?)```/g, "<pre><code>$1</code></pre>")
+    .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
     .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/**(.+?)**/g, "<strong>$1</strong>")
-    .replace(/*(.+?)*/g, "<em>$1</em>")
-    .replace(/^### (.+)$/gm, '<h4 style="font-size:14px;font-weight:700;margin:8px 0 4px">$1</h4>')
-    .replace(/^## (.+)$/gm,  '<h3 style="font-size:15px;font-weight:700;margin:8px 0 4px">$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/^### (.+)$/gm, "<h4 style=\"font-size:14px;font-weight:700;margin:8px 0 4px\">$1</h4>")
+    .replace(/^## (.+)$/gm,  "<h3 style=\"font-size:15px;font-weight:700;margin:8px 0 4px\">$1</h3>")
     .replace(/^- (.+)$/gm,   "<li>$1</li>")
-    .replace(/(<li>[sS]*?</li>)+/g, "<ul>$&</ul>")
-    .replace(/
-
-/g, "</p><p>").replace(/
-/g, "<br/>");
+    .replace(/(<li>[\s\S]*?<\/li>)+/g, "<ul>$&</ul>")
+    .replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>");
 }
 
-// ══ IMAGE GENERATE ═════════════════════════════════════════
+// â•â• IMAGE GENERATE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function generateImage() {
   if (!currentUser) { openAuthModal("image"); return; }
   _generateImage();
@@ -664,15 +621,15 @@ async function _generateImage() {
   if (!checkQuota()) return;
   const prompt = document.getElementById("imgPrompt").value.trim();
   if (!prompt) return showToast("Please enter a prompt", "error");
-  const style      = getActiveChip("imgStyleGroup");
-  const ratio      = getActiveChip("imgRatioGroup");
-  const qty        = parseInt(getActiveChip("imgQtyGroup")) || 1;
+  const style  = getActiveChip("imgStyleGroup");
+  const ratio  = getActiveChip("imgRatioGroup");
+  const qty    = parseInt(getActiveChip("imgQtyGroup")) || 1;
   const styleHint  = style && style.toLowerCase() !== "none" ? `, style: ${style}` : "";
   const fullPrompt = `${prompt}${styleHint}`;
-  const btn        = document.getElementById("imgGenBtn");
-  const resultsEl  = document.getElementById("imgResults");
+  const btn       = document.getElementById("imgGenBtn");
+  const resultsEl = document.getElementById("imgResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-  resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI...</div></div>`;
+  resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AIâ€¦</div></div>`;
 
   async function fetchOne() {
     const r = await fetch("/api/image", {
@@ -687,7 +644,6 @@ async function _generateImage() {
   }
 
   try {
-    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI… (retries up to 3×)</div></div>`;
     const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne()));
     const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
     const errors  = results.filter(r => r.status === "rejected").map(r => r.reason?.message);
@@ -727,7 +683,7 @@ async function _generateImage() {
       <div class="error-card">
         <i class="fas fa-circle-exclamation"></i>
         ${escapeHtml(err.message)}
-        ${isOverload ? "<br/><small style='opacity:.7'>The AI model is busy — please wait a moment and try again.</small>" : ""}
+        ${isOverload ? "<br/><small style='opacity:.7'>The AI model is busy â€” please wait a moment and try again.</small>" : ""}
         <br/><button onclick="_generateImage()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--accent,#7c3aed);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Try Again
         </button>
@@ -744,7 +700,7 @@ function openFullscreen(src) {
   ov.appendChild(img); ov.onclick = () => ov.remove(); document.body.appendChild(ov);
 }
 
-// ══ SONG GENERATE ══════════════════════════════════════════
+// â•â• SONG GENERATE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function generateSong() {
   if (!currentUser) { openAuthModal("song"); return; }
   _generateSong();
@@ -754,16 +710,16 @@ async function _generateSong() {
   const prompt = document.getElementById("songPrompt").value.trim();
   if (!prompt) return showToast("Please enter a song description", "error");
   const style     = getActiveChip("songStyleGroup");
-  const voice     = getActiveChip("songVoiceGroup").replace(/[^ws]/g, "").trim();
+  const voice     = getActiveChip("songVoiceGroup").replace(/[^\w\s]/g, "").trim();
   const voiceHint = voice.toLowerCase().includes("female") ? "female vocalist" : "male vocalist";
   const btn       = document.getElementById("songGenBtn");
   const resultsEl = document.getElementById("songResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
-  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with Lyria… (~20–40s)</div></div>`;
+  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with Lyriaâ€¦ (~20â€“40s)</div></div>`;
 
   const retryHintTimer = setTimeout(() => {
     const lbl = document.getElementById("songLoadingLabel");
-    if (lbl) lbl.textContent = "Lyria is composing… if slow, falling back to TTS — please wait";
+    if (lbl) lbl.textContent = "Lyria is composingâ€¦ if slow, falling back to TTS â€” please wait";
   }, 20000);
 
   try {
@@ -781,9 +737,9 @@ async function _generateSong() {
     const header = document.createElement("div"); header.className = "song-result-title";
     const isLyria = audioSource && audioSource.toLowerCase().includes("lyria");
     const sourceBadge = audioSource
-      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "🎵 Lyria" : "🔊 TTS"}</span>`
+      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "ðŸŽµ Lyria" : "ðŸ”Š TTS"}</span>`
       : "";
-    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} · ${escapeHtml(voiceHint)}</span>`;
+    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} Â· ${escapeHtml(voiceHint)}</span>`;
     card.appendChild(header);
 
     if (audioB64) {
@@ -804,7 +760,7 @@ async function _generateSong() {
     } else {
       const notice = document.createElement("div");
       notice.style.cssText = "display:flex;flex-direction:column;gap:8px;padding:10px 14px;font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);border-bottom:1px solid var(--border);";
-      const msg = ttsMessage || "Audio generation is temporarily unavailable — lyrics are ready below.";
+      const msg = ttsMessage || "Audio generation is temporarily unavailable â€” your lyrics are ready below.";
       notice.innerHTML = `<div style="display:flex;align-items:flex-start;gap:8px;"><i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0;margin-top:2px"></i><span>${escapeHtml(msg)}</span></div>
         <button onclick="_generateSong()" style="align-self:flex-start;padding:5px 14px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:11px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Retry Audio
@@ -829,7 +785,7 @@ async function _generateSong() {
       <div class="error-card">
         <i class="fas fa-circle-exclamation"></i>
         ${escapeHtml(err.message)}
-        ${isOverload ? "<br/><small style='opacity:.7'>The TTS model is experiencing high demand. Please try again in a moment.</small>" : ""}
+        ${isOverload ? "<br/><small style='opacity:.7'>The TTS model is experiencing high demand. Please try again.</small>" : ""}
         <br/><button onclick="_generateSong()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Try Again
         </button>
@@ -838,7 +794,7 @@ async function _generateSong() {
   btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
 }
 
-// ══ UTILITIES ══════════════════════════════════════════════
+// â•â• UTILITIES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function getActiveChip(groupId) {
   const el = document.querySelector(`#${groupId} .chip.active`);
   return el ? el.textContent.trim() : "";
