@@ -37,22 +37,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   await fetchOwnerKey();
   await fetchAvailableModels();
   await checkExistingSession();
-  // After session check: if still not logged in, show auth gate on all panels
   if (!currentUser) enforceAuthGate();
 });
 
-// â”€â”€ AUTH GATE (block all panels until login) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ AUTH GATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function enforceAuthGate() {
-  // Block Chat input
-  const chatInput = document.getElementById("chatInput");
+  const chatInput   = document.getElementById("chatInput");
   const chatSendBtn = document.getElementById("chatSendBtn");
-  if (chatInput) {
-    chatInput.disabled = true;
-    chatInput.placeholder = "ðŸ”’ Sign in to start chatting...";
-  }
+  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = "ðŸ”’ Sign in to start chatting..."; }
   if (chatSendBtn) chatSendBtn.disabled = true;
-
-  // Show sign-in overlay on all panels
   showPanelOverlay("panel-chat",  "chat");
   showPanelOverlay("panel-image", "image");
   showPanelOverlay("panel-song",  "song");
@@ -61,21 +54,19 @@ function enforceAuthGate() {
 function showPanelOverlay(panelClass, action) {
   const panel = document.querySelector("." + panelClass);
   if (!panel) return;
-  // Remove existing overlay if any
   const existing = panel.querySelector(".auth-gate-overlay");
   if (existing) existing.remove();
-
   const overlay = document.createElement("div");
   overlay.className = "auth-gate-overlay";
   overlay.style.cssText = `
-    position:absolute; inset:0; z-index:50;
+    position:absolute;inset:0;z-index:50;
     background:rgba(10,10,20,0.82);
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    gap:16px; backdrop-filter:blur(6px);
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:16px;backdrop-filter:blur(6px);
     border-radius:inherit;
   `;
-  const icon = action === "chat" ? "fa-comments" : action === "image" ? "fa-image" : "fa-music";
+  const icon  = action === "chat" ? "fa-comments" : action === "image" ? "fa-image" : "fa-music";
   const label = action === "chat" ? "AI Assistant" : action === "image" ? "Image Generator" : "Song Generator";
   overlay.innerHTML = `
     <div style="width:64px;height:64px;border-radius:50%;background:rgba(124,58,237,.18);border:2px solid rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center;">
@@ -94,22 +85,16 @@ function showPanelOverlay(panelClass, action) {
       </button>
     </div>
   `;
-  // Make panel relative for absolute overlay
   const style = window.getComputedStyle(panel);
   if (style.position === "static") panel.style.position = "relative";
   panel.appendChild(overlay);
 }
 
 function removeAuthGate() {
-  // Remove all overlays
   document.querySelectorAll(".auth-gate-overlay").forEach(el => el.remove());
-  // Re-enable chat input
-  const chatInput = document.getElementById("chatInput");
+  const chatInput   = document.getElementById("chatInput");
   const chatSendBtn = document.getElementById("chatSendBtn");
-  if (chatInput) {
-    chatInput.disabled = false;
-    chatInput.placeholder = "Type a message...";
-  }
+  if (chatInput)   { chatInput.disabled = false; chatInput.placeholder = "Type a message..."; }
   if (chatSendBtn) chatSendBtn.disabled = false;
 }
 
@@ -123,18 +108,16 @@ async function fetchOwnerKey() {
 async function fetchAvailableModels() {
   try {
     const r = await fetch("/api/models");
-    if (!r.ok) { console.warn("[models] /api/models returned HTTP", r.status); return; }
+    if (!r.ok) { console.warn("[models] HTTP", r.status); return; }
     const d = await r.json();
-    if (d.error) { console.warn("[models] ListModels error:", d.error); }
-    if (d.recommended?.chat)  GEMINI_CHAT_MODEL   = d.recommended.chat;
-    if (Array.isArray(d.imageModels) && d.imageModels.length > 0) GEMINI_IMAGE_MODELS = d.imageModels;
-    if (Array.isArray(d.ttsModels)   && d.ttsModels.length > 0)   GEMINI_TTS_MODELS   = d.ttsModels;
+    if (d.error) console.warn("[models] error:", d.error);
+    if (d.recommended?.chat) GEMINI_CHAT_MODEL = d.recommended.chat;
+    if (Array.isArray(d.imageModels) && d.imageModels.length) GEMINI_IMAGE_MODELS = d.imageModels;
+    if (Array.isArray(d.ttsModels)   && d.ttsModels.length)   GEMINI_TTS_MODELS   = d.ttsModels;
     console.log("[models] chat:", GEMINI_CHAT_MODEL,
                 "| image:", GEMINI_IMAGE_MODELS[0] || "(server decides)",
-                "| tts:", GEMINI_TTS_MODELS[0] || "(server decides)");
-  } catch (e) {
-    console.warn("[models] Could not fetch model list:", e.message);
-  }
+                "| tts:",   GEMINI_TTS_MODELS[0]   || "(server decides)");
+  } catch (e) { console.warn("[models] fetch failed:", e.message); }
 }
 
 async function checkExistingSession() {
@@ -310,8 +293,7 @@ async function submitOtp() {
 }
 
 async function resendOtp() {
-  if (!_otpPending) return;
-  clearAuthMsg();
+  if (!_otpPending) return; clearAuthMsg();
   try {
     const res  = await fetch("/api/send-otp", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -324,7 +306,7 @@ async function resendOtp() {
 }
 
 function backToSignup() {
-  document.getElementById("authOtpForm").style.display   = "none";
+  document.getElementById("authOtpForm").style.display    = "none";
   document.getElementById("authSignupForm").style.display = "flex";
   clearAuthMsg();
   if (_resendTimer) clearInterval(_resendTimer);
@@ -381,7 +363,6 @@ function onLoginSuccess(user, runPending) {
     renderPlanBadge();
   }
   updateNavAvatar(user);
-  // âœ… Remove all auth gate overlays â€” user is now logged in
   removeAuthGate();
   closeAuthModal();
   if (runPending) {
@@ -397,12 +378,15 @@ async function doLogout() {
   currentUser = null; window.currentUser = null;
   authToken   = null;
   localStorage.removeItem("jl_token");
+  userPlan    = "free";
+  requestCount = 0;
+  chatHistory  = [];
+  renderPlanBadge();
   const wrap = document.getElementById("userProfileWrap");
   if (wrap) wrap.style.display = "none";
   closeDd();
   try { await fetch("/api/logout", { method: "POST", credentials: "include" }); } catch (e) {}
   showToast("Signed out", "error");
-  // Re-enforce auth gate after logout
   enforceAuthGate();
 }
 
@@ -449,9 +433,9 @@ function closeProfileSheet() { document.getElementById("ppOverlay").classList.re
 function closePPif(e)        { if (e.target === document.getElementById("ppOverlay")) closeProfileSheet(); }
 
 function syncProfileSheet() {
-  const u    = currentUser;
-  const plan = (u && u.plan) || userPlan || "free";
-  const info = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+  const u     = currentUser;
+  const plan  = (u && u.plan) || userPlan || "free";
+  const info  = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
   const limit = info.requests;
   const used  = requestCount;
   const pct   = Math.min(100, Math.round(used / limit * 100));
@@ -512,18 +496,31 @@ function openPlanModal() {
   m.classList.add("open");
   document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === userPlan));
 }
-function closePlanModal() { const m = document.getElementById("planModal"); if (m) m.classList.remove("open"); }
+function closePlanModal() {
+  const m = document.getElementById("planModal");
+  if (m) m.classList.remove("open");
+}
 function selectPlan(plan) {
   document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === plan));
   const ps = document.getElementById("proSettingsInModal");
   if (ps) ps.style.display = plan === "pro" ? "block" : "none";
 }
+
+// â”€â”€ confirmPlan (FIXED) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function confirmPlan() {
   const selected = document.querySelector(".plan-card.selected");
-  if (!selected) return;
+  if (!selected) { showToast("Please select a plan first", "error"); return; }
   const plan = selected.dataset.plan;
-  if (plan === userPlan) { closePlanModal(); return; }
   if (!currentUser) { closePlanModal(); openAuthModal(null); return; }
+  if (plan === userPlan) {
+    closePlanModal();
+    showToast("You are already on " + (PLAN_LIMITS[plan]?.label || plan) + " plan", "success");
+    return;
+  }
+  // Find confirm button and show loading
+  const btn     = document.querySelector("#planModal .btn-confirm, #planModal button[onclick='confirmPlan()'], #planModal button[onclick=\"confirmPlan()\"]");
+  const oldHtml = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...'; }
   try {
     const headers = { "Content-Type": "application/json" };
     if (authToken) headers["Authorization"] = "Bearer " + authToken;
@@ -532,16 +529,22 @@ async function confirmPlan() {
       body: JSON.stringify({ plan })
     });
     const d = await res.json();
+    // Stripe checkout redirect
     if (d.checkoutUrl) { window.location.href = d.checkoutUrl; return; }
-    if (res.ok && d.user) {
-      userPlan = d.user.plan || plan;
-      if (currentUser) currentUser.plan = userPlan;
-      renderPlanBadge();
-      updateNavAvatar(currentUser);
-      closePlanModal();
-      showToast(PLAN_LIMITS[userPlan].label + " plan activated!", "success");
-    } else { showToast(d.error || "Could not change plan.", "error"); }
-  } catch (err) { showToast("Network error.", "error"); }
+    if (!res.ok) throw new Error(d.error || "Could not change plan.");
+    // âœ… Success â€” update local state
+    userPlan = d.user?.plan || plan;
+    if (currentUser) currentUser.plan = userPlan;
+    renderPlanBadge();
+    updateNavAvatar(currentUser);
+    syncProfileSheet();
+    closePlanModal();
+    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! ðŸŽ‰", "success");
+  } catch (err) {
+    showToast(err.message || "Network error.", "error");
+  } finally {
+    if (btn && oldHtml !== null) { btn.disabled = false; btn.innerHTML = oldHtml; }
+  }
 }
 
 // â•â• SETTINGS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -576,7 +579,7 @@ function showUpgradeModal()  { const m = document.getElementById("upgradeModal")
 function closeUpgradeModal() { const m = document.getElementById("upgradeModal"); if (m) m.classList.remove("open"); }
 function upgradeNow()        { closeUpgradeModal(); if (userPlan === "free") openPlanModal(); }
 function requirePro(btn, groupId) {
-  if (userPlan === "pro") selectChip(btn, groupId);
+  if (userPlan === "pro" || userPlan === "max") selectChip(btn, groupId);
   else { showUpgradeModal(); showToast("HD is available on Pro plan only", "error"); }
 }
 
@@ -655,7 +658,8 @@ function appendTyping() {
   const container = document.getElementById("chatMessages"); if (!container) return null;
   const id  = "typing-" + Date.now();
   const div = document.createElement("div"); div.className = "msg msg-bot"; div.id = id;
-  const avatar = document.createElement("div"); avatar.className = "msg-avatar"; avatar.innerHTML = '<i class="fas fa-brain"></i>';
+  const avatar = document.createElement("div"); avatar.className = "msg-avatar";
+  avatar.innerHTML = '<i class="fas fa-brain"></i>';
   const bubble = document.createElement("div"); bubble.className = "msg-bubble";
   bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
   div.appendChild(avatar); div.appendChild(bubble);
@@ -712,15 +716,12 @@ async function _generateImage() {
   }
 
   try {
-    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AIâ€¦ (retries up to 3Ã—)</div></div>`;
+    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""}â€¦ (retries up to 3Ã—)</div></div>`;
     const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne()));
     const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
     const errors  = results.filter(r => r.status === "rejected").map(r => r.reason?.message);
     if (errors.length) console.warn("[image] Some requests failed:", errors);
-    if (!imgs.length) {
-      const firstErr = errors[0] || "No images generated. Try a different prompt.";
-      throw new Error(firstErr);
-    }
+    if (!imgs.length) throw new Error(errors[0] || "No images generated. Try a different prompt.");
     const card = document.createElement("div"); card.className = "img-result-card";
     const grid = document.createElement("div"); grid.className = `img-grid qty-${imgs.length}`;
     const blobs = [];
@@ -802,7 +803,7 @@ async function _generateSong() {
     clearTimeout(retryHintTimer);
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`); }
     const data = await res.json();
-    const { audio: audioB64, mimeType: audioMime, title: songTitle, lyrics: lyricsText, lyricsOnly, ttsMessage, audioSource } = data;
+    const { audio: audioB64, mimeType: audioMime, title: songTitle, lyrics: lyricsText, ttsMessage, audioSource } = data;
 
     const card = document.createElement("div"); card.className = "song-result-card";
 
@@ -832,7 +833,7 @@ async function _generateSong() {
     } else {
       const notice = document.createElement("div");
       notice.style.cssText = "display:flex;flex-direction:column;gap:8px;padding:10px 14px;font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);border-bottom:1px solid var(--border);";
-      const msg = ttsMessage || "Audio generation is temporarily unavailable due to high demand â€” your lyrics are ready below. Try again in a few minutes.";
+      const msg = ttsMessage || "Audio generation is temporarily unavailable â€” your lyrics are ready below. Try again in a few minutes.";
       notice.innerHTML = `<div style="display:flex;align-items:flex-start;gap:8px;"><i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0;margin-top:2px"></i><span>${escapeHtml(msg)}</span></div>
         <button onclick="_generateSong()" style="align-self:flex-start;padding:5px 14px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:11px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Retry Audio
@@ -857,7 +858,7 @@ async function _generateSong() {
       <div class="error-card">
         <i class="fas fa-circle-exclamation"></i>
         ${escapeHtml(err.message)}
-        ${isOverload ? "<br/><small style='opacity:.7'>The TTS model is experiencing high demand. Please try again in a moment.</small>" : ""}
+        ${isOverload ? "<br/><small style='opacity:.7'>The TTS model is experiencing high demand. Please try again.</small>" : ""}
         <br/><button onclick="_generateSong()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Try Again
         </button>
