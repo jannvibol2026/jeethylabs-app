@@ -794,6 +794,87 @@ app.post('/api/stripe/webhook', async (req, res) => {
   res.json({ received: true });
 });
 
+/* ══════════════════════════════════
+   SUBSCRIBE / CHECKOUT ROUTES
+   ══════════════════════════════════ */
+
+// POST /api/subscribe
+app.post('/api/subscribe', auth, async (req, res) => {
+  try {
+    const { plan } = req.body;
+    const planKey = (plan || '').toLowerCase();
+    const valid = ['free','pro','max'];
+    if (!valid.includes(planKey)) return res.status(400).json({ error: 'Invalid plan.' });
+
+    if (planKey === 'free') {
+      await pool.query(
+        `UPDATE users SET plan=$1, plan_expires_at=NULL, updated_at=NOW() WHERE id=$2`,
+        ['free', req.user.id]
+      );
+      return res.json({ success: true, plan: 'free' });
+    }
+
+    const token = jwt.sign(
+      { userId: req.user.id, plan: planKey, ts: Date.now() },
+      process.env.JWT_SECRET,
+      { expiresIn: '30m' }
+    );
+    await pool.query(
+      `UPDATE users SET pending_plan=$1, updated_at=NOW() WHERE id=$2`,
+      [planKey, req.user.id]
+    );
+    const checkoutUrl = `${process.env.APP_URL}/checkout.html?token=${token}&plan=${planKey}`;
+    return res.json({ success: true, checkoutUrl, plan: planKey });
+  } catch (e) {
+    console.error('[subscribe]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/checkout/confirm
+app.post('/api/checkout/confirm', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Missing token.' });
+    let payload;
+    try { payload = jwt.verify(token, process.env.JWT_SECRET); }
+    catch (e) { return res.status(400).json({ error: 'Invalid or expired token.' }); }
+    const { userId, plan } = payload;
+    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await pool.query(
+      `UPDATE users SET plan=$1, pending_plan=NULL, plan_expires_at=$2, updated_at=NOW() WHERE id=$3`,
+      [plan, expires, userId]
+    );
+    const { rows } = await pool.query(
+      `SELECT id, name, email, plan, avatar_url, created_at FROM users WHERE id=$1`,
+      [userId]
+    );
+    const newToken = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    return res.json({ success: true, token: newToken, user: rows[0] });
+  } catch (e) {
+    console.error('[checkout/confirm]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/plan
+app.get('/api/plan', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT plan, plan_expires_at, pending_plan FROM users WHERE id=$1`,
+      [req.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'User not found.' });
+    const u = rows[0];
+    if (u.plan !== 'free' && u.plan_expires_at && new Date(u.plan_expires_at) < new Date()) {
+      await pool.query(`UPDATE users SET plan='free', plan_expires_at=NULL WHERE id=$1`, [req.user.id]);
+      u.plan = 'free'; u.plan_expires_at = null;
+    }
+    return res.json({ plan: u.plan, expiresAt: u.plan_expires_at, pendingPlan: u.pending_plan });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 /* â”€â”€ SPA fallback â”€â”€ */
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
