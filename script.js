@@ -1,10 +1,9 @@
 "use strict";
 
 // ── MODELS ─────────────────────────────────────────────────
-// Defaults used before /api/models responds, and as fallbacks if it fails.
 let GEMINI_CHAT_MODEL    = "gemini-2.5-flash";
-let GEMINI_IMAGE_MODELS  = [];   // populated from /api/models; empty = use server proxy
-let GEMINI_TTS_MODELS    = [];   // populated from /api/models
+let GEMINI_IMAGE_MODELS  = [];
+let GEMINI_TTS_MODELS    = [];
 
 // ── PLAN LIMITS ────────────────────────────────────────────
 const PLAN_LIMITS = {
@@ -25,6 +24,7 @@ let isChatLoading = false;
 let touchStartX   = 0;
 let touchStartY   = 0;
 let currentUser   = null;
+let authToken     = null;
 let pendingAction = null;
 let _otpPending   = null;
 let _resendTimer  = null;
@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initSwipe();
   renderPlanBadge();
   await fetchOwnerKey();
-  await fetchAvailableModels();   // discover real models before any generation
+  await fetchAvailableModels();
   await checkExistingSession();
 });
 
@@ -49,42 +49,32 @@ async function fetchOwnerKey() {
 async function fetchAvailableModels() {
   try {
     const r = await fetch("/api/models");
-    if (!r.ok) { console.warn("[models] /api/models returned HTTP", r.status, "— using defaults"); return; }
+    if (!r.ok) { console.warn("[models] /api/models returned HTTP", r.status); return; }
     const d = await r.json();
-    if (d.error) { console.warn("[models] ListModels error:", d.error, "— using defaults"); }
-    // Update chat model if a better one is available
-    if (d.recommended?.chat)  GEMINI_CHAT_MODEL   = d.recommended.chat;
-    // Store ordered image model list (server proxy will also use these, but
-    // we keep a client-side copy so the direct-call path stays in sync)
-    if (Array.isArray(d.imageModels) && d.imageModels.length > 0) {
-      GEMINI_IMAGE_MODELS = d.imageModels;
-    }
-    if (Array.isArray(d.ttsModels) && d.ttsModels.length > 0) {
-      GEMINI_TTS_MODELS = d.ttsModels;
-    }
+    if (d.error) { console.warn("[models] ListModels error:", d.error); }
+    if (d.recommended?.chat)  GEMINI_CHAT_MODEL  = d.recommended.chat;
+    if (Array.isArray(d.imageModels) && d.imageModels.length > 0) GEMINI_IMAGE_MODELS = d.imageModels;
+    if (Array.isArray(d.ttsModels)   && d.ttsModels.length   > 0) GEMINI_TTS_MODELS   = d.ttsModels;
     console.log("[models] chat:", GEMINI_CHAT_MODEL,
                 "| image:", GEMINI_IMAGE_MODELS[0] || "(server decides)",
-                "| tts:", GEMINI_TTS_MODELS[0] || "(server decides)");
+                "| tts:",   GEMINI_TTS_MODELS[0]   || "(server decides)");
   } catch (e) {
-    console.warn("[models] Could not fetch model list:", e.message, "— using defaults");
+    console.warn("[models] Could not fetch model list:", e.message);
   }
 }
 
 async function checkExistingSession() {
   try {
-    // Try session cookie first (httpOnly — browser sends automatically)
-    const r = await fetch("/api/me", { credentials: "include" });
-    if (r.ok) { const d = await r.json(); onLoginSuccess(d.user, false); return; }
-    // Fallback: try stored token in localStorage
-    const stored = localStorage.getItem("jl_token");
-    if (stored) {
-      const r2 = await fetch("/api/me", {
-        credentials: "include",
-        headers: { "Authorization": "Bearer " + stored }
-      });
-      if (r2.ok) { const d = await r2.json(); onLoginSuccess(d.user, false); }
-      else localStorage.removeItem("jl_token"); // token expired/invalid
+    const stored  = localStorage.getItem("jl_token");
+    const headers = stored ? { "Authorization": "Bearer " + stored } : {};
+    const r = await fetch("/api/me", { credentials: "include", headers });
+    if (r.ok) {
+      const d = await r.json();
+      if (stored) authToken = stored;
+      onLoginSuccess(d.user, false);
+      return;
     }
+    if (stored) { localStorage.removeItem("jl_token"); authToken = null; }
   } catch (e) {}
 }
 
@@ -92,7 +82,6 @@ function getActiveApiKey() {
   if (userPlan === "pro" && useOwnKey && proCustomKey) return proCustomKey;
   return ownerApiKey;
 }
-
 function checkQuota() {
   const limit = PLAN_LIMITS[userPlan]?.requests ?? 10;
   if (requestCount >= limit) { showUpgradeModal(); return false; }
@@ -109,8 +98,8 @@ function renderPlanBadge() {
   const badge = document.getElementById("planBadge");
   if (!badge) return;
   const plan = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
-  badge.textContent    = plan.label;
-  badge.style.color    = plan.color;
+  badge.textContent       = plan.label;
+  badge.style.color       = plan.color;
   badge.style.borderColor = plan.color + "66";
 }
 
@@ -194,7 +183,7 @@ async function submitSignup(e) {
   const email = document.getElementById("authSignupEmail").value.trim();
   const pass  = document.getElementById("authSignupPass").value;
   if (!name)  return showAuthMsg("Please enter your name.", "error");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAuthMsg("Please enter a valid email.", "error");
+  if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) return showAuthMsg("Please enter a valid email.", "error");
   if (pass.length < 8) return showAuthMsg("Password must be at least 8 characters.", "error");
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending code...';
@@ -234,7 +223,7 @@ async function submitOtp() {
     const data = await res.json();
     if (res.ok) {
       _otpPending = null;
-      if (data.token) localStorage.setItem("jl_token", data.token);
+      if (data.token) { localStorage.setItem("jl_token", data.token); authToken = data.token; }
       showAuthMsg("Welcome, " + data.user.name + "! Account created!", "success");
       setTimeout(() => onLoginSuccess(data.user, true), 900);
     } else { showAuthMsg(data.error || "Invalid or expired code.", "error"); }
@@ -258,7 +247,7 @@ async function resendOtp() {
 }
 
 function backToSignup() {
-  document.getElementById("authOtpForm").style.display   = "none";
+  document.getElementById("authOtpForm").style.display    = "none";
   document.getElementById("authSignupForm").style.display = "flex";
   clearAuthMsg();
   if (_resendTimer) clearInterval(_resendTimer);
@@ -297,7 +286,7 @@ async function submitLogin(e) {
     });
     const data = await res.json();
     if (res.ok) {
-      if (data.token) localStorage.setItem("jl_token", data.token);
+      if (data.token) { localStorage.setItem("jl_token", data.token); authToken = data.token; }
       showAuthMsg("Welcome back, " + data.user.name + "!", "success");
       setTimeout(() => onLoginSuccess(data.user, true), 800);
     } else { showAuthMsg(data.error || "Invalid email or password.", "error"); }
@@ -308,7 +297,7 @@ async function submitLogin(e) {
 
 // ── onLoginSuccess ─────────────────────────────────────────
 function onLoginSuccess(user, runPending) {
-  currentUser = user;
+  currentUser        = user;
   window.currentUser = user;
   if (user.plan && PLAN_LIMITS[user.plan]) {
     userPlan = user.plan;
@@ -326,7 +315,7 @@ function onLoginSuccess(user, runPending) {
 
 // ── LOGOUT ─────────────────────────────────────────────────
 async function doLogout() {
-  currentUser = null; window.currentUser = null;
+  currentUser = null; window.currentUser = null; authToken = null;
   localStorage.removeItem("jl_token");
   const wrap = document.getElementById("userProfileWrap");
   if (wrap) wrap.style.display = "none";
@@ -337,9 +326,9 @@ async function doLogout() {
 
 // ── NAV AVATAR ─────────────────────────────────────────────
 function updateNavAvatar(user) {
-  const wrap    = document.getElementById("userProfileWrap");
-  const navBtn  = document.getElementById("userAvatarBtn");
-  const initial = (user.name || "U").charAt(0).toUpperCase();
+  const wrap     = document.getElementById("userProfileWrap");
+  const navBtn   = document.getElementById("userAvatarBtn");
+  const initial  = (user.name || "U").charAt(0).toUpperCase();
   const planInfo = PLAN_LIMITS[user.plan || "free"] || PLAN_LIMITS.free;
   if (wrap)   wrap.style.display = "flex";
   if (navBtn) {
@@ -392,7 +381,9 @@ function syncProfileSheet() {
     set("ppInfoName",   u.name);
     set("ppInfoEmail",  u.email);
     set("ppInfoPlan",   info.label);
-    set("ppInfoJoined", u.created_at ? new Date(u.created_at).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" }) : "Today");
+    set("ppInfoJoined", u.created_at
+      ? new Date(u.created_at).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })
+      : "Today");
     const av = document.getElementById("ppAvatarEl");
     if (av) av.innerHTML = u.avatar_url
       ? `<img src="${u.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="${init}"/>`
@@ -417,9 +408,11 @@ async function handleAvatarUpload(e) {
   reader.onload = async ev => {
     const url = ev.target.result;
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (authToken) headers["Authorization"] = "Bearer " + authToken;
       const r = await fetch("/api/upload-avatar", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        credentials: "include", body: JSON.stringify({ avatar_url: url })
+        method: "POST", headers, credentials: "include",
+        body: JSON.stringify({ avatar_url: url })
       });
       if (r.ok) {
         if (currentUser) currentUser.avatar_url = url;
@@ -437,24 +430,95 @@ function openPlanModal() {
   const m = document.getElementById("planModal");
   if (!m) return;
   m.classList.add("open");
-  document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === userPlan));
+  document.querySelectorAll(".plan-card").forEach(c =>
+    c.classList.toggle("selected", c.dataset.plan === userPlan)
+  );
 }
-function closePlanModal() { const m = document.getElementById("planModal"); if (m) m.classList.remove("open"); }
+function closePlanModal() {
+  const m = document.getElementById("planModal");
+  if (m) m.classList.remove("open");
+}
+
+// selectPlan — UI only, does NOT change userPlan until DB confirms
 function selectPlan(plan) {
-  userPlan = plan;
-  document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === plan));
-  renderPlanBadge();
+  document.querySelectorAll(".plan-card").forEach(c =>
+    c.classList.toggle("selected", c.dataset.plan === plan)
+  );
   const ps = document.getElementById("proSettingsInModal");
   if (ps) ps.style.display = plan === "pro" ? "block" : "none";
 }
-function confirmPlan() { closePlanModal(); showToast(PLAN_LIMITS[userPlan].label + " plan activated!", "success"); }
+
+// confirmPlan — FIXED: async, calls /api/subscribe, saves to DB
+async function confirmPlan() {
+  const selected = document.querySelector(".plan-card.selected");
+  const plan     = selected?.dataset.plan || "free";
+
+  if (!currentUser) { closePlanModal(); openAuthModal(); return; }
+
+  // Find confirm button (try multiple selectors)
+  const btn = document.querySelector('#planModal .btn-confirm-plan')
+           || document.querySelector('#planModal button.btn-primary')
+           || [...document.querySelectorAll('#planModal button')]
+                .find(b => b.textContent.includes("Confirm"));
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...'; }
+
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (authToken) headers["Authorization"] = "Bearer " + authToken;
+
+    const r = await fetch("/api/subscribe", {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({ plan })
+    });
+    const d = await r.json();
+
+    if (!r.ok) {
+      showToast(d.error || "Failed to update plan.", "error");
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Confirm Plan'; }
+      return;
+    }
+
+    if (plan === "free") {
+      // Downgrade — no payment needed, update local immediately
+      currentUser.plan = "free";
+      userPlan = "free";
+      renderPlanBadge();
+      updateNavAvatar(currentUser);
+      closePlanModal();
+      showToast("Downgraded to Free plan.", "success");
+    } else if (d.checkoutUrl) {
+      // Paid plan → redirect to Stripe Checkout
+      closePlanModal();
+      showToast("Redirecting to checkout…", "success");
+      setTimeout(() => { window.location.href = d.checkoutUrl; }, 800);
+    } else if (d.user) {
+      // Server returned updated user (test/manual mode without Stripe)
+      currentUser        = d.user;
+      window.currentUser = d.user;
+      userPlan           = d.user.plan || plan;
+      renderPlanBadge();
+      updateNavAvatar(currentUser);
+      closePlanModal();
+      showToast((PLAN_LIMITS[userPlan]?.label || plan) + " plan activated!", "success");
+    } else {
+      showToast("Plan updated!", "success");
+      closePlanModal();
+    }
+  } catch (ex) {
+    showToast("Network error: " + ex.message, "error");
+  }
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Confirm Plan'; }
+}
 
 // ══ SETTINGS ═══════════════════════════════════════════════
 function openSettings() {
   if (userPlan !== "pro") { showToast("Settings available on Pro plan", "error"); openPlanModal(); return; }
   const m = document.getElementById("settingsModal"); if (!m) return;
   m.classList.add("open");
-  document.getElementById("customKeyInput").value   = proCustomKey;
+  document.getElementById("customKeyInput").value    = proCustomKey;
   document.getElementById("useOwnKeyToggle").checked = useOwnKey;
   updateSettingsUI();
 }
@@ -515,7 +579,9 @@ async function _sendChat() {
       {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: "You are JeeThy Assistant, a helpful and friendly AI created by JeeThy Labs.\nAnswer in the same language the user writes in.\nBe concise but thorough. Use markdown for formatting." }] },
+          system_instruction: { parts: [{ text: "You are JeeThy Assistant, a helpful and friendly AI created by JeeThy Labs.
+Answer in the same language the user writes in.
+Be concise but thorough. Use markdown for formatting." }] },
           contents: chatHistory
         })
       }
@@ -560,7 +626,8 @@ function appendTyping() {
   const container = document.getElementById("chatMessages"); if (!container) return null;
   const id  = "typing-" + Date.now();
   const div = document.createElement("div"); div.className = "msg msg-bot"; div.id = id;
-  const avatar = document.createElement("div"); avatar.className = "msg-avatar"; avatar.innerHTML = '<i class="fas fa-brain"></i>';
+  const avatar = document.createElement("div"); avatar.className = "msg-avatar";
+  avatar.innerHTML = '<i class="fas fa-brain"></i>';
   const bubble = document.createElement("div"); bubble.className = "msg-bubble";
   bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
   div.appendChild(avatar); div.appendChild(bubble);
@@ -572,15 +639,18 @@ function removeTyping(id) { if (!id) return; const el = document.getElementById(
 function formatMarkdown(text) {
   return text
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
+    .replace(/```([sS]*?)```/g, "<pre><code>$1</code></pre>")
     .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/^### (.+)$/gm, "<h4 style=\"font-size:14px;font-weight:700;margin:8px 0 4px\">$1</h4>")
-    .replace(/^## (.+)$/gm,  "<h3 style=\"font-size:15px;font-weight:700;margin:8px 0 4px\">$1</h3>")
+    .replace(/**(.+?)**/g, "<strong>$1</strong>")
+    .replace(/*(.+?)*/g, "<em>$1</em>")
+    .replace(/^### (.+)$/gm, '<h4 style="font-size:14px;font-weight:700;margin:8px 0 4px">$1</h4>')
+    .replace(/^## (.+)$/gm,  '<h3 style="font-size:15px;font-weight:700;margin:8px 0 4px">$1</h3>')
     .replace(/^- (.+)$/gm,   "<li>$1</li>")
-    .replace(/(<li>[\s\S]*?<\/li>)+/g, "<ul>$&</ul>")
-    .replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>");
+    .replace(/(<li>[sS]*?</li>)+/g, "<ul>$&</ul>")
+    .replace(/
+
+/g, "</p><p>").replace(/
+/g, "<br/>");
 }
 
 // ══ IMAGE GENERATE ═════════════════════════════════════════
@@ -594,17 +664,16 @@ async function _generateImage() {
   if (!checkQuota()) return;
   const prompt = document.getElementById("imgPrompt").value.trim();
   if (!prompt) return showToast("Please enter a prompt", "error");
-  const style  = getActiveChip("imgStyleGroup");
-  const ratio  = getActiveChip("imgRatioGroup");
-  const qty    = parseInt(getActiveChip("imgQtyGroup")) || 1;
-  const styleHint   = style && style.toLowerCase() !== "none" ? `, style: ${style}` : "";
-  const fullPrompt  = `${prompt}${styleHint}`;
-  const btn       = document.getElementById("imgGenBtn");
-  const resultsEl = document.getElementById("imgResults");
+  const style      = getActiveChip("imgStyleGroup");
+  const ratio      = getActiveChip("imgRatioGroup");
+  const qty        = parseInt(getActiveChip("imgQtyGroup")) || 1;
+  const styleHint  = style && style.toLowerCase() !== "none" ? `, style: ${style}` : "";
+  const fullPrompt = `${prompt}${styleHint}`;
+  const btn        = document.getElementById("imgGenBtn");
+  const resultsEl  = document.getElementById("imgResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
   resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI...</div></div>`;
 
-  /* Call server-side image proxy — it uses the live model catalogue */
   async function fetchOne() {
     const r = await fetch("/api/image", {
       method: "POST",
@@ -623,10 +692,8 @@ async function _generateImage() {
     const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
     const errors  = results.filter(r => r.status === "rejected").map(r => r.reason?.message);
     if (errors.length) console.warn("[image] Some requests failed:", errors);
-    if (!imgs.length) {
-      const firstErr = errors[0] || "No images generated. Try a different prompt.";
-      throw new Error(firstErr);
-    }
+    if (!imgs.length) throw new Error(errors[0] || "No images generated. Try a different prompt.");
+
     const card = document.createElement("div"); card.className = "img-result-card";
     const grid = document.createElement("div"); grid.className = `img-grid qty-${imgs.length}`;
     const blobs = [];
@@ -687,14 +754,13 @@ async function _generateSong() {
   const prompt = document.getElementById("songPrompt").value.trim();
   if (!prompt) return showToast("Please enter a song description", "error");
   const style     = getActiveChip("songStyleGroup");
-  const voice     = getActiveChip("songVoiceGroup").replace(/[^\w\s]/g, "").trim();
+  const voice     = getActiveChip("songVoiceGroup").replace(/[^ws]/g, "").trim();
   const voiceHint = voice.toLowerCase().includes("female") ? "female vocalist" : "male vocalist";
   const btn       = document.getElementById("songGenBtn");
   const resultsEl = document.getElementById("songResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
   resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with Lyria… (~20–40s)</div></div>`;
 
-  // Show "retrying" hint after 20s if still loading
   const retryHintTimer = setTimeout(() => {
     const lbl = document.getElementById("songLoadingLabel");
     if (lbl) lbl.textContent = "Lyria is composing… if slow, falling back to TTS — please wait";
@@ -709,12 +775,9 @@ async function _generateSong() {
     clearTimeout(retryHintTimer);
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`); }
     const data = await res.json();
-
-    const { audio: audioB64, mimeType: audioMime, title: songTitle, lyrics: lyricsText, lyricsOnly, ttsMessage, audioSource } = data;
+    const { audio: audioB64, mimeType: audioMime, title: songTitle, lyrics: lyricsText, ttsMessage, audioSource } = data;
 
     const card = document.createElement("div"); card.className = "song-result-card";
-
-    // ── Header ──
     const header = document.createElement("div"); header.className = "song-result-title";
     const isLyria = audioSource && audioSource.toLowerCase().includes("lyria");
     const sourceBadge = audioSource
@@ -723,7 +786,6 @@ async function _generateSong() {
     header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} · ${escapeHtml(voiceHint)}</span>`;
     card.appendChild(header);
 
-    // ── Audio player (only when audio is available) ──
     if (audioB64) {
       const raw = atob(audioB64); const bytes = new Uint8Array(raw.length);
       for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
@@ -734,17 +796,15 @@ async function _generateSong() {
       audioEl.style.cssText = "width:100%;padding:10px 14px 0;accent-color:var(--green);";
       audioEl.src = audioBlobUrl;
       card.appendChild(audioEl);
-      // Download button
       const a = document.createElement("a"); a.className = "btn-download";
       const ext = (audioMime || "audio/wav").split("/")[1] || "wav";
       a.href = audioBlobUrl; a.download = `jeethy-song-${Date.now()}.${ext}`;
       a.innerHTML = '<i class="fas fa-download"></i> Download Audio';
       card.appendChild(a);
     } else {
-      // Lyrics-only notice with retry button
       const notice = document.createElement("div");
       notice.style.cssText = "display:flex;flex-direction:column;gap:8px;padding:10px 14px;font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);border-bottom:1px solid var(--border);";
-      const msg = ttsMessage || "Audio generation is temporarily unavailable due to high demand — your lyrics are ready below. Try again in a few minutes.";
+      const msg = ttsMessage || "Audio generation is temporarily unavailable — lyrics are ready below.";
       notice.innerHTML = `<div style="display:flex;align-items:flex-start;gap:8px;"><i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0;margin-top:2px"></i><span>${escapeHtml(msg)}</span></div>
         <button onclick="_generateSong()" style="align-self:flex-start;padding:5px 14px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:11px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Retry Audio
@@ -752,7 +812,6 @@ async function _generateSong() {
       card.appendChild(notice);
     }
 
-    // ── Lyrics ──
     if (lyricsText) {
       const lyricsWrap = document.createElement("div");
       lyricsWrap.style.cssText = "background:var(--surface2);border-top:1px solid var(--border);padding:14px;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.75;max-height:320px;overflow-y:auto;";
