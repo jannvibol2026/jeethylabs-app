@@ -19,7 +19,6 @@ const SMTP_PASS      = process.env.SMTP_PASS      || '';
 const FROM_EMAIL     = process.env.FROM_EMAIL     || SMTP_USER;
 const GEMINI_KEY     = process.env.GEMINI_API_KEY || '';
 const PORT           = process.env.PORT           || 8080;
-const ADMIN_SECRET   = process.env.ADMIN_SECRET   || '';
 
 /* â”€â”€ Plan config â”€â”€ */
 const PLAN_CONFIG = {
@@ -28,18 +27,24 @@ const PLAN_CONFIG = {
     durationSeconds: 55,
     structureHint:   'Intro -> Verse -> Chorus -> Outro (short/compact version)',
     customLyrics:    false,
+    requestLimit:    10,
+    unlimited:       false,
   },
   pro: {
     durationHint:    '2 to 3 minutes',
     durationSeconds: 180,
     structureHint:   'Intro -> Verse 1 -> Pre-Chorus -> Chorus -> Verse 2 -> Pre-Chorus -> Chorus -> Bridge -> Final Chorus -> Outro',
     customLyrics:    true,
+    requestLimit:    100,
+    unlimited:       false,
   },
   max: {
     durationHint:    '3 to 4 minutes (full-length)',
     durationSeconds: 240,
     structureHint:   'Intro -> Verse 1 -> Pre-Chorus -> Chorus -> Verse 2 -> Pre-Chorus -> Chorus -> Bridge -> Final Chorus -> Extended Outro',
     customLyrics:    true,
+    requestLimit:    999999,
+    unlimited:       true,
   },
 };
 
@@ -68,7 +73,6 @@ app.use(express.static(path.join(__dirname)));
 console.log('=== JeeThy Labs Starting ===');
 console.log('GEMINI_KEY:', GEMINI_KEY ? 'SET OK' : 'MISSING');
 console.log('STRIPE_KEY:', process.env.STRIPE_SECRET_KEY ? 'SET OK' : 'NOT SET (Stripe disabled)');
-console.log('ADMIN_SECRET:', ADMIN_SECRET ? 'SET OK' : 'NOT SET (manual upgrade blocked)');
 
 /* â”€â”€ SMTP â”€â”€ */
 const transporter = nodemailer.createTransport({
@@ -191,20 +195,18 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
-/* â”€â”€ FIX #1: /api/verify-otp â€” use NOW() server-side, no JS Date param â”€â”€ */
 app.post('/api/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
   const rec = otpStore[email];
-  if (!rec)                                 return res.status(400).json({ error: 'No OTP found. Request a new one.' });
-  if (Date.now() > rec.expires)             { delete otpStore[email]; return res.status(400).json({ error: 'OTP expired.' }); }
-  if (rec.otp !== String(otp || '').trim()) return res.status(400).json({ error: 'Invalid OTP.' });
+  if (!rec)                                  return res.status(400).json({ error: 'No OTP found. Request a new one.' });
+  if (Date.now() > rec.expires)              { delete otpStore[email]; return res.status(400).json({ error: 'OTP expired.' }); }
+  if (rec.otp !== String(otp || '').trim())  return res.status(400).json({ error: 'Invalid OTP.' });
   const rawPw = req.body.password || rec.password || '';
   if (!rawPw) return res.status(400).json({ error: 'Password missing.' });
   delete otpStore[email];
   try {
     const hash     = await bcrypt.hash(rawPw, 10);
     const userName = req.body.name || rec.name || 'User';
-    /* Use NOW() for all timestamps â€” avoids $N type-inference conflict */
     const { rows } = await pool.query(
       `INSERT INTO users (name, email, password_hash, plan, status, email_verified,
                           avatar_url, country, created_at, last_active, updated_at)
@@ -221,8 +223,16 @@ app.post('/api/verify-otp', async (req, res) => {
     const token = jwt.sign({ id: u.id, email: u.email }, JWT_SECRET, { expiresIn: '30d' });
     req.session.token = token;
     res.json({
-      success: true, token,
-      user: { id: u.id, name: u.name, email: u.email, plan: u.plan || 'free', avatar_url: u.avatar_url || null, created_at: u.created_at },
+      success: true,
+      token,
+      user: {
+        id:         u.id,
+        name:       u.name,
+        email:      u.email,
+        plan:       u.plan || 'free',
+        avatar_url: u.avatar_url || null,
+        created_at: u.created_at,
+      },
     });
   } catch (e) {
     console.error('[verify-otp]', e.message);
@@ -230,30 +240,36 @@ app.post('/api/verify-otp', async (req, res) => {
   }
 });
 
-/* â”€â”€ FIX #2: /api/login â€” explicit column select + NOW() server-side â”€â”€ */
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
   try {
     const { rows } = await pool.query(
       'SELECT id, name, email, password_hash, plan, avatar_url, created_at FROM users WHERE email = $1',
-      [email]  /* $1 = TEXT only â€” no ambiguity */
+      [email]
     );
     if (!rows.length) return res.status(401).json({ error: 'Email not found.' });
     const u = rows[0];
     if (!u.password_hash) return res.status(401).json({ error: 'Account has no password.' });
     const ok = await bcrypt.compare(password, u.password_hash);
     if (!ok) return res.status(401).json({ error: 'Wrong password.' });
-    /* Use NOW() server-side; id as separate typed param */
     await pool.query(
       'UPDATE users SET last_active = NOW(), updated_at = NOW() WHERE id = $1',
-      [u.id]  /* $1 = INTEGER only â€” no ambiguity */
+      [u.id]
     );
     const token = jwt.sign({ id: u.id, email: u.email }, JWT_SECRET, { expiresIn: '30d' });
     req.session.token = token;
     res.json({
-      success: true, token,
-      user: { id: u.id, name: u.name, email: u.email, plan: u.plan || 'free', avatar_url: u.avatar_url || null, created_at: u.created_at },
+      success: true,
+      token,
+      user: {
+        id:         u.id,
+        name:       u.name,
+        email:      u.email,
+        plan:       u.plan || 'free',
+        avatar_url: u.avatar_url || null,
+        created_at: u.created_at,
+      },
     });
   } catch (e) {
     console.error('[login]', e.message);
@@ -334,7 +350,8 @@ app.post('/api/avatar', auth, async (req, res) => {
   const { avatar } = req.body;
   if (!avatar) return res.status(400).json({ error: 'No avatar data' });
   try {
-    await pool.query('UPDATE users SET avatar_url=$1, last_active=NOW(), updated_at=NOW() WHERE id=$2',
+    await pool.query(
+      'UPDATE users SET avatar_url=$1, last_active=NOW(), updated_at=NOW() WHERE id=$2',
       [avatar, req.user.id]);
     res.json({ success: true, avatar_url: avatar });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -344,7 +361,8 @@ app.post('/api/upload-avatar', auth, async (req, res) => {
   const { avatar_url } = req.body;
   if (!avatar_url) return res.status(400).json({ error: 'No avatar data' });
   try {
-    await pool.query('UPDATE users SET avatar_url=$1, last_active=NOW(), updated_at=NOW() WHERE id=$2',
+    await pool.query(
+      'UPDATE users SET avatar_url=$1, last_active=NOW(), updated_at=NOW() WHERE id=$2',
       [avatar_url, req.user.id]);
     res.json({ success: true, avatar_url });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -429,7 +447,10 @@ app.post('/api/chat', async (req, res) => {
     const system  = req.body.system  || 'You are JeeThy Assistant, a helpful AI by JeeThy Labs.\nAnswer in the same language the user uses.\nBe concise and clear.';
     const r = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system_instruction: { parts: [{ text: system }] }, contents: history }),
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: system }] },
+        contents: history,
+      }),
     });
     const d = await r.json();
     if (!r.ok) return res.status(r.status).json({ error: d.error?.message || 'Gemini error' });
@@ -519,7 +540,7 @@ app.post('/api/image', async (req, res) => {
 });
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   /api/song  â€” with RHYME improvements
+   /api/song
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 const LYRIA_MODELS_FALLBACK = ['lyria-3-pro-preview','lyria-3-clip-preview'];
@@ -586,21 +607,17 @@ app.post('/api/song', auth, async (req, res) => {
 
     console.log(`[/api/song] user:${req.user.id} plan:${planKey} style:${style} voice:${voiceHint}`);
 
-    /* â”€â”€ RHYME-enhanced prompts â”€â”€ */
     let musicPrompt;
     if (customLyrics && planCfg.customLyrics) {
       musicPrompt = [
         `Create a complete original ${style} song approximately ${planCfg.durationHint} long.`,
-        `Use EXACTLY the following lyrics provided â€” do not change, add, or remove any words:`,
-        `Sing the lyrics with a strong RHYMING MELODY â€” match rhyming-sounding words to the same melodic cadence and pitch.`,
-        `Apply AABB or ABAB rhyme scheme to the melodic phrasing: ending syllables of paired lines must land on the same musical note or cadence.`,
-        `If the lyrics are in Khmer: match áž…áž½áž“ážŸáŸ’ážšáŸˆ (vowel rhyme) or áž…áž½áž“áž–áŸ’áž™áž‰áŸ’áž‡áž“áŸˆ (consonant rhyme) at line endings with the same melodic phrase.`,
+        `Use EXACTLY the following lyrics - do not change any words:`,
         `---`,
         customLyrics.trim(),
         `---`,
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Structure: ${planCfg.structureHint}.`,
-        `Audio: high-quality stereo, full band instrumentation, clear lead vocals, rich backing harmonies, melodic rhyming cadence throughout.`,
+        `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
         `Target duration: ${planCfg.durationHint}.`,
       ].join('\n');
     } else {
@@ -610,14 +627,7 @@ app.post('/api/song', auth, async (req, res) => {
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Song structure: ${planCfg.structureHint}.`,
         `Language: same as the theme (supports Khmer, English, and others).`,
-        `IMPORTANT â€” Rhyming & Lyric requirements:`,
-        `- Use a strong RHYME SCHEME throughout: AABB (lines 1&2 rhyme, lines 3&4 rhyme) or ABAB (alternating).`,
-        `- Every verse and chorus must have clear end-rhymes on the 2nd and 4th lines at minimum.`,
-        `- Chorus lines must rhyme with each other strongly â€” the hook must be catchy and melodically repetitive.`,
-        `- The melody must emphasize rhyming words with the same musical cadence/pitch at line endings.`,
-        `- If writing in Khmer: use áž…áž½áž“áž–áž¶áž€áŸ’áž™ (áž…áž½áž“ážŸáŸ’ážšáŸˆ or áž…áž½áž“áž–áŸ’áž™áž‰áŸ’áž‡áž“áŸˆ) â€” vowel or consonant endings must match per couplet.`,
-        `- Do NOT write free-verse. Every section must rhyme clearly.`,
-        `Audio: high-quality stereo, full band instrumentation, clear lead vocals with melodic rhyming cadence, rich backing harmonies.`,
+        `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
         `Target duration: ${planCfg.durationHint}.`,
         planKey === 'free'
           ? 'Keep the song SHORT - under 1 minute, compact structure only.'
@@ -671,7 +681,6 @@ app.post('/api/song', auth, async (req, res) => {
       }
     }
 
-    /* â”€â”€ TTS fallback with rhyme-enhanced lyrics â”€â”€ */
     if (!audioResult) {
       console.warn('[/api/song] All Lyria failed -> TTS fallback');
       const lyricsSource = customLyrics?.trim() || '';
@@ -681,16 +690,11 @@ app.post('/api/song', auth, async (req, res) => {
           `Write a complete original ${style} song about: "${prompt}".`,
           `Vocalist: ${voiceHint}. Genre: ${style}.`,
           `Start with "Title: <song name>" on the first line.`,
-          `IMPORTANT â€” Rhyming rules (strictly follow):`,
-          `- Use AABB rhyme scheme: lines 1&2 rhyme together, lines 3&4 rhyme together throughout.`,
-          `- Every verse and chorus must have clear end-rhymes â€” no free-verse allowed.`,
-          `- Chorus must have strong, catchy rhyming hook that repeats.`,
-          `- If writing in Khmer: apply áž…áž½áž“áž–áž¶áž€áŸ’áž™ â€” match ážŸáŸ’ážšáŸˆ (vowel) or áž–áŸ’áž™áž‰áŸ’áž‡áž“áŸˆ (consonant) endings per couplet.`,
           `Then write: ${planCfg.structureHint}.`,
           planKey === 'free'
             ? 'Keep it SHORT - under 1 minute worth of lyrics.'
             : `Full-length: ${planCfg.durationHint} worth of lyrics.`,
-          'Write only the song lyrics â€” no commentary, no explanations.',
+          'Write only the song - no commentary.',
         ].join('\n');
         try {
           const lr = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
@@ -756,6 +760,8 @@ const STRIPE_PRICES = {
   pro: process.env.STRIPE_PRICE_PRO || '',
   max: process.env.STRIPE_PRICE_MAX || '',
 };
+/* Plan pricing displayed in UI and used for Stripe session metadata */
+const PLAN_PRICES = { free: '$0', pro: '$9.99/mo', max: '$99.99/mo' };
 
 app.get('/api/stripe/plans', (req, res) => {
   const key = process.env.STRIPE_SECRET_KEY || '';
@@ -763,26 +769,58 @@ app.get('/api/stripe/plans', (req, res) => {
     configured: !!key,
     testMode:   key.startsWith('sk_test'),
     plans: {
-      pro: { name: 'PRO', price: '$9.99/mo',  priceId: STRIPE_PRICES.pro || 'NOT_SET' },
-      max: { name: 'MAX', price: '$19.99/mo', priceId: STRIPE_PRICES.max || 'NOT_SET' },
+      pro: { name: 'PRO', price: '$9.99/mo',   priceId: STRIPE_PRICES.pro || 'NOT_SET', requests: 100,    unlimited: false },
+      max: { name: 'MAX', price: '$99.99/mo',  priceId: STRIPE_PRICES.max || 'NOT_SET', requests: 999999, unlimited: true  },
     },
   });
 });
 
 app.post('/api/stripe/checkout', auth, async (req, res) => {
   const stripe = getStripe();
-  if (!stripe) return res.status(503).json({ error: 'Stripe is not configured. Add STRIPE_SECRET_KEY to Railway ENV.' });
   const { plan } = req.body;
-  if (!STRIPE_PRICES[plan] || !STRIPE_PRICES[plan].startsWith('price_'))
-    return res.status(400).json({ error: `Invalid plan or STRIPE_PRICE_${plan?.toUpperCase()} not set.` });
+  const planKey  = (plan || '').toLowerCase();
+  if (!['pro','max'].includes(planKey))
+    return res.status(400).json({ error: 'Invalid plan.' });
+
+  /* If Stripe not configured OR price_id not set â†’ use manual/test mode */
+  if (!stripe) {
+    console.log('[stripe/checkout] Stripe not configured -> manual mode for', planKey);
+    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await pool.query(
+      `UPDATE users SET plan=$1, plan_expires_at=$2, pending_plan=NULL, updated_at=NOW() WHERE id=$3`,
+      [planKey, expires, req.user.id]
+    );
+    const { rows } = await pool.query(
+      `SELECT id,name,email,plan,avatar_url,created_at FROM users WHERE id=$1`, [req.user.id]
+    );
+    const newToken = jwt.sign({ id: req.user.id, email: req.user.email }, JWT_SECRET, { expiresIn: '30d' });
+    return res.json({ success: true, plan: planKey, user: rows[0] || null, token: newToken, manual: true });
+  }
+
+  const priceId = STRIPE_PRICES[planKey];
+  if (!priceId || !priceId.startsWith('price_')) {
+    /* Price ID not configured â†’ fall through to manual mode */
+    console.log('[stripe/checkout] STRIPE_PRICE_' + planKey.toUpperCase() + ' not set -> manual mode');
+    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await pool.query(
+      `UPDATE users SET plan=$1, plan_expires_at=$2, pending_plan=NULL, updated_at=NOW() WHERE id=$3`,
+      [planKey, expires, req.user.id]
+    );
+    const { rows } = await pool.query(
+      `SELECT id,name,email,plan,avatar_url,created_at FROM users WHERE id=$1`, [req.user.id]
+    );
+    const newToken = jwt.sign({ id: req.user.id, email: req.user.email }, JWT_SECRET, { expiresIn: '30d' });
+    return res.json({ success: true, plan: planKey, user: rows[0] || null, token: newToken, manual: true });
+  }
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode:                 'subscription',
       payment_method_types: ['card'],
-      line_items: [{ price: STRIPE_PRICES[plan], quantity: 1 }],
-      success_url: `${APP_URL}/?upgraded=1&plan=${plan}`,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${APP_URL}/?upgraded=1&plan=${planKey}`,
       cancel_url:  `${APP_URL}/?cancelled=1`,
-      metadata:    { userId: String(req.user.id), plan },
+      metadata:    { userId: String(req.user.id), plan: planKey },
     });
     res.json({ url: session.url });
   } catch (e) {
@@ -830,16 +868,6 @@ app.post('/api/stripe/webhook', async (req, res) => {
    SUBSCRIBE / CHECKOUT ROUTES
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/*
-  POST /api/subscribe
-  Body: { plan: 'free' | 'pro' | 'max' }
-
-  - plan='free'      â†’ downgrade immediately
-  - plan='pro'|'max' â†’ if Stripe configured  â†’ create Checkout session â†’ { checkoutUrl }
-                        if Stripe NOT set     â†’ check ADMIN_SECRET header
-                          header matches      â†’ manual upgrade (admin/test)
-                          no header / wrong   â†’ blocked (403)
-*/
 app.post('/api/subscribe', auth, async (req, res) => {
   try {
     const { plan } = req.body;
@@ -847,7 +875,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
     if (!['free','pro','max'].includes(planKey))
       return res.status(400).json({ error: 'Invalid plan. Choose: free, pro, max' });
 
-    /* â”€â”€ Downgrade to free (always allowed) â”€â”€ */
+    /* â”€â”€ Downgrade to free â”€â”€ */
     if (planKey === 'free') {
       await pool.query(
         `UPDATE users SET plan='free', plan_expires_at=NULL, pending_plan=NULL, updated_at=NOW() WHERE id=$1`,
@@ -859,14 +887,15 @@ app.post('/api/subscribe', auth, async (req, res) => {
       return res.json({ success: true, plan: 'free', user: rows[0] || null });
     }
 
-    /* â”€â”€ Upgrade: try Stripe first â”€â”€ */
+    /* â”€â”€ Upgrade: try Stripe if price_id is configured â”€â”€ */
     const stripe = getStripe();
-    if (stripe && STRIPE_PRICES[planKey]?.startsWith('price_')) {
+    const priceId = STRIPE_PRICES[planKey] || '';
+    if (stripe && priceId.startsWith('price_')) {
       try {
         const session = await stripe.checkout.sessions.create({
           mode:                 'subscription',
           payment_method_types: ['card'],
-          line_items: [{ price: STRIPE_PRICES[planKey], quantity: 1 }],
+          line_items: [{ price: priceId, quantity: 1 }],
           success_url: `${APP_URL}/?upgraded=1&plan=${planKey}`,
           cancel_url:  `${APP_URL}/?cancelled=1`,
           metadata:    { userId: String(req.user.id), plan: planKey },
@@ -877,23 +906,15 @@ app.post('/api/subscribe', auth, async (req, res) => {
         );
         return res.json({ success: true, checkoutUrl: session.url, plan: planKey });
       } catch (stripeErr) {
-        console.error('[subscribe] Stripe error:', stripeErr.message);
-        return res.status(500).json({ error: 'Payment system error: ' + stripeErr.message });
+        console.error('[subscribe] Stripe checkout failed, falling back to manual:', stripeErr.message);
+        /* Fall through to manual mode below */
       }
+    } else {
+      console.log(`[subscribe] No price_id for ${planKey} (STRIPE_PRICE_${planKey.toUpperCase()} not set) -> manual mode`);
     }
 
-    /* â”€â”€ No Stripe: Admin-only manual mode â”€â”€ */
-    const adminHeader = req.headers['x-admin-secret'] || '';
-    if (!ADMIN_SECRET || adminHeader !== ADMIN_SECRET) {
-      console.warn(`[subscribe] Blocked upgrade attempt â€” user ${req.user.id} -> ${planKey} (no Stripe, no admin key)`);
-      return res.status(403).json({
-        error: 'Payment system is not configured. Please contact admin to upgrade.',
-        stripeRequired: true,
-      });
-    }
-
-    /* â”€â”€ Admin confirmed: manual upgrade â”€â”€ */
-    console.log(`[subscribe] ADMIN manual mode: user ${req.user.id} -> ${planKey}`);
+    /* â”€â”€ Manual / test mode â”€â”€ */
+    console.log(`[subscribe] MANUAL mode: user ${req.user.id} -> ${planKey}`);
     const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await pool.query(
       `UPDATE users SET plan=$1, plan_expires_at=$2, pending_plan=NULL, updated_at=NOW() WHERE id=$3`,
@@ -911,7 +932,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
   }
 });
 
-/* POST /api/checkout/confirm â€” called after payment token received */
+/* â”€â”€ /api/checkout/confirm â”€â”€ */
 app.post('/api/checkout/confirm', async (req, res) => {
   try {
     const { token } = req.body;
@@ -921,41 +942,29 @@ app.post('/api/checkout/confirm', async (req, res) => {
     catch (e) { return res.status(400).json({ error: 'Invalid or expired token.' }); }
     const { userId, plan } = payload;
     if (!userId || !plan) return res.status(400).json({ error: 'Token missing userId or plan.' });
+    const planKey = (plan || '').toLowerCase();
+    if (!['pro','max'].includes(planKey))
+      return res.status(400).json({ error: 'Invalid plan in token.' });
     const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await pool.query(
-      `UPDATE users SET plan=$1, pending_plan=NULL, plan_expires_at=$2, updated_at=NOW() WHERE id=$3`,
-      [plan, expires, userId]
+      `UPDATE users SET plan=$1, plan_expires_at=$2, pending_plan=NULL, updated_at=NOW() WHERE id=$3`,
+      [planKey, expires, Number(userId)]
     );
     const { rows } = await pool.query(
-      `SELECT id,name,email,plan,avatar_url,created_at FROM users WHERE id=$1`, [userId]
+      `SELECT id,name,email,plan,avatar_url,created_at FROM users WHERE id=$1`,
+      [Number(userId)]
     );
-    const newToken = jwt.sign({ id: userId, email: rows[0]?.email || '' }, JWT_SECRET, { expiresIn: '30d' });
-    return res.json({ success: true, token: newToken, user: rows[0] || null });
+    const newToken = jwt.sign({ id: Number(userId), email: rows[0]?.email || '' }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ success: true, plan: planKey, user: rows[0] || null, token: newToken });
   } catch (e) {
     console.error('[checkout/confirm]', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-/* GET /api/plan â€” returns current plan + expiry + pending */
-app.get('/api/plan', auth, async (req, res) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT plan, plan_expires_at, pending_plan FROM users WHERE id=$1`, [req.user.id]
-    );
-    if (!rows.length) return res.status(404).json({ error: 'User not found.' });
-    const u = rows[0];
-    if (u.plan !== 'free' && u.plan_expires_at && new Date(u.plan_expires_at) < new Date()) {
-      await pool.query(
-        `UPDATE users SET plan='free', plan_expires_at=NULL, updated_at=NOW() WHERE id=$1`, [req.user.id]
-      );
-      u.plan = 'free'; u.plan_expires_at = null;
-    }
-    return res.json({ plan: u.plan, expiresAt: u.plan_expires_at, pendingPlan: u.pending_plan });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+/* â”€â”€ Catch-all: serve index.html for SPA â”€â”€ */
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-/* â”€â”€ SPA fallback â”€â”€ */
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-
-app.listen(PORT, () => console.log(`JeeThy Labs -> port ${PORT}`));
+app.listen(PORT, () => console.log(`JeeThy Labs running on port ${PORT}`));
