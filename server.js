@@ -189,6 +189,14 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   FIX #1: /api/verify-otp
+   Root cause: passing `now` (Date object) as $4 caused
+   PostgreSQL to see inconsistent types across multiple
+   uses of the same parameter.
+   Fix: use NOW() server-side for all timestamp columns,
+        and pass each value as a separate typed parameter.
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 app.post('/api/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
   const rec = otpStore[email];
@@ -199,37 +207,87 @@ app.post('/api/verify-otp', async (req, res) => {
   if (!rawPw) return res.status(400).json({ error: 'Password missing.' });
   delete otpStore[email];
   try {
-    const hash = await bcrypt.hash(rawPw, 10);
-    const now  = new Date();
+    const hash     = await bcrypt.hash(rawPw, 10);
+    const userName = req.body.name || rec.name || 'User';
+    /* FIX: use NOW() for all timestamps â€” no JS Date passed as parameter */
     const { rows } = await pool.query(
-      `INSERT INTO users (name,email,password_hash,plan,status,email_verified,avatar_url,country,created_at,last_active,updated_at)
-       VALUES ($1,$2,$3,'free','active',true,null,null,$4,$4,$4)
-       ON CONFLICT (email) DO UPDATE SET name=$1,password_hash=$3,last_active=$4,updated_at=$4
-       RETURNING id,user_id,name,email,plan,status,avatar_url,created_at`,
-      [req.body.name || rec.name || 'User', email, hash, now]);
+      `INSERT INTO users (name, email, password_hash, plan, status, email_verified,
+                          avatar_url, country, created_at, last_active, updated_at)
+       VALUES ($1, $2, $3, 'free', 'active', true, null, null, NOW(), NOW(), NOW())
+       ON CONFLICT (email) DO UPDATE
+         SET name          = EXCLUDED.name,
+             password_hash = EXCLUDED.password_hash,
+             last_active   = NOW(),
+             updated_at    = NOW()
+       RETURNING id, user_id, name, email, plan, status, avatar_url, created_at`,
+      [userName, email, hash]
+    );
     const u     = rows[0];
     const token = jwt.sign({ id: u.id, email: u.email }, JWT_SECRET, { expiresIn: '30d' });
     req.session.token = token;
-    res.json({ success: true, token, user: { id: u.id, name: u.name, email: u.email, plan: u.plan || 'free', avatar_url: u.avatar_url || null, created_at: u.created_at } });
+    res.json({
+      success: true,
+      token,
+      user: {
+        id:         u.id,
+        name:       u.name,
+        email:      u.email,
+        plan:       u.plan || 'free',
+        avatar_url: u.avatar_url || null,
+        created_at: u.created_at,
+      },
+    });
   } catch (e) {
     console.error('[verify-otp]', e.message);
     res.status(500).json({ error: 'Registration failed: ' + e.message });
   }
 });
 
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   FIX #2: /api/login
+   Root cause: `new Date()` passed as $1 then reused as $2
+   (different column types TIMESTAMPTZ vs id INTEGER) caused
+   "inconsistent types deduced for parameter $1".
+   Fix: split into two separate typed parameters $1=timestamp
+        and $2=integer, which is what the query already does â€”
+        but also wrap in try/catch properly.
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
   try {
-    const { rows } = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
+    const { rows } = await pool.query(
+      'SELECT id, name, email, password_hash, plan, avatar_url, created_at FROM users WHERE email = $1',
+      [email]                    /* $1 = TEXT â€” no type ambiguity */
+    );
     if (!rows.length) return res.status(401).json({ error: 'Email not found.' });
     const u = rows[0];
     if (!u.password_hash) return res.status(401).json({ error: 'Account has no password.' });
-    if (!await bcrypt.compare(password || '', u.password_hash)) return res.status(401).json({ error: 'Wrong password.' });
-    await pool.query('UPDATE users SET last_active=$1, updated_at=$1 WHERE id=$2', [new Date(), u.id]);
+    const ok = await bcrypt.compare(password, u.password_hash);
+    if (!ok) return res.status(401).json({ error: 'Wrong password.' });
+    /* FIX: use NOW() server-side; pass user id as its own parameter */
+    await pool.query(
+      'UPDATE users SET last_active = NOW(), updated_at = NOW() WHERE id = $1',
+      [u.id]                     /* $1 = INTEGER only â€” no ambiguity */
+    );
     const token = jwt.sign({ id: u.id, email: u.email }, JWT_SECRET, { expiresIn: '30d' });
     req.session.token = token;
-    res.json({ success: true, token, user: { id: u.id, name: u.name, email: u.email, plan: u.plan || 'free', avatar_url: u.avatar_url || null, created_at: u.created_at } });
-  } catch (e) { res.status(500).json({ error: 'Login failed: ' + e.message }); }
+    res.json({
+      success: true,
+      token,
+      user: {
+        id:         u.id,
+        name:       u.name,
+        email:      u.email,
+        plan:       u.plan || 'free',
+        avatar_url: u.avatar_url || null,
+        created_at: u.created_at,
+      },
+    });
+  } catch (e) {
+    console.error('[login]', e.message);
+    res.status(500).json({ error: 'Login failed: ' + e.message });
+  }
 });
 
 app.get('/api/me', auth, async (req, res) => {
@@ -288,10 +346,15 @@ app.post('/api/profile', auth, async (req, res) => {
   const { avatar_url, country, name } = req.body;
   try {
     const { rows } = await pool.query(
-      `UPDATE users SET avatar_url=COALESCE($1,avatar_url),country=COALESCE($2,country),
-       name=COALESCE($3,name),last_active=$4,updated_at=$4
-       WHERE id=$5 RETURNING id,name,email,avatar_url,plan,status,country,created_at`,
-      [avatar_url || null, country || null, name || null, new Date(), req.user.id]);
+      `UPDATE users SET
+         avatar_url  = COALESCE($1, avatar_url),
+         country     = COALESCE($2, country),
+         name        = COALESCE($3, name),
+         last_active = NOW(),
+         updated_at  = NOW()
+       WHERE id = $4
+       RETURNING id, name, email, avatar_url, plan, status, country, created_at`,
+      [avatar_url || null, country || null, name || null, req.user.id]);
     res.json({ success: true, user: rows[0] });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -300,8 +363,9 @@ app.post('/api/avatar', auth, async (req, res) => {
   const { avatar } = req.body;
   if (!avatar) return res.status(400).json({ error: 'No avatar data' });
   try {
-    await pool.query('UPDATE users SET avatar_url=$1,last_active=$2,updated_at=$2 WHERE id=$3',
-      [avatar, new Date(), req.user.id]);
+    await pool.query(
+      'UPDATE users SET avatar_url=$1, last_active=NOW(), updated_at=NOW() WHERE id=$2',
+      [avatar, req.user.id]);
     res.json({ success: true, avatar_url: avatar });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -310,8 +374,9 @@ app.post('/api/upload-avatar', auth, async (req, res) => {
   const { avatar_url } = req.body;
   if (!avatar_url) return res.status(400).json({ error: 'No avatar data' });
   try {
-    await pool.query('UPDATE users SET avatar_url=$1,last_active=$2,updated_at=$2 WHERE id=$3',
-      [avatar_url, new Date(), req.user.id]);
+    await pool.query(
+      'UPDATE users SET avatar_url=$1, last_active=NOW(), updated_at=NOW() WHERE id=$2',
+      [avatar_url, req.user.id]);
     res.json({ success: true, avatar_url });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -782,14 +847,6 @@ app.post('/api/stripe/webhook', async (req, res) => {
    SUBSCRIBE / CHECKOUT ROUTES
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/*
-  POST /api/subscribe
-  Body: { plan: 'free' | 'pro' | 'max' }
-
-  - plan='free'      â†’ downgrade immediately, returns { success, plan, user }
-  - plan='pro'|'max' â†’ if Stripe configured  â†’ create Checkout session â†’ { success, checkoutUrl, plan }
-                        if Stripe NOT set    â†’ MANUAL/TEST mode â†’ update DB directly â†’ { success, plan, user, token }
-*/
 app.post('/api/subscribe', auth, async (req, res) => {
   try {
     const { plan } = req.body;
@@ -850,7 +907,6 @@ app.post('/api/subscribe', auth, async (req, res) => {
   }
 });
 
-/* POST /api/checkout/confirm â€” called by checkout.html after payment token received */
 app.post('/api/checkout/confirm', async (req, res) => {
   try {
     const { token } = req.body;
@@ -876,7 +932,6 @@ app.post('/api/checkout/confirm', async (req, res) => {
   }
 });
 
-/* GET /api/plan â€” returns current plan + expiry + pending */
 app.get('/api/plan', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(
