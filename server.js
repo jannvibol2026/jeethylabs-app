@@ -10,7 +10,7 @@ const path       = require('path');
 
 const app = express();
 
-/* â”€â”€ ENV â”€â”€ */
+/* ── ENV ── */
 const DATABASE_URL   = process.env.DATABASE_URL;
 const JWT_SECRET     = process.env.JWT_SECRET     || 'jeethylabs_secret_2026';
 const SESSION_SECRET = process.env.SESSION_SECRET || JWT_SECRET;
@@ -20,7 +20,7 @@ const FROM_EMAIL     = process.env.FROM_EMAIL     || SMTP_USER;
 const GEMINI_KEY     = process.env.GEMINI_API_KEY || '';
 const PORT           = process.env.PORT           || 8080;
 
-/* â”€â”€ Plan config â”€â”€ */
+/* ── Plan config ── */
 const PLAN_CONFIG = {
   free: {
     durationHint:    'under 1 minute (30-55 seconds)',
@@ -48,14 +48,14 @@ const PLAN_CONFIG = {
   },
 };
 
-/* â”€â”€ CORS â”€â”€ */
+/* ── CORS ── */
 app.use(cors({ origin: true, credentials: true }));
 
-/* â”€â”€ STRIPE WEBHOOK: raw body MUST come BEFORE express.json() â”€â”€ */
+/* ── STRIPE WEBHOOK: raw body MUST come BEFORE express.json() ── */
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
 
-/* â”€â”€ SESSION â”€â”€ */
+/* ── SESSION ── */
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
@@ -74,7 +74,7 @@ console.log('=== JeeThy Labs Starting ===');
 console.log('GEMINI_KEY:', GEMINI_KEY ? 'SET OK' : 'MISSING');
 console.log('STRIPE_KEY:', process.env.STRIPE_SECRET_KEY ? 'SET OK' : 'NOT SET (Stripe disabled)');
 
-/* â”€â”€ SMTP â”€â”€ */
+/* ── SMTP ── */
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com', port: 587, secure: false,
   auth: { user: SMTP_USER, pass: SMTP_PASS },
@@ -83,7 +83,7 @@ transporter.verify(err => err
   ? console.error('SMTP Error:', err.message)
   : console.log('Brevo SMTP Ready'));
 
-/* â”€â”€ DB â”€â”€ */
+/* ── DB ── */
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 pool.connect()
   .then(c => { console.log('DB Connected'); c.release(); initDb(); })
@@ -124,7 +124,7 @@ async function initDb() {
   console.log('DB schema ready');
 }
 
-/* â”€â”€ HELPERS â”€â”€ */
+/* ── HELPERS ── */
 const otpStore = {};
 const genOTP   = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -134,7 +134,7 @@ async function sendEmail(to, subject, html) {
   return info;
 }
 
-/* â”€â”€ AUTH MIDDLEWARE â”€â”€ */
+/* ── AUTH MIDDLEWARE ── */
 function auth(req, res, next) {
   const hdr   = req.headers.authorization || '';
   const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : (req.session?.token) || null;
@@ -143,7 +143,7 @@ function auth(req, res, next) {
   catch { res.status(401).json({ error: 'Invalid or expired token' }); }
 }
 
-/* â”€â”€ Plan resolver â”€â”€ */
+/* ── Plan resolver ── */
 async function getUserPlan(userId) {
   try {
     const { rows } = await pool.query('SELECT plan, plan_expires_at FROM users WHERE id=$1', [userId]);
@@ -158,9 +158,9 @@ async function getUserPlan(userId) {
   } catch { return 'free'; }
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ════════════════════════════════════════════════════════
    AUTH ROUTES
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ════════════════════════════════════════════════════════ */
 
 app.get('/api/health', (req, res) => res.json({
   status:  'ok',
@@ -374,9 +374,9 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ════════════════════════════════════════════════════════
    GEMINI PROXY ROUTES
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ════════════════════════════════════════════════════════ */
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -458,14 +458,14 @@ app.post('/api/chat', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* â”€â”€ Retry helper â”€â”€ */
+/* ── Retry helper ── */
 async function withRetry(fn, { maxAttempts=3, baseDelayMs=1000, label='op' }={}) {
   let lastErr;
   for (let i=1; i<=maxAttempts; i++) {
     try { return await fn(i); }
     catch (err) {
       lastErr = err;
-      const isRetryable = /overload|high demand|quota|rate.?limit|503|429/i.test(err.message||'');
+      const isRetryable = /overload|high demand|quota|rate.?limit|503|429/i.test(err.message||''  );
       if (!isRetryable || i===maxAttempts) throw err;
       const delay = baseDelayMs * Math.pow(2, i-1);
       console.warn(`[${label}] retry ${i}/${maxAttempts} in ${delay}ms`);
@@ -475,7 +475,7 @@ async function withRetry(fn, { maxAttempts=3, baseDelayMs=1000, label='op' }={})
   throw lastErr;
 }
 
-/* â”€â”€ safeJson â”€â”€ */
+/* ── safeJson ── */
 async function safeJson(response, label) {
   const ct = response.headers.get('content-type') || '';
   if (!ct.includes('application/json')) {
@@ -485,7 +485,7 @@ async function safeJson(response, label) {
   return response.json();
 }
 
-/* â”€â”€ cleanLyricsText â”€â”€ */
+/* ── cleanLyricsText ── */
 function cleanLyricsText(raw) {
   if (!raw) return '';
   return raw
@@ -497,17 +497,42 @@ function cleanLyricsText(raw) {
     .trim();
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   /api/image
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ════════════════════════════════════════════════════════
+   /api/image  — FIX: Aspect Ratio mapping
+   ════════════════════════════════════════════════════════ */
+
+/* ── Map UI ratio labels to Imagen API aspectRatio values ── */
+const ASPECT_RATIO_MAP = {
+  '1:1':  '1:1',
+  '9:16': '9:16',
+  '16:9': '16:9',
+  '4:3':  '4:3',
+  '3:4':  '3:4',
+};
+
 app.post('/api/image', async (req, res) => {
   try {
     const key = geminiKey();
-    const { prompt, style='' } = req.body;
+    const { prompt, style='', aspectRatio='1:1' } = req.body;
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
+    /* ── Build full prompt ── */
     const fullPrompt = style && style.toLowerCase() !== 'none'
       ? `${prompt}, style: ${style}` : prompt;
+
+    /* ── Resolve aspect ratio ── */
+    const resolvedRatio = ASPECT_RATIO_MAP[aspectRatio] || '1:1';
+    console.log(`[/api/image] ratio requested: "${aspectRatio}" -> resolved: "${resolvedRatio}"`);
+
+    /* ── Build generation config with aspect ratio ── */
+    const generationConfig = {
+      responseModalities: ['IMAGE', 'TEXT'],
+    };
+
+    /* Imagen3 / flash-image models support aspectRatio in generationConfig */
+    if (resolvedRatio !== '1:1') {
+      generationConfig.aspectRatio = resolvedRatio;
+    }
 
     let IMAGE_MODELS = ['gemini-2.0-flash-preview-image-generation', 'gemini-2.0-flash'];
     try {
@@ -519,12 +544,24 @@ app.post('/api/image', async (req, res) => {
     for (const model of IMAGE_MODELS) {
       try {
         const img = await withRetry(async () => {
+          const body = {
+            contents: [{ parts: [{ text: fullPrompt }] }],
+            generationConfig,
+          };
+
+          /* For imagen3 models, use the dedicated generateImages endpoint format */
+          const isImagen3 = /imagen-3/i.test(model);
+          if (isImagen3) {
+            body.generationConfig = {
+              ...body.generationConfig,
+              aspectRatio: resolvedRatio,
+              numberOfImages: 1,
+            };
+          }
+
           const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: fullPrompt }] }],
-              generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
-            }),
+            body: JSON.stringify(body),
           });
           const d = await safeJson(r, `/api/image ${model}`);
           if (!r.ok) throw new Error(d.error?.message || `HTTP ${r.status}`);
@@ -539,9 +576,9 @@ app.post('/api/image', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   /api/song
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ════════════════════════════════════════════════════════
+   /api/song  — FIX: Khmer rhyming + new styles
+   ════════════════════════════════════════════════════════ */
 
 const LYRIA_MODELS_FALLBACK = ['lyria-3-pro-preview','lyria-3-clip-preview'];
 const TTS_MODELS_FALLBACK   = ['gemini-2.5-flash-preview-tts','gemini-2.5-pro-preview-tts'];
@@ -579,6 +616,42 @@ async function tryTts(key, text, voiceName) {
   return null;
 }
 
+/* ── Khmer rhyme helper instructions ── */
+function getKhmerRhymeInstructions(style) {
+  const isRap    = /rap/i.test(style);
+  const isRemix  = /remix/i.test(style);
+
+  const baseRhyme = `
+CRITICAL RHYMING RULES (Khmer Poetry / ភាសាខ្មែរ):
+- Use traditional Khmer end-rhyme (ជួន - joun): the LAST syllable of every 2 lines MUST rhyme.
+- Couplet rhyme pattern (AA BB CC): Line 1 ends with syllable A, Line 2 ends with syllable A. Line 3 ends with B, Line 4 ends with B. And so on.
+- Example of CORRECT rhyming:
+    ស្រុកស្រែស្នេហ៍ខ្ញុំ (ends: ខ្ញុំ = "khnhom")
+    ក្រមុំតូចធំ (ends: ធំ = "thom") ← rhymes with ខ្ញុំ ✓
+    នាំគ្នាទៅវត្ត (ends: វត្ត = "voat")
+    បានជួបនឹងបងម្តាយអើយកុំឃាត់ (ends: ឃាត់ = "khat") ← rhymes with វត្ត ✓
+- Final syllables that rhyme in Khmer: ខ្ញុំ/ធំ, វត្ត/ឃាត់, ស្នេហ៍/អ្នក, ចិត្ត/ស្រឡាញ់, etc.
+- NEVER write a line that does not end-rhyme with the paired line above it.
+- Each line should be 6–10 syllables for natural rhythm.`;
+
+  if (isRap) return baseRhyme + `
+RAP STYLE EXTRAS:
+- Fast-paced flow; use 8–12 syllables per bar.
+- Internal rhymes encouraged (mid-line rhymes in addition to end rhymes).
+- Use contemporary Khmer slang mixed with traditional words for authentic rap feel.
+- Add [Hook], [Verse 1], [Verse 2], [Bridge] markers.
+- Beat description: hard-hitting 808 bass, hi-hat patterns, snare on 2 & 4.`;
+
+  if (isRemix) return baseRhyme + `
+REMIX STYLE EXTRAS:
+- Upbeat, danceable, modern pop structure.
+- Mix Khmer traditional melody patterns with modern EDM/pop sensibility.
+- Add [Drop], [Build-up], [Chorus] markers.
+- Lyrics should feel energetic and catchy for a remix club feel.`;
+
+  return baseRhyme;
+}
+
 app.get('/api/song/plan-info', auth, async (req, res) => {
   const planKey = await getUserPlan(req.user.id);
   const planCfg = PLAN_CONFIG[planKey];
@@ -605,13 +678,25 @@ app.post('/api/song', auth, async (req, res) => {
     const voiceHint = isFemale ? 'female vocalist' : 'male vocalist';
     const ttsVoice  = isFemale ? 'Aoede' : 'Charon';
 
-    console.log(`[/api/song] user:${req.user.id} plan:${planKey} style:${style} voice:${voiceHint}`);
+    /* ── Detect language from prompt ── */
+    const hasKhmer = /[\u1780-\u17FF]/.test(prompt + customLyrics);
+    const langHint = hasKhmer
+      ? 'Khmer (ភាសាខ្មែរ) — write ALL lyrics in Khmer script only'
+      : 'Same language as the theme provided';
+
+    const rhymeInstructions = hasKhmer ? getKhmerRhymeInstructions(style) : `
+RHYMING RULES:
+- Use consistent end-rhyme throughout (AABB or ABAB pattern).
+- Each paired set of lines must rhyme on the final syllable or word.
+- Keep rhythm natural and singable.`;
+
+    console.log(`[/api/song] user:${req.user.id} plan:${planKey} style:${style} voice:${voiceHint} khmer:${hasKhmer}`);
 
     let musicPrompt;
     if (customLyrics && planCfg.customLyrics) {
       musicPrompt = [
         `Create a complete original ${style} song approximately ${planCfg.durationHint} long.`,
-        `Use EXACTLY the following lyrics - do not change any words:`,
+        `Use EXACTLY the following lyrics — do not change any words:`,
         `---`,
         customLyrics.trim(),
         `---`,
@@ -626,7 +711,8 @@ app.post('/api/song', auth, async (req, res) => {
         `Theme: ${prompt}`,
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Song structure: ${planCfg.structureHint}.`,
-        `Language: same as the theme (supports Khmer, English, and others).`,
+        `Language: ${langHint}.`,
+        rhymeInstructions,
         `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
         `Target duration: ${planCfg.durationHint}.`,
         planKey === 'free'
@@ -686,16 +772,20 @@ app.post('/api/song', auth, async (req, res) => {
       const lyricsSource = customLyrics?.trim() || '';
 
       if (!lyricsSource) {
+        /* ── Lyric generation with rhyming instructions ── */
         const lyricPrompt = [
           `Write a complete original ${style} song about: "${prompt}".`,
           `Vocalist: ${voiceHint}. Genre: ${style}.`,
+          `Language: ${langHint}.`,
+          rhymeInstructions,
           `Start with "Title: <song name>" on the first line.`,
           `Then write: ${planCfg.structureHint}.`,
           planKey === 'free'
             ? 'Keep it SHORT - under 1 minute worth of lyrics.'
             : `Full-length: ${planCfg.durationHint} worth of lyrics.`,
-          'Write only the song - no commentary.',
+          'Write only the song — no commentary, no explanations.',
         ].join('\n');
+
         try {
           const lr = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -744,9 +834,9 @@ app.post('/api/song', auth, async (req, res) => {
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ════════════════════════════════════════════════════════
    STRIPE PAYMENT ROUTES
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ════════════════════════════════════════════════════════ */
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -760,8 +850,6 @@ const STRIPE_PRICES = {
   pro: process.env.STRIPE_PRICE_PRO || '',
   max: process.env.STRIPE_PRICE_MAX || '',
 };
-/* Plan pricing displayed in UI and used for Stripe session metadata */
-const PLAN_PRICES = { free: '$0', pro: '$9.99/mo', max: '$99.99/mo' };
 
 app.get('/api/stripe/plans', (req, res) => {
   const key = process.env.STRIPE_SECRET_KEY || '';
@@ -781,10 +869,7 @@ app.post('/api/stripe/checkout', auth, async (req, res) => {
   const planKey  = (plan || '').toLowerCase();
   if (!['pro','max'].includes(planKey))
     return res.status(400).json({ error: 'Invalid plan.' });
-
-  /* If Stripe not configured OR price_id not set â†’ use manual/test mode */
   if (!stripe) {
-    console.log('[stripe/checkout] Stripe not configured -> manual mode for', planKey);
     const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await pool.query(
       `UPDATE users SET plan=$1, plan_expires_at=$2, pending_plan=NULL, updated_at=NOW() WHERE id=$3`,
@@ -796,11 +881,8 @@ app.post('/api/stripe/checkout', auth, async (req, res) => {
     const newToken = jwt.sign({ id: req.user.id, email: req.user.email }, JWT_SECRET, { expiresIn: '30d' });
     return res.json({ success: true, plan: planKey, user: rows[0] || null, token: newToken, manual: true });
   }
-
   const priceId = STRIPE_PRICES[planKey];
   if (!priceId || !priceId.startsWith('price_')) {
-    /* Price ID not configured â†’ fall through to manual mode */
-    console.log('[stripe/checkout] STRIPE_PRICE_' + planKey.toUpperCase() + ' not set -> manual mode');
     const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await pool.query(
       `UPDATE users SET plan=$1, plan_expires_at=$2, pending_plan=NULL, updated_at=NOW() WHERE id=$3`,
@@ -812,7 +894,6 @@ app.post('/api/stripe/checkout', auth, async (req, res) => {
     const newToken = jwt.sign({ id: req.user.id, email: req.user.email }, JWT_SECRET, { expiresIn: '30d' });
     return res.json({ success: true, plan: planKey, user: rows[0] || null, token: newToken, manual: true });
   }
-
   try {
     const session = await stripe.checkout.sessions.create({
       mode:                 'subscription',
@@ -864,9 +945,9 @@ app.post('/api/stripe/webhook', async (req, res) => {
   res.json({ received: true });
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ════════════════════════════════════════════════════════
    SUBSCRIBE / CHECKOUT ROUTES
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ════════════════════════════════════════════════════════ */
 
 app.post('/api/subscribe', auth, async (req, res) => {
   try {
@@ -874,8 +955,6 @@ app.post('/api/subscribe', auth, async (req, res) => {
     const planKey  = (plan || '').toLowerCase();
     if (!['free','pro','max'].includes(planKey))
       return res.status(400).json({ error: 'Invalid plan. Choose: free, pro, max' });
-
-    /* â”€â”€ Downgrade to free â”€â”€ */
     if (planKey === 'free') {
       await pool.query(
         `UPDATE users SET plan='free', plan_expires_at=NULL, pending_plan=NULL, updated_at=NOW() WHERE id=$1`,
@@ -886,8 +965,6 @@ app.post('/api/subscribe', auth, async (req, res) => {
       );
       return res.json({ success: true, plan: 'free', user: rows[0] || null });
     }
-
-    /* â”€â”€ Upgrade: try Stripe if price_id is configured â”€â”€ */
     const stripe = getStripe();
     const priceId = STRIPE_PRICES[planKey] || '';
     if (stripe && priceId.startsWith('price_')) {
@@ -907,14 +984,8 @@ app.post('/api/subscribe', auth, async (req, res) => {
         return res.json({ success: true, checkoutUrl: session.url, plan: planKey });
       } catch (stripeErr) {
         console.error('[subscribe] Stripe checkout failed, falling back to manual:', stripeErr.message);
-        /* Fall through to manual mode below */
       }
-    } else {
-      console.log(`[subscribe] No price_id for ${planKey} (STRIPE_PRICE_${planKey.toUpperCase()} not set) -> manual mode`);
     }
-
-    /* â”€â”€ Manual / test mode â”€â”€ */
-    console.log(`[subscribe] MANUAL mode: user ${req.user.id} -> ${planKey}`);
     const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await pool.query(
       `UPDATE users SET plan=$1, plan_expires_at=$2, pending_plan=NULL, updated_at=NOW() WHERE id=$3`,
@@ -925,45 +996,15 @@ app.post('/api/subscribe', auth, async (req, res) => {
     );
     const newToken = jwt.sign({ id: req.user.id, email: req.user.email }, JWT_SECRET, { expiresIn: '30d' });
     return res.json({ success: true, plan: planKey, user: rows[0] || null, token: newToken });
-
   } catch (e) {
     console.error('[subscribe]', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-/* â”€â”€ /api/checkout/confirm â”€â”€ */
-app.post('/api/checkout/confirm', async (req, res) => {
-  try {
-    const { token } = req.body;
-    if (!token) return res.status(400).json({ error: 'Missing token.' });
-    let payload;
-    try { payload = jwt.verify(token, JWT_SECRET); }
-    catch (e) { return res.status(400).json({ error: 'Invalid or expired token.' }); }
-    const { userId, plan } = payload;
-    if (!userId || !plan) return res.status(400).json({ error: 'Token missing userId or plan.' });
-    const planKey = (plan || '').toLowerCase();
-    if (!['pro','max'].includes(planKey))
-      return res.status(400).json({ error: 'Invalid plan in token.' });
-    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    await pool.query(
-      `UPDATE users SET plan=$1, plan_expires_at=$2, pending_plan=NULL, updated_at=NOW() WHERE id=$3`,
-      [planKey, expires, Number(userId)]
-    );
-    const { rows } = await pool.query(
-      `SELECT id,name,email,plan,avatar_url,created_at FROM users WHERE id=$1`,
-      [Number(userId)]
-    );
-    const newToken = jwt.sign({ id: Number(userId), email: rows[0]?.email || '' }, JWT_SECRET, { expiresIn: '30d' });
-    res.json({ success: true, plan: planKey, user: rows[0] || null, token: newToken });
-  } catch (e) {
-    console.error('[checkout/confirm]', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-/* â”€â”€ Catch-all: serve index.html for SPA â”€â”€ */
+/* ── SPA fallback ── */
 app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
