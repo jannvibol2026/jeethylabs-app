@@ -1,0 +1,302 @@
+
+/* ════════════════════════════════════════════════════
+   JEETHY LABS — FIXED STYLES
+   Fix 1: Khmer/Unicode safe text rendering
+   Fix 2: Aspect ratio chips
+   Fix 3: Song genre chips (Rap, Remix) + Custom lyrics
+   ════════════════════════════════════════════════════ */
+
+/* ── FIX 1: Khmer Unicode rendering ── */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;500;700&display=swap');
+
+.khmer-safe,
+.msg-bubble p,
+.msg-bubble span,
+.chat-messages .msg-bubble {
+  font-family: 'DM Sans', 'Noto Sans Khmer', 'Khmer OS', 'Hanuman', sans-serif;
+  line-height: 1.65;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+/* Pre blocks inside chat — fix code/mono display */
+.msg-bubble pre, .msg-bubble code {
+  font-family: 'Fira Code', 'Courier New', monospace;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.msg-bubble pre {
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+
+/* ── FIX 2: Aspect Ratio chips ── */
+.ratio-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ratio-icon {
+  display: inline-block;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+.ratio-square    { width: 14px; height: 14px; }
+.ratio-portrait  { width: 10px; height: 18px; }   /* 9:16 */
+.ratio-landscape { width: 18px; height: 10px; }   /* 16:9 */
+.ratio-standard  { width: 16px; height: 12px; }   /* 4:3  */
+.ratio-portrait34{ width: 11px; height: 15px; }   /* 3:4  */
+
+.ratio-chip.active .ratio-icon {
+  opacity: 1;
+  border-color: #7c3aed;
+}
+
+/* Image output — respect actual generated ratio */
+.img-output-wrap img {
+  max-width: 100%;
+  border-radius: 12px;
+  display: block;
+  margin: 0 auto;
+  height: auto;
+}
+/* Don't force square on generated images */
+.img-output-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+/* ── FIX 3A: Song genre chip group — wrap for many chips ── */
+.chip-group-wrap {
+  flex-wrap: wrap;
+  gap: 6px 6px;
+}
+
+.chip-rap {
+  background: linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.06));
+  border-color: rgba(239,68,68,0.3) !important;
+  color: #f87171;
+}
+.chip-rap.active {
+  background: #ef4444 !important;
+  color: #fff !important;
+  border-color: #ef4444 !important;
+}
+
+.chip-remix {
+  background: linear-gradient(135deg, rgba(6,182,212,0.12), rgba(6,182,212,0.06));
+  border-color: rgba(6,182,212,0.3) !important;
+  color: #22d3ee;
+}
+.chip-remix.active {
+  background: #06b6d4 !important;
+  color: #fff !important;
+  border-color: #06b6d4 !important;
+}
+
+/* ── FIX 3B: Custom Lyrics Panel ── */
+.custom-lyrics-wrap {
+  background: rgba(124,58,237,0.06);
+  border: 1px solid rgba(124,58,237,0.2);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lyrics-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.form-label-sub {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-left: 2px;
+}
+
+.lyrics-char-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+.lyrics-textarea-wrap {
+  position: relative;
+}
+
+.lyrics-textarea {
+  width: 100%;
+  min-height: 160px;
+  max-height: 360px;
+  resize: vertical;
+  font-family: 'DM Sans', 'Noto Sans Khmer', monospace;
+  font-size: 13.5px;
+  line-height: 1.7;
+  padding: 12px 14px 42px 14px !important;  /* bottom for toolbar */
+  border-radius: 10px !important;
+  background: rgba(0,0,0,0.3) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(124,58,237,0.25) !important;
+  transition: border-color 0.2s;
+}
+.lyrics-textarea:focus {
+  outline: none;
+  border-color: rgba(124,58,237,0.6) !important;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+}
+.lyrics-textarea::placeholder {
+  color: #4b5563;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.lyrics-toolbar {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  display: flex;
+  gap: 4px;
+}
+.lyrics-tool-btn {
+  background: rgba(124,58,237,0.15);
+  border: 1px solid rgba(124,58,237,0.25);
+  border-radius: 6px;
+  color: #a78bfa;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: var(--font, 'DM Sans'), sans-serif;
+  letter-spacing: 0.3px;
+}
+.lyrics-tool-btn:hover {
+  background: rgba(124,58,237,0.3);
+}
+
+.lyrics-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.lyrics-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(124,58,237,0.3);
+  background: rgba(124,58,237,0.08);
+  color: #a78bfa;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: var(--font, 'DM Sans'), sans-serif;
+}
+.lyrics-upload-btn:hover {
+  background: rgba(124,58,237,0.18);
+}
+.lyrics-or-label {
+  font-size: 11px;
+  color: #4b5563;
+}
+.lyrics-clear-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(239,68,68,0.2);
+  background: rgba(239,68,68,0.06);
+  color: #f87171;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font, 'DM Sans'), sans-serif;
+}
+.lyrics-clear-btn:hover { background: rgba(239,68,68,0.14); }
+
+/* Upgrade notice row for custom lyrics */
+.upgrade-notice-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 8px;
+}
+.upgrade-notice-row .pro-text { color: #a855f7; }
+.upgrade-notice-row .max-text { color: #f59e0b; }
+
+/* Song plan badge row */
+.song-plan-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.song-plan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 20px;
+  background: rgba(168,85,247,0.15);
+  color: #a855f7;
+  border: 1px solid rgba(168,85,247,0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.song-duration-hint {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 9999;
+  animation: fadeToast 0.3s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast-success { background: #10b981; color: #fff; }
+.toast-error   { background: #ef4444; color: #fff; }
+.toast-info    { background: #3b82f6; color: #fff; }
+@keyframes fadeToast {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
