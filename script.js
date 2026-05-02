@@ -1,81 +1,147 @@
-/* ══════════════════════════════════════════
-   JEETHY LABS APP — script.js
-   Swipe · Chat · Image · Song
-   Plan-based API key system (Free / Pro)
-   + Auth Modal (Signup / Login → Retool DB)
-══════════════════════════════════════════ */
+"use strict";
 
-'use strict';
+// â”€â”€ MODELS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+let GEMINI_CHAT_MODEL    = "gemini-2.5-flash";
+let GEMINI_IMAGE_MODELS  = [];
+let GEMINI_TTS_MODELS    = [];
 
-// ── MODELS ───────────────────────────────
-const GEMINI_CHAT_MODEL  = 'gemini-2.5-flash';
-const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image';
-const GEMINI_TTS_MODEL   = 'gemini-2.5-pro-preview-tts';
-const HOME_URL = 'https://jeethylabs.site';
-
-const OWNER_KEY_PLACEHOLDER = '__OWNER_API_KEY__';
-
-// ── PLAN LIMITS ───────────────────────────
+// â”€â”€ PLAN LIMITS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PLAN_LIMITS = {
-  free: { requests: 10, label: 'Free', color: '#a78bfa' },
-  pro:  { requests: 100, label: 'Pro',  color: '#06b6d4' }
+  free: { requests: 10,  label: "Free", color: "#a78bfa" },
+  pro:  { requests: 100, label: "Pro",  color: "#06b6d4" },
+  max:  { requests: 500, label: "Max",  color: "#fbbf24" }
 };
 
-// ── STATE ─────────────────────────────────
+// â”€â”€ STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let currentPanel  = 0;
-let userPlan      = 'free';
-let proCustomKey  = '';
+let userPlan      = "free";
+let proCustomKey  = "";
 let useOwnKey     = false;
-let ownerApiKey   = '';
+let ownerApiKey   = "";
 let requestCount  = 0;
 let chatHistory   = [];
 let isChatLoading = false;
 let touchStartX   = 0;
 let touchStartY   = 0;
+let currentUser   = null;
+let pendingAction = null;
+let _otpPending   = null;
+let _resendTimer  = null;
+let authToken     = null;
 
-// ── AUTH STATE ────────────────────────────
-let currentUser   = null;   // { id, name, email, plan } after login
-let pendingAction = null;   // 'chat' | 'image' | 'song'
-
-// ── RETOOL DB CONFIG ──────────────────────
-// Set these as Railway environment variables:
-// RETOOL_DB_URL  = https://api.retool.com/v1/retooldb/YOUR_DB_ID/query
-// RETOOL_API_KEY = your_retool_api_key
-// They are injected via /api/auth-config endpoint on the server
-
-// ── INIT ──────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  loadState();
+// â”€â”€ INIT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+document.addEventListener("DOMContentLoaded", async () => {
   setWelcomeTime();
   initSwipe();
   renderPlanBadge();
   await fetchOwnerKey();
-  injectAuthModal();
-  checkExistingSession();
+  await fetchAvailableModels();
+  await checkExistingSession();
+  if (!currentUser) enforceAuthGate();
 });
 
-function saveState() {}
-function loadState() {}
+// â”€â”€ AUTH GATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function enforceAuthGate() {
+  const chatInput   = document.getElementById("chatInput");
+  const chatSendBtn = document.getElementById("chatSendBtn");
+  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = "ðŸ”’ Sign in to start chatting..."; }
+  if (chatSendBtn) chatSendBtn.disabled = true;
+  showPanelOverlay("panel-chat",  "chat");
+  showPanelOverlay("panel-image", "image");
+  showPanelOverlay("panel-song",  "song");
+}
+
+function showPanelOverlay(panelClass, action) {
+  const panel = document.querySelector("." + panelClass);
+  if (!panel) return;
+  const existing = panel.querySelector(".auth-gate-overlay");
+  if (existing) existing.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "auth-gate-overlay";
+  overlay.style.cssText = `
+    position:absolute;inset:0;z-index:50;
+    background:rgba(10,10,20,0.82);
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:16px;backdrop-filter:blur(6px);
+    border-radius:inherit;
+  `;
+  const icon  = action === "chat" ? "fa-comments" : action === "image" ? "fa-image" : "fa-music";
+  const label = action === "chat" ? "AI Assistant" : action === "image" ? "Image Generator" : "Song Generator";
+  overlay.innerHTML = `
+    <div style="width:64px;height:64px;border-radius:50%;background:rgba(124,58,237,.18);border:2px solid rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center;">
+      <i class="fas ${icon}" style="font-size:24px;color:#a855f7;"></i>
+    </div>
+    <div style="text-align:center;padding:0 24px;">
+      <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:6px;">Sign In Required</div>
+      <div style="font-size:13px;color:#9ca3af;line-height:1.5;">
+        Please create an account or sign in<br/>to use the <strong style="color:#c4b5fd;">${label}</strong>.
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;width:220px;">
+      <button onclick="openAuthModal('${action}')"
+        style="padding:12px;border-radius:24px;border:none;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.3px;">
+        <i class="fas fa-arrow-right-to-bracket"></i> Sign In / Sign Up
+      </button>
+    </div>
+  `;
+  const style = window.getComputedStyle(panel);
+  if (style.position === "static") panel.style.position = "relative";
+  panel.appendChild(overlay);
+}
+
+function removeAuthGate() {
+  document.querySelectorAll(".auth-gate-overlay").forEach(el => el.remove());
+  const chatInput   = document.getElementById("chatInput");
+  const chatSendBtn = document.getElementById("chatSendBtn");
+  if (chatInput)   { chatInput.disabled = false; chatInput.placeholder = "Type a message..."; }
+  if (chatSendBtn) chatSendBtn.disabled = false;
+}
 
 async function fetchOwnerKey() {
   try {
-    const res = await fetch('/api/key');
-    if (res.ok) {
-      const data = await res.json();
-      ownerApiKey = data.key || '';
-    }
-  } catch(e) {
-    ownerApiKey = '';
-  }
+    const r = await fetch("/api/key");
+    if (r.ok) { const d = await r.json(); ownerApiKey = d.key || ""; }
+  } catch (e) { ownerApiKey = ""; }
 }
 
-// ── RESOLVE ACTIVE API KEY ─────────────────
+async function fetchAvailableModels() {
+  try {
+    const r = await fetch("/api/models");
+    if (!r.ok) { console.warn("[models] HTTP", r.status); return; }
+    const d = await r.json();
+    if (d.error) console.warn("[models] error:", d.error);
+    if (d.recommended?.chat) GEMINI_CHAT_MODEL = d.recommended.chat;
+    if (Array.isArray(d.imageModels) && d.imageModels.length) GEMINI_IMAGE_MODELS = d.imageModels;
+    if (Array.isArray(d.ttsModels)   && d.ttsModels.length)   GEMINI_TTS_MODELS   = d.ttsModels;
+    console.log("[models] chat:", GEMINI_CHAT_MODEL,
+                "| image:", GEMINI_IMAGE_MODELS[0] || "(server decides)",
+                "| tts:",   GEMINI_TTS_MODELS[0]   || "(server decides)");
+  } catch (e) { console.warn("[models] fetch failed:", e.message); }
+}
+
+async function checkExistingSession() {
+  try {
+    const r = await fetch("/api/me", { credentials: "include" });
+    if (r.ok) { const d = await r.json(); onLoginSuccess(d.user, false); return; }
+    const stored = localStorage.getItem("jl_token");
+    if (stored) {
+      authToken = stored;
+      const r2 = await fetch("/api/me", {
+        credentials: "include",
+        headers: { "Authorization": "Bearer " + stored }
+      });
+      if (r2.ok) { const d = await r2.json(); onLoginSuccess(d.user, false); }
+      else { localStorage.removeItem("jl_token"); authToken = null; }
+    }
+  } catch (e) {}
+}
+
 function getActiveApiKey() {
-  if (userPlan === 'pro' && useOwnKey && proCustomKey) return proCustomKey;
+  if (userPlan === "pro" && useOwnKey && proCustomKey) return proCustomKey;
   return ownerApiKey;
 }
 
-// ── CHECK QUOTA ───────────────────────────
 function checkQuota() {
   const limit = PLAN_LIMITS[userPlan]?.requests ?? 10;
   if (requestCount >= limit) { showUpgradeModal(); return false; }
@@ -83,39 +149,36 @@ function checkQuota() {
 }
 function incrementRequest() { requestCount++; }
 
-// ── WELCOME TIME ──────────────────────────
 function setWelcomeTime() {
-  const el = document.getElementById('welcomeTime');
+  const el = document.getElementById("welcomeTime");
   if (el) el.textContent = formatTime(new Date());
 }
 
-// ── PLAN BADGE ────────────────────────────
 function renderPlanBadge() {
-  const badge = document.getElementById('planBadge');
+  const badge = document.getElementById("planBadge");
   if (!badge) return;
-  const plan = PLAN_LIMITS[userPlan];
-  badge.textContent = plan.label;
-  badge.style.color = plan.color;
-  badge.style.borderColor = plan.color + '66';
+  const plan = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+  badge.textContent       = plan.label;
+  badge.style.color       = plan.color;
+  badge.style.borderColor = plan.color + "66";
 }
 
-// ── PANEL NAVIGATION ─────────────────────
+// â•â• PANEL NAV â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function goToPanel(index) {
   currentPanel = index;
-  const track = document.getElementById('panelsTrack');
-  track.style.transform = `translateX(-${index * 33.333}%)`;
-  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i===index));
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===index));
+  const track = document.getElementById("panelsTrack");
+  if (track) track.style.transform = `translateX(-${index * 33.333}%)`;
+  document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", i === index));
 }
 
-// ── TOUCH SWIPE ──────────────────────────
 function initSwipe() {
-  const wrap = document.getElementById('panelsWrap');
-  wrap.addEventListener('touchstart', e => {
+  const wrap = document.getElementById("panelsWrap");
+  if (!wrap) return;
+  wrap.addEventListener("touchstart", e => {
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
   }, { passive: true });
-  wrap.addEventListener('touchend', e => {
+  wrap.addEventListener("touchend", e => {
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
@@ -125,374 +188,466 @@ function initSwipe() {
   }, { passive: true });
 }
 
-// ══════════════════════════════════════════
-//  AUTH MODAL — inject into DOM
-// ══════════════════════════════════════════
-function injectAuthModal() {
-  const html = `
-  <div class="modal-overlay" id="authModal">
-    <div class="modal-box" style="max-width:420px">
-      <div class="modal-header">
-        <h3><i class="fas fa-lock"></i> <span id="authModalTitle">Sign in to continue</span></h3>
-        <button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-xmark"></i></button>
-      </div>
-      <div class="modal-body" style="gap:10px">
-        <!-- Tabs -->
-        <div style="display:flex;gap:6px;background:var(--surface2);border:1px solid var(--border);padding:4px;border-radius:30px;">
-          <button id="authTabLogin" onclick="switchAuthTab('login')"
-            style="flex:1;padding:8px;border-radius:30px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#7c3aed,var(--purple));color:#fff;">
-            Login
-          </button>
-          <button id="authTabSignup" onclick="switchAuthTab('signup')"
-            style="flex:1;padding:8px;border-radius:30px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--muted);">
-            Sign Up
-          </button>
-        </div>
-
-        <div id="authMsg" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;"></div>
-
-        <!-- LOGIN FORM -->
-        <form id="authLoginForm" onsubmit="submitLogin(event)" style="display:flex;flex-direction:column;gap:10px;">
-          <div>
-            <label class="form-label">Email</label>
-            <input type="email" id="authLoginEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
-          </div>
-          <div>
-            <label class="form-label">Password</label>
-            <input type="password" id="authLoginPass" class="form-input" placeholder="Your password" required autocomplete="current-password"/>
-          </div>
-          <button type="submit" id="authLoginBtn" class="btn-generate btn-purple" style="margin-bottom:0">
-            <i class="fas fa-arrow-right-to-bracket"></i> Login
-          </button>
-        </form>
-
-        <!-- SIGNUP FORM -->
-        <form id="authSignupForm" onsubmit="submitSignup(event)" style="display:none;flex-direction:column;gap:10px;">
-          <div>
-            <label class="form-label">Full Name</label>
-            <input type="text" id="authSignupName" class="form-input" placeholder="Your name" required autocomplete="name"/>
-          </div>
-          <div>
-            <label class="form-label">Email</label>
-            <input type="email" id="authSignupEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
-          </div>
-          <div>
-            <label class="form-label">Password</label>
-            <input type="password" id="authSignupPass" class="form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password"/>
-          </div>
-          <button type="submit" id="authSignupBtn" class="btn-generate btn-purple" style="margin-bottom:0">
-            <i class="fas fa-user-plus"></i> Create Account
-          </button>
-        </form>
-
-      </div>
-    </div>
-  </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
+// â•â• AUTH MODAL â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function openAuthModal(action) {
-  pendingAction = action;
-  document.getElementById('authModal').classList.add('open');
+  pendingAction = action || null;
+  const m = document.getElementById("authModal");
+  if (m) m.classList.add("open");
   clearAuthMsg();
+  switchAuthTab("login");
 }
-
 function closeAuthModal() {
-  document.getElementById('authModal').classList.remove('open');
+  const m = document.getElementById("authModal");
+  if (m) m.classList.remove("open");
   pendingAction = null;
 }
-
 function switchAuthTab(tab) {
-  const loginForm  = document.getElementById('authLoginForm');
-  const signupForm = document.getElementById('authSignupForm');
-  const tabLogin   = document.getElementById('authTabLogin');
-  const tabSignup  = document.getElementById('authTabSignup');
+  const lf = document.getElementById("authLoginForm");
+  const sf = document.getElementById("authSignupForm");
+  const of = document.getElementById("authOtpForm");
+  const tl = document.getElementById("authTabLogin");
+  const ts = document.getElementById("authTabSignup");
   clearAuthMsg();
-  if (tab === 'login') {
-    loginForm.style.display  = 'flex';
-    signupForm.style.display = 'none';
-    tabLogin.style.background  = 'linear-gradient(135deg,#7c3aed,var(--purple))';
-    tabLogin.style.color       = '#fff';
-    tabSignup.style.background = 'transparent';
-    tabSignup.style.color      = 'var(--muted)';
+  if (of) of.style.display = "none";
+  if (tab === "login") {
+    if (lf) lf.style.display = "flex";
+    if (sf) sf.style.display = "none";
+    if (tl) { tl.style.background = "linear-gradient(135deg,#7c3aed,#a855f7)"; tl.style.color = "#fff"; }
+    if (ts) { ts.style.background = "transparent"; ts.style.color = "#9ca3af"; }
   } else {
-    loginForm.style.display  = 'none';
-    signupForm.style.display = 'flex';
-    tabSignup.style.background = 'linear-gradient(135deg,#7c3aed,var(--purple))';
-    tabSignup.style.color      = '#fff';
-    tabLogin.style.background  = 'transparent';
-    tabLogin.style.color       = 'var(--muted)';
+    if (lf) lf.style.display = "none";
+    if (sf) sf.style.display = "flex";
+    if (ts) { ts.style.background = "linear-gradient(135deg,#7c3aed,#a855f7)"; ts.style.color = "#fff"; }
+    if (tl) { tl.style.background = "transparent"; tl.style.color = "#9ca3af"; }
   }
 }
-
 function showAuthMsg(msg, type) {
-  const el = document.getElementById('authMsg');
-  el.style.display     = 'block';
-  el.style.background  = type === 'error' ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)';
-  el.style.color       = type === 'error' ? '#f87171' : '#34d399';
-  el.style.border      = `1px solid ${type === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`;
+  const el = document.getElementById("authMsg");
+  if (!el) return;
+  el.style.display    = "block";
+  el.style.background = type === "error" ? "rgba(239,68,68,.12)" : "rgba(16,185,129,.12)";
+  el.style.color      = type === "error" ? "#f87171" : "#34d399";
+  el.style.border     = "1px solid " + (type === "error" ? "rgba(239,68,68,.3)" : "rgba(16,185,129,.3)");
   el.textContent = msg;
 }
-
 function clearAuthMsg() {
-  const el = document.getElementById('authMsg');
-  if (el) { el.style.display = 'none'; el.textContent = ''; }
+  const el = document.getElementById("authMsg");
+  if (el) { el.style.display = "none"; el.textContent = ""; }
 }
 
-// ── CHECK SESSION ─────────────────────────
-async function checkExistingSession() {
-  try {
-    const res = await fetch('/api/me', { credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json();
-      onAuthSuccess(data.user, false);
-    }
-  } catch {}
-}
-
-// ── ON AUTH SUCCESS ───────────────────────
-function onAuthSuccess(user, runPending = true) {
-  currentUser = user;
-  // Sync plan from DB (free/pro/max)
-  if (user.plan && PLAN_LIMITS[user.plan]) {
-    userPlan = user.plan;
-    renderPlanBadge();
-  }
-  // Show user badge in nav
-  let badge = document.getElementById('userAuthBadge');
-  if (!badge) {
-    badge = document.createElement('div');
-    badge.id = 'userAuthBadge';
-    badge.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--green);';
-    badge.innerHTML = `<span style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#059669,var(--green));display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;" id="userAvatarBadge"></span><span id="userNameBadge" style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span><button onclick="logoutUser()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:2px 6px;border-radius:8px;border:1px solid var(--border);">Out</button>`;
-    const navActions = document.querySelector('.nav-actions');
-    if (navActions) navActions.prepend(badge);
-  }
-  document.getElementById('userAvatarBadge').textContent = user.name.charAt(0).toUpperCase();
-  document.getElementById('userNameBadge').textContent   = user.name.split(' ')[0];
-
-  closeAuthModal();
-  if (runPending && pendingAction) {
-    const action = pendingAction;
-    pendingAction = null;
-    if (action === 'chat')  triggerChat();
-    if (action === 'image') triggerImage();
-    if (action === 'song')  triggerSong();
-  }
-}
-
-// ── LOGOUT ────────────────────────────────
-async function logoutUser() {
-  await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-  currentUser = null;
-  const badge = document.getElementById('userAuthBadge');
-  if (badge) badge.remove();
-  showToast('Logged out', 'error');
-}
-
-// ── SUBMIT SIGNUP ─────────────────────────
+// â”€â”€ SIGNUP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function submitSignup(e) {
-  e.preventDefault();
-  clearAuthMsg();
-  const btn  = document.getElementById('authSignupBtn');
-  const name = document.getElementById('authSignupName').value.trim();
-  const email= document.getElementById('authSignupEmail').value.trim();
-  const pass = document.getElementById('authSignupPass').value;
+  e.preventDefault(); clearAuthMsg();
+  const btn   = document.getElementById("authSignupBtn");
+  const name  = document.getElementById("authSignupName").value.trim();
+  const email = document.getElementById("authSignupEmail").value.trim();
+  const pass  = document.getElementById("authSignupPass").value;
+  if (!name)  return showAuthMsg("Please enter your name.", "error");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAuthMsg("Please enter a valid email.", "error");
+  if (pass.length < 8) return showAuthMsg("Password must be at least 8 characters.", "error");
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending code...';
   try {
-    const res  = await fetch('/api/signup', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      credentials:'include', body: JSON.stringify({ name, email, password: pass })
+    const res  = await fetch("/api/send-otp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      credentials: "include", body: JSON.stringify({ name, email, password: pass })
     });
     const data = await res.json();
     if (res.ok) {
-      showAuthMsg(`Welcome, ${data.user.name}! 🎉`, 'success');
-      setTimeout(() => onAuthSuccess(data.user, true), 900);
-    } else {
-      showAuthMsg(data.error || 'Signup failed. Try again.', 'error');
-    }
-  } catch {
-    showAuthMsg('Network error. Check your connection.', 'error');
-  }
+      _otpPending = { name, email, password: pass };
+      document.getElementById("otpEmailDisplay").textContent = email;
+      document.getElementById("authSignupForm").style.display = "none";
+      const of = document.getElementById("authOtpForm");
+      of.style.display = "flex";
+      document.getElementById("authOtpInput").value = "";
+      startResendTimer(60);
+      showAuthMsg("Code ážáŸ’ážšáž¼ážœáž”áž¶áž“áž•áŸ’áž‰áž¾! ážŸáž¼áž˜áž–áž·áž“áž·ážáŸ’áž™ Email.", "success");
+    } else { showAuthMsg(data.error || "Failed to send code.", "error"); }
+  } catch (ex) { showAuthMsg("Network error. Check connection.", "error"); }
   btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+  btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Verification Code';
 }
 
-// ── SUBMIT LOGIN ──────────────────────────
-async function submitLogin(e) {
-  e.preventDefault();
+async function submitOtp() {
   clearAuthMsg();
-  const btn   = document.getElementById('authLoginBtn');
-  const email = document.getElementById('authLoginEmail').value.trim();
-  const pass  = document.getElementById('authLoginPass').value;
+  const otp = document.getElementById("authOtpInput").value.trim();
+  const btn = document.getElementById("authOtpBtn");
+  if (!otp || otp.length !== 6) return showAuthMsg("Please enter the 6-digit code.", "error");
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+  try {
+    const res  = await fetch("/api/verify-otp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      credentials: "include", body: JSON.stringify({ ..._otpPending, otp })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      _otpPending = null;
+      if (data.token) { authToken = data.token; localStorage.setItem("jl_token", data.token); }
+      showAuthMsg("Welcome, " + data.user.name + "! Account created!", "success");
+      setTimeout(() => onLoginSuccess(data.user, true), 900);
+    } else { showAuthMsg(data.error || "Invalid or expired code.", "error"); }
+  } catch (ex) { showAuthMsg("Network error.", "error"); }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-check-circle"></i> Verify & Create Account';
+}
+
+async function resendOtp() {
+  if (!_otpPending) return; clearAuthMsg();
+  try {
+    const res  = await fetch("/api/send-otp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      credentials: "include", body: JSON.stringify(_otpPending)
+    });
+    const data = await res.json();
+    if (res.ok) { showAuthMsg("Code ážáŸ’áž˜áž¸ážáŸ’ážšáž¼ážœáž”áž¶áž“áž•áŸ’áž‰áž¾!", "success"); startResendTimer(60); }
+    else showAuthMsg(data.error || "Failed to resend.", "error");
+  } catch (ex) { showAuthMsg("Network error.", "error"); }
+}
+
+function backToSignup() {
+  document.getElementById("authOtpForm").style.display    = "none";
+  document.getElementById("authSignupForm").style.display = "flex";
+  clearAuthMsg();
+  if (_resendTimer) clearInterval(_resendTimer);
+}
+
+function startResendTimer(sec) {
+  const btn   = document.getElementById("resendOtpBtn");
+  const timer = document.getElementById("resendTimer");
+  if (!btn || !timer) return;
+  btn.style.display = "none"; timer.style.display = "inline";
+  let s = sec;
+  if (_resendTimer) clearInterval(_resendTimer);
+  _resendTimer = setInterval(() => {
+    timer.textContent = "Resend in " + s + "s";
+    s--;
+    if (s < 0) {
+      clearInterval(_resendTimer);
+      btn.style.display   = "inline";
+      timer.style.display = "none";
+    }
+  }, 1000);
+}
+
+// â”€â”€ LOGIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function submitLogin(e) {
+  e.preventDefault(); clearAuthMsg();
+  const btn   = document.getElementById("authLoginBtn");
+  const email = document.getElementById("authLoginEmail").value.trim();
+  const pass  = document.getElementById("authLoginPass").value;
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
   try {
-    const res  = await fetch('/api/login', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      credentials:'include', body: JSON.stringify({ email, password: pass })
+    const res  = await fetch("/api/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      credentials: "include", body: JSON.stringify({ email, password: pass })
     });
     const data = await res.json();
     if (res.ok) {
-      showAuthMsg(`Welcome back, ${data.user.name}! ✅`, 'success');
-      setTimeout(() => onAuthSuccess(data.user, true), 800);
-    } else {
-      showAuthMsg(data.error || 'Invalid email or password.', 'error');
-    }
-  } catch {
-    showAuthMsg('Network error. Check your connection.', 'error');
-  }
+      if (data.token) { authToken = data.token; localStorage.setItem("jl_token", data.token); }
+      showAuthMsg("Welcome back, " + data.user.name + "!", "success");
+      setTimeout(() => onLoginSuccess(data.user, true), 800);
+    } else { showAuthMsg(data.error || "Invalid email or password.", "error"); }
+  } catch (ex) { showAuthMsg("Network error.", "error"); }
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Login';
 }
 
-// ══════════════════════════════════════════
-//  AUTH GATE — wrap tool buttons
-// ══════════════════════════════════════════
-function requireAuth(action, fn) {
-  if (currentUser) { fn(); }
-  else { openAuthModal(action); }
+// â”€â”€ onLoginSuccess â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function onLoginSuccess(user, runPending) {
+  currentUser = user;
+  window.currentUser = user;
+  if (user.plan && PLAN_LIMITS[user.plan]) {
+    userPlan = user.plan;
+    renderPlanBadge();
+  }
+  updateNavAvatar(user);
+  removeAuthGate();
+  closeAuthModal();
+  if (runPending) {
+    const action = pendingAction; pendingAction = null;
+    if (action === "chat")  setTimeout(() => _sendChat(),      100);
+    if (action === "image") setTimeout(() => _generateImage(), 100);
+    if (action === "song")  setTimeout(() => _generateSong(),  100);
+  }
 }
 
-// Trigger helpers called after login success
-function triggerChat()  { sendChat(); }
-function triggerImage() { generateImage(); }
-function triggerSong()  { generateSong(); }
-
-// ══════════════════════════════════════════
-//  PLAN MODAL
-// ══════════════════════════════════════════
-function openPlanModal() {
-  const m = document.getElementById('planModal');
-  m.classList.add('open');
-  document.querySelectorAll('.plan-card').forEach(c => {
-    c.classList.toggle('selected', c.dataset.plan === userPlan);
-  });
-}
-function closePlanModal() { document.getElementById('planModal').classList.remove('open'); }
-
-function selectPlan(plan) {
-  userPlan = plan;
-  document.querySelectorAll('.plan-card').forEach(c => {
-    c.classList.toggle('selected', c.dataset.plan === plan);
-  });
+// â”€â”€ LOGOUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function doLogout() {
+  currentUser = null; window.currentUser = null;
+  authToken   = null;
+  localStorage.removeItem("jl_token");
+  userPlan    = "free";
+  requestCount = 0;
+  chatHistory  = [];
   renderPlanBadge();
-  const proSettings = document.getElementById('proSettingsInModal');
-  if (proSettings) proSettings.style.display = plan === 'pro' ? 'block' : 'none';
+  const wrap = document.getElementById("userProfileWrap");
+  if (wrap) wrap.style.display = "none";
+  closeDd();
+  try { await fetch("/api/logout", { method: "POST", credentials: "include" }); } catch (e) {}
+  showToast("Signed out", "error");
+  enforceAuthGate();
 }
 
-function confirmPlan() {
-  closePlanModal();
-  showToast(`${PLAN_LIMITS[userPlan].label} plan activated!`, 'success');
+// â”€â”€ NAV AVATAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function updateNavAvatar(user) {
+  const wrap     = document.getElementById("userProfileWrap");
+  const navBtn   = document.getElementById("userAvatarBtn");
+  const initial  = (user.name || "U").charAt(0).toUpperCase();
+  const planInfo = PLAN_LIMITS[user.plan || "free"] || PLAN_LIMITS.free;
+  if (wrap)   wrap.style.display = "flex";
+  if (navBtn) {
+    navBtn.innerHTML = user.avatar_url
+      ? `<img src="${user.avatar_url}" alt="${escapeHtml(initial)}"/>`
+      : `<span>${escapeHtml(initial)}</span>`;
+  }
+  const pdAv = document.getElementById("pdAv");
+  if (pdAv) pdAv.innerHTML = user.avatar_url
+    ? `<img src="${user.avatar_url}" alt="${escapeHtml(initial)}"/>`
+    : `<span>${escapeHtml(initial)}</span>`;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || ""; };
+  set("pdName",  user.name);
+  set("pdEmail", user.email);
+  set("pdBadge", planInfo.label);
 }
 
-// ══════════════════════════════════════════
-//  SETTINGS PANEL (Pro only)
-// ══════════════════════════════════════════
+// â”€â”€ DROPDOWN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function toggleDropdown(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const dd = document.getElementById("profileDropdown");
+  if (dd) dd.classList.toggle("open");
+}
+function closeDd() {
+  const dd = document.getElementById("profileDropdown");
+  if (dd) dd.classList.remove("open");
+}
+document.addEventListener("click", e => {
+  const wrap = document.getElementById("userProfileWrap");
+  if (wrap && !wrap.contains(e.target)) closeDd();
+}, true);
+
+// â”€â”€ PROFILE SHEET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function openProfileSheet()  { syncProfileSheet(); document.getElementById("ppOverlay").classList.add("open"); }
+function closeProfileSheet() { document.getElementById("ppOverlay").classList.remove("open"); }
+function closePPif(e)        { if (e.target === document.getElementById("ppOverlay")) closeProfileSheet(); }
+
+function syncProfileSheet() {
+  const u     = currentUser;
+  const plan  = (u && u.plan) || userPlan || "free";
+  const info  = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+  const limit = info.requests;
+  const used  = requestCount;
+  const pct   = Math.min(100, Math.round(used / limit * 100));
+  if (u) {
+    const init = (u.name || "U").charAt(0).toUpperCase();
+    const set  = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || "â€”"; };
+    set("ppHeroName",   u.name);
+    set("ppHeroEmail",  u.email);
+    set("ppInfoName",   u.name);
+    set("ppInfoEmail",  u.email);
+    set("ppInfoPlan",   info.label);
+    set("ppInfoJoined", u.created_at ? new Date(u.created_at).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" }) : "Today");
+    const av = document.getElementById("ppAvatarEl");
+    if (av) av.innerHTML = u.avatar_url
+      ? `<img src="${u.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="${init}"/>`
+      : `<span>${escapeHtml(init)}</span>`;
+    const badge = document.getElementById("ppPlanBadge");
+    if (badge) badge.innerHTML = `<i class="fas fa-star"></i> ${info.label} Plan`;
+    const ub = document.getElementById("ppUpgradeBanner");
+    if (ub) ub.style.display = (plan === "pro" || plan === "max") ? "none" : "flex";
+  }
+  const uc = document.getElementById("ppUsageCount");
+  if (uc) uc.textContent = used + " / " + limit;
+  const ub2 = document.getElementById("ppUsageBar");
+  if (ub2) {
+    ub2.style.width      = pct + "%";
+    ub2.style.background = pct >= 80 ? "#f87171" : pct >= 50 ? "#fbbf24" : "#a855f7";
+  }
+}
+
+async function handleAvatarUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    const url = ev.target.result;
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (authToken) headers["Authorization"] = "Bearer " + authToken;
+      const r = await fetch("/api/upload-avatar", {
+        method: "POST", headers, credentials: "include",
+        body: JSON.stringify({ avatar_url: url })
+      });
+      if (r.ok) {
+        if (currentUser) currentUser.avatar_url = url;
+        updateNavAvatar(currentUser);
+        syncProfileSheet();
+        showToast("Avatar updated!", "success");
+      }
+    } catch (ex) { showToast("Upload failed", "error"); }
+  };
+  reader.readAsDataURL(file);
+}
+
+// â•â• PLAN MODAL â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function openPlanModal() {
+  const m = document.getElementById("planModal");
+  if (!m) return;
+  m.classList.add("open");
+  document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === userPlan));
+}
+function closePlanModal() {
+  const m = document.getElementById("planModal");
+  if (m) m.classList.remove("open");
+}
+function selectPlan(plan) {
+  document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === plan));
+  const ps = document.getElementById("proSettingsInModal");
+  if (ps) ps.style.display = plan === "pro" ? "block" : "none";
+}
+
+// â”€â”€ confirmPlan (FIXED) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function confirmPlan() {
+  const selected = document.querySelector(".plan-card.selected");
+  if (!selected) { showToast("Please select a plan first", "error"); return; }
+  const plan = selected.dataset.plan;
+  if (!currentUser) { closePlanModal(); openAuthModal(null); return; }
+  if (plan === userPlan) {
+    closePlanModal();
+    showToast("You are already on " + (PLAN_LIMITS[plan]?.label || plan) + " plan", "success");
+    return;
+  }
+  // Find confirm button and show loading
+  const btn     = document.querySelector("#planModal .btn-confirm, #planModal button[onclick='confirmPlan()'], #planModal button[onclick=\"confirmPlan()\"]");
+  const oldHtml = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...'; }
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (authToken) headers["Authorization"] = "Bearer " + authToken;
+    const res = await fetch("/api/subscribe", {
+      method: "POST", headers, credentials: "include",
+      body: JSON.stringify({ plan })
+    });
+    const d = await res.json();
+    // Stripe checkout redirect
+    if (d.checkoutUrl) { window.location.href = d.checkoutUrl; return; }
+    if (!res.ok) throw new Error(d.error || "Could not change plan.");
+    // âœ… Success â€” update local state
+    userPlan = d.user?.plan || plan;
+    if (currentUser) currentUser.plan = userPlan;
+    renderPlanBadge();
+    updateNavAvatar(currentUser);
+    syncProfileSheet();
+    closePlanModal();
+    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! ðŸŽ‰", "success");
+  } catch (err) {
+    showToast(err.message || "Network error.", "error");
+  } finally {
+    if (btn && oldHtml !== null) { btn.disabled = false; btn.innerHTML = oldHtml; }
+  }
+}
+
+// â•â• SETTINGS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function openSettings() {
-  if (userPlan !== 'pro') { showToast('Settings available on Pro plan', 'error'); openPlanModal(); return; }
-  const m = document.getElementById('settingsModal');
-  m.classList.add('open');
-  document.getElementById('customKeyInput').value = proCustomKey;
-  document.getElementById('useOwnKeyToggle').checked = useOwnKey;
+  if (userPlan !== "pro") { showToast("Settings available on Pro plan", "error"); openPlanModal(); return; }
+  const m = document.getElementById("settingsModal"); if (!m) return;
+  m.classList.add("open");
+  document.getElementById("customKeyInput").value    = proCustomKey;
+  document.getElementById("useOwnKeyToggle").checked = useOwnKey;
   updateSettingsUI();
 }
-function closeSettings() { document.getElementById('settingsModal').classList.remove('open'); }
+function closeSettings() { const m = document.getElementById("settingsModal"); if (m) m.classList.remove("open"); }
 function updateSettingsUI() {
-  const toggle = document.getElementById('useOwnKeyToggle');
-  const keySection = document.getElementById('customKeySection');
-  if (keySection) keySection.style.display = toggle.checked ? 'block' : 'none';
+  const t = document.getElementById("useOwnKeyToggle");
+  const s = document.getElementById("customKeySection");
+  if (t && s) s.style.display = t.checked ? "block" : "none";
 }
 function saveSettings() {
-  const toggle   = document.getElementById('useOwnKeyToggle');
-  const keyInput = document.getElementById('customKeyInput').value.trim();
-  useOwnKey = toggle.checked;
+  const t = document.getElementById("useOwnKeyToggle");
+  const k = document.getElementById("customKeyInput").value.trim();
+  if (!t) return;
+  useOwnKey = t.checked;
   if (useOwnKey) {
-    if (!keyInput) return showToast('Enter your API key first', 'error');
-    proCustomKey = keyInput;
-    showToast('Using your own API key', 'success');
-  } else {
-    proCustomKey = keyInput;
-    showToast("Using JeeThy Labs owner key", 'success');
-  }
+    if (!k) return showToast("Enter your API key first", "error");
+    proCustomKey = k; showToast("Using your own API key", "success");
+  } else { proCustomKey = k; showToast("Using JeeThy Labs owner key", "success"); }
   closeSettings();
 }
 
-// ══════════════════════════════════════════
-//  UPGRADE MODAL
-// ══════════════════════════════════════════
-function showUpgradeModal() { const m = document.getElementById('upgradeModal'); if (m) m.classList.add('open'); }
-function closeUpgradeModal() { document.getElementById('upgradeModal').classList.remove('open'); }
-function upgradeNow() { closeUpgradeModal(); if (userPlan === 'free') openPlanModal(); }
+// â•â• UPGRADE MODAL â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function showUpgradeModal()  { const m = document.getElementById("upgradeModal"); if (m) m.classList.add("open"); }
+function closeUpgradeModal() { const m = document.getElementById("upgradeModal"); if (m) m.classList.remove("open"); }
+function upgradeNow()        { closeUpgradeModal(); if (userPlan === "free") openPlanModal(); }
 function requirePro(btn, groupId) {
-  if (userPlan === 'pro') { selectChip(btn, groupId); }
-  else { showUpgradeModal(); showToast('1080p is available on Pro plan only', 'error'); }
+  if (userPlan === "pro" || userPlan === "max") selectChip(btn, groupId);
+  else { showUpgradeModal(); showToast("HD is available on Pro plan only", "error"); }
 }
 
-// ══════════════════════════════════════════
-//  PANEL 1 — AI ASSISTANT (AUTH GATED)
-// ══════════════════════════════════════════
-function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
+// â•â• CHAT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function autoResize(el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 100) + "px"; }
+function handleChatKey(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } }
 
-function handleChatKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
-}
-
-// ── sendChat — gated ──────────────────────
 function sendChat() {
-  if (!currentUser) { openAuthModal('chat'); return; }
+  if (!currentUser) { openAuthModal("chat"); return; }
   _sendChat();
 }
 
 async function _sendChat() {
   if (isChatLoading) return;
   const key = getActiveApiKey();
-  if (!key) { showToast('Service unavailable. Please try again later.', 'error'); return; }
+  if (!key) { showToast("Service unavailable.", "error"); return; }
   if (!checkQuota()) return;
-  const input = document.getElementById('chatInput');
+  const input = document.getElementById("chatInput");
   const text  = input.value.trim();
   if (!text) return;
-  appendMessage('user', text);
-  input.value = ''; input.style.height = 'auto';
+  appendMessage("user", text);
+  input.value = ""; input.style.height = "auto";
   isChatLoading = true;
-  document.getElementById('chatSendBtn').disabled = true;
-  chatHistory.push({ role: 'user', parts: [{ text }] });
+  const sendBtn = document.getElementById("chatSendBtn");
+  if (sendBtn) sendBtn.disabled = true;
+  chatHistory.push({ role: "user", parts: [{ text }] });
   const typingId = appendTyping();
   try {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CHAT_MODEL}:generateContent?key=${key}`,
-      { method:'POST', headers:{'Content-Type':'application/json'},
+      {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: `You are JeeThy Assistant, a helpful and friendly AI assistant created by JeeThy Labs.\nAnswer in the same language the user writes in.\nBe concise but thorough. Format responses clearly with paragraphs.\nWhen appropriate use bullet points for lists.\nNever say you cannot do something — always try to help.` }] },
-          contents: chatHistory }) }
+          system_instruction: { parts: [{ text: "You are JeeThy Assistant, a helpful and friendly AI created by JeeThy Labs.\nAnswer in the same language the user writes in.\nBe concise but thorough. Use markdown for formatting." }] },
+          contents: chatHistory
+        })
+      }
     );
     removeTyping(typingId);
     if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || `HTTP ${res.status}`); }
     const data  = await res.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not generate a response.';
-    chatHistory.push({ role:'model', parts:[{ text: reply }] });
-    appendMessage('bot', reply);
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, could not generate a response.";
+    chatHistory.push({ role: "model", parts: [{ text: reply }] });
+    appendMessage("bot", reply);
     incrementRequest();
-  } catch (err) { removeTyping(typingId); appendMessage('bot', `⚠️ ${err.message}`); }
+  } catch (err) {
+    removeTyping(typingId);
+    appendMessage("bot", "âš ï¸ " + err.message);
+  }
   isChatLoading = false;
-  document.getElementById('chatSendBtn').disabled = false;
+  if (sendBtn) sendBtn.disabled = false;
 }
 
 function appendMessage(role, text) {
-  const container = document.getElementById('chatMessages');
-  const isUser = role === 'user';
-  const div    = document.createElement('div');
-  div.className = `msg ${isUser ? 'msg-user' : 'msg-bot'}`;
-  const avatar = document.createElement('div');
-  avatar.className = 'msg-avatar';
-  avatar.innerHTML = isUser ? '<i class="fas fa-user"></i>' : '<i class="fas fa-brain"></i>';
-  const bubble = document.createElement('div');
-  bubble.className = 'msg-bubble';
-  if (isUser) { bubble.textContent = text; }
-  else { bubble.innerHTML = `<div class="prose-response">${formatMarkdown(text)}</div>`; }
-  const time = document.createElement('span');
-  time.className = 'msg-time'; time.textContent = formatTime(new Date());
+  const container = document.getElementById("chatMessages"); if (!container) return;
+  const isUser = role === "user";
+  const div    = document.createElement("div");
+  div.className = `msg ${isUser ? "msg-user" : "msg-bot"}`;
+  const avatar = document.createElement("div");
+  avatar.className = "msg-avatar";
+  if (isUser && currentUser) {
+    avatar.textContent = (currentUser.name || "U").charAt(0).toUpperCase();
+    avatar.style.fontSize = "13px"; avatar.style.fontWeight = "700";
+  } else { avatar.innerHTML = isUser ? '<i class="fas fa-user"></i>' : '<i class="fas fa-brain"></i>'; }
+  const bubble = document.createElement("div"); bubble.className = "msg-bubble";
+  if (isUser) bubble.textContent = text;
+  else bubble.innerHTML = `<div class="prose-response">${formatMarkdown(text)}</div>`;
+  const time = document.createElement("span"); time.className = "msg-time"; time.textContent = formatTime(new Date());
   bubble.appendChild(time);
   div.appendChild(avatar); div.appendChild(bubble);
   container.appendChild(div);
@@ -500,182 +655,236 @@ function appendMessage(role, text) {
 }
 
 function appendTyping() {
-  const container = document.getElementById('chatMessages');
-  const id = 'typing-' + Date.now();
-  const div = document.createElement('div'); div.className = 'msg msg-bot'; div.id = id;
-  const avatar = document.createElement('div'); avatar.className = 'msg-avatar'; avatar.innerHTML = '<i class="fas fa-brain"></i>';
-  const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
+  const container = document.getElementById("chatMessages"); if (!container) return null;
+  const id  = "typing-" + Date.now();
+  const div = document.createElement("div"); div.className = "msg msg-bot"; div.id = id;
+  const avatar = document.createElement("div"); avatar.className = "msg-avatar";
+  avatar.innerHTML = '<i class="fas fa-brain"></i>';
+  const bubble = document.createElement("div"); bubble.className = "msg-bubble";
   bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
   div.appendChild(avatar); div.appendChild(bubble);
   container.appendChild(div); container.scrollTop = container.scrollHeight;
   return id;
 }
-function removeTyping(id) { const el = document.getElementById(id); if (el) el.remove(); }
+function removeTyping(id) { if (!id) return; const el = document.getElementById(id); if (el) el.remove(); }
 
 function formatMarkdown(text) {
   return text
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>')
-    .replace(/`([^`]+)`/g,'<code>$1</code>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/^### (.+)$/gm,'<h4 style="font-size:14px;font-weight:700;margin:8px 0 4px">$1</h4>')
-    .replace(/^## (.+)$/gm,'<h3 style="font-size:15px;font-weight:700;margin:8px 0 4px">$1</h3>')
-    .replace(/^- (.+)$/gm,'<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/gs,'<ul>$1</ul>')
-    .replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br/>')
-    .replace(/^(.)/gm,(m,p)=>p==='<'?m:`<p>${m}`)
-    .replace(/([^>])$/gm,(m,p)=>`${m}</p>`)
-    .replace(/<p><\/p>/g,'').replace(/<p>(<[uoh])/g,'$1')
-    .replace(/(<\/[uoh][l4]>)<\/p>/g,'$1');
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/^### (.+)$/gm, "<h4 style=\"font-size:14px;font-weight:700;margin:8px 0 4px\">$1</h4>")
+    .replace(/^## (.+)$/gm,  "<h3 style=\"font-size:15px;font-weight:700;margin:8px 0 4px\">$1</h3>")
+    .replace(/^- (.+)$/gm,   "<li>$1</li>")
+    .replace(/(<li>[\s\S]*?<\/li>)+/g, "<ul>$&</ul>")
+    .replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>");
 }
 
-// ══════════════════════════════════════════
-//  PANEL 2 — IMAGE GENERATE (AUTH GATED)
-// ══════════════════════════════════════════
+// â•â• IMAGE GENERATE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function generateImage() {
-  if (!currentUser) { openAuthModal('image'); return; }
+  if (!currentUser) { openAuthModal("image"); return; }
   _generateImage();
 }
-
 async function _generateImage() {
   const key = getActiveApiKey();
-  if (!key) return showToast('Service unavailable. Please try again later.', 'error');
+  if (!key) return showToast("Service unavailable.", "error");
   if (!checkQuota()) return;
-  const prompt = document.getElementById('imgPrompt').value.trim();
-  if (!prompt) return showToast('Please enter a prompt', 'error');
-  const style   = getActiveChip('imgStyleGroup');
-  const ratio   = getActiveChip('imgRatioGroup');
-  const quality = getActiveChip('imgQualityGroup');
-  const qty     = parseInt(getActiveChip('imgQtyGroup')) || 1;
-  const ratioMap = { '1:1':'1:1','9:16':'9:16','16:9':'16:9' };
-  const aspectRatio = ratioMap[ratio] || '1:1';
-  const qualityHint = quality === '1080p' ? 'ultra high resolution, sharp details, professional photography' : 'standard resolution';
-  const fullPrompt  = `${prompt}, style: ${style}, ${qualityHint}, aspect ratio ${aspectRatio}`;
-  const btn = document.getElementById('imgGenBtn');
+  const prompt = document.getElementById("imgPrompt").value.trim();
+  if (!prompt) return showToast("Please enter a prompt", "error");
+  const style  = getActiveChip("imgStyleGroup");
+  const ratio  = getActiveChip("imgRatioGroup");
+  const qty    = parseInt(getActiveChip("imgQtyGroup")) || 1;
+  const styleHint  = style && style.toLowerCase() !== "none" ? `, style: ${style}` : "";
+  const fullPrompt = `${prompt}${styleHint}`;
+  const btn       = document.getElementById("imgGenBtn");
+  const resultsEl = document.getElementById("imgResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-  const resultsEl = document.getElementById('imgResults');
-  resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty>1?'s':''} with AI...</div></div>`;
-  async function fetchOneImage(prompt, k) {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${k}`,
-      { method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{ responseModalities:['IMAGE'], imageConfig:{ aspectRatio } } }) }
-    );
-    if (!r.ok) { const e=await r.json(); throw new Error(e.error?.message||`HTTP ${r.status}`); }
+  resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI...</div></div>`;
+
+  async function fetchOne() {
+    const r = await fetch("/api/image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: fullPrompt, aspectRatio: ratio, style })
+    });
     const d = await r.json();
-    let imgData = null;
-    for (const c of (d.candidates||[])) { for (const p of (c.content?.parts||[])) { if (p.inlineData?.data){ imgData=p.inlineData; break; } } if(imgData) break; }
-    if (!imgData) throw new Error('No image in response');
-    return imgData;
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    if (!d.data) throw new Error("No image returned. Try a more descriptive prompt.");
+    return { data: d.data, mimeType: d.mimeType || "image/png" };
   }
+
   try {
-    const requests = Array.from({length:qty},()=>fetchOneImage(fullPrompt,key));
-    const results  = await Promise.allSettled(requests);
-    const imageParts = results.filter(r=>r.status==='fulfilled').map(r=>r.value);
-    if (!imageParts.length) throw new Error('No images generated. Try a different prompt.');
-    const card = document.createElement('div'); card.className = 'img-result-card';
-    const grid = document.createElement('div'); grid.className = `img-grid qty-${imageParts.length}`;
-    const blobUrls = [];
-    imageParts.forEach((inlineData,i)=>{
-      const base64=inlineData.data, mime=inlineData.mimeType||'image/png';
-      const byteChars=atob(base64), byteArr=new Uint8Array(byteChars.length);
-      for(let j=0;j<byteChars.length;j++) byteArr[j]=byteChars.charCodeAt(j);
-      const blob=new Blob([byteArr],{type:mime}), blobUrl=URL.createObjectURL(blob);
-      blobUrls.push({blobUrl,mime});
-      const img=document.createElement('img'); img.src=blobUrl; img.alt=`Generated image ${i+1}`;
-      img.onclick=()=>openImageFullscreen(blobUrl); grid.appendChild(img);
+    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""}â€¦ (retries up to 3Ã—)</div></div>`;
+    const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne()));
+    const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
+    const errors  = results.filter(r => r.status === "rejected").map(r => r.reason?.message);
+    if (errors.length) console.warn("[image] Some requests failed:", errors);
+    if (!imgs.length) throw new Error(errors[0] || "No images generated. Try a different prompt.");
+    const card = document.createElement("div"); card.className = "img-result-card";
+    const grid = document.createElement("div"); grid.className = `img-grid qty-${imgs.length}`;
+    const blobs = [];
+    imgs.forEach((d, i) => {
+      const bytes = atob(d.data); const arr = new Uint8Array(bytes.length);
+      for (let j = 0; j < bytes.length; j++) arr[j] = bytes.charCodeAt(j);
+      const blob    = new Blob([arr], { type: d.mimeType || "image/png" });
+      const blobUrl = URL.createObjectURL(blob);
+      blobs.push({ blobUrl, mime: d.mimeType || "image/png" });
+      const img = document.createElement("img"); img.src = blobUrl; img.alt = `Generated ${i + 1}`;
+      img.onclick = () => openFullscreen(blobUrl);
+      grid.appendChild(img);
     });
     card.appendChild(grid);
-    const dlWrap=document.createElement('div'); dlWrap.style.cssText='padding:12px;display:flex;flex-direction:column;gap:8px;';
-    blobUrls.forEach(({blobUrl,mime},i)=>{
-      const ext=mime.split('/')[1]||'png', a=document.createElement('a');
-      a.className='btn-download'; a.href=blobUrl; a.download=`jeethy-image-${Date.now()}-${i+1}.${ext}`;
-      a.innerHTML=`<i class="fas fa-download"></i> Download Image ${blobUrls.length>1?i+1:''}`;
+    const dlWrap = document.createElement("div");
+    dlWrap.style.cssText = "padding:12px;display:flex;flex-direction:column;gap:8px;";
+    blobs.forEach(({ blobUrl, mime }, i) => {
+      const ext = mime.split("/")[1] || "png";
+      const a   = document.createElement("a"); a.className = "btn-download";
+      a.href = blobUrl; a.download = `jeethy-image-${Date.now()}-${i + 1}.${ext}`;
+      a.innerHTML = `<i class="fas fa-download"></i> Download Image${blobs.length > 1 ? " " + (i + 1) : ""}`;
       dlWrap.appendChild(a);
     });
     card.appendChild(dlWrap);
-    resultsEl.innerHTML=''; resultsEl.appendChild(card);
-    document.querySelector('.panel-image .panel-inner-scroll').scrollTo({top:99999,behavior:'smooth'});
+    resultsEl.innerHTML = ""; resultsEl.appendChild(card);
+    document.querySelector(".panel-image .panel-inner-scroll")?.scrollTo({ top: 99999, behavior: "smooth" });
     incrementRequest();
-  } catch(err) { resultsEl.innerHTML=`<div class="error-card"><i class="fas fa-circle-exclamation"></i> ${err.message}</div>`; }
-  btn.disabled=false; btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Image';
+  } catch (err) {
+    const isOverload = /overload|high demand|quota|rate.?limit/i.test(err.message || "");
+    resultsEl.innerHTML = `
+      <div class="error-card">
+        <i class="fas fa-circle-exclamation"></i>
+        ${escapeHtml(err.message)}
+        ${isOverload ? "<br/><small style='opacity:.7'>The AI model is busy â€” please wait a moment and try again.</small>" : ""}
+        <br/><button onclick="_generateImage()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--accent,#7c3aed);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
+          <i class="fas fa-rotate-right"></i> Try Again
+        </button>
+      </div>`;
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Image';
 }
 
-function openImageFullscreen(src) {
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:pointer;animation:msgIn 0.2s ease;';
-  const img=document.createElement('img'); img.src=src;
-  img.style.cssText='max-width:100%;max-height:100%;border-radius:12px;object-fit:contain;';
-  overlay.appendChild(img); overlay.onclick=()=>overlay.remove(); document.body.appendChild(overlay);
+function openFullscreen(src) {
+  const ov = document.createElement("div");
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:pointer;";
+  const img = document.createElement("img"); img.src = src;
+  img.style.cssText = "max-width:100%;max-height:100%;border-radius:12px;object-fit:contain;";
+  ov.appendChild(img); ov.onclick = () => ov.remove(); document.body.appendChild(ov);
 }
 
-// ══════════════════════════════════════════
-//  PANEL 3 — SONG GENERATE (AUTH GATED)
-// ══════════════════════════════════════════
-const LYRIA_MODEL = 'lyria-3-pro-preview';
-
+// â•â• SONG GENERATE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function generateSong() {
-  if (!currentUser) { openAuthModal('song'); return; }
+  if (!currentUser) { openAuthModal("song"); return; }
   _generateSong();
 }
-
 async function _generateSong() {
-  const key = getActiveApiKey();
-  if (!key) return showToast('Service unavailable. Please try again later.', 'error');
   if (!checkQuota()) return;
-  const prompt = document.getElementById('songPrompt').value.trim();
-  if (!prompt) return showToast('Please enter a song description', 'error');
-  const style  = getActiveChip('songStyleGroup');
-  const voice  = getActiveChip('songVoiceGroup').replace(/[^\w]/g,'').trim();
-  const isKhmer = /[\u1780-\u17FF]/.test(prompt);
-  const btn = document.getElementById('songGenBtn');
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Composing...';
-  const resultsEl = document.getElementById('songResults');
-  resultsEl.innerHTML=`<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label">Generating song with Lyria 3... (~20s)</div></div>`;
+  const prompt = document.getElementById("songPrompt").value.trim();
+  if (!prompt) return showToast("Please enter a song description", "error");
+  const style     = getActiveChip("songStyleGroup");
+  const voice     = getActiveChip("songVoiceGroup").replace(/[^\w\s]/g, "").trim();
+  const voiceHint = voice.toLowerCase().includes("female") ? "female vocalist" : "male vocalist";
+  const btn       = document.getElementById("songGenBtn");
+  const resultsEl = document.getElementById("songResults");
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
+  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with Lyriaâ€¦ (~20â€“40s)</div></div>`;
+
+  const retryHintTimer = setTimeout(() => {
+    const lbl = document.getElementById("songLoadingLabel");
+    if (lbl) lbl.textContent = "Lyria is composingâ€¦ if slow, falling back to TTS â€” please wait";
+  }, 20000);
+
   try {
-    const voiceHint  = voice.toLowerCase().includes('female') ? 'female vocalist' : 'male vocalist';
-    const langHint   = isKhmer ? 'Lyrics must be in Khmer language (ភាសាខ្មែរ).' : '';
-    const lyriaPrompt = `Create a full ${style} song about: ${prompt}. ${voiceHint}, ${style} genre with full instrumental arrangement, verses, chorus and bridge. ${langHint}`.trim();
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${LYRIA_MODEL}:generateContent?key=${key}`,
-      { method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ contents:[{parts:[{text:lyriaPrompt}]}] }) }
-    );
-    if (!res.ok) { const err=await res.json(); throw new Error(err.error?.message||`HTTP ${res.status}`); }
+    const res = await fetch("/api/song", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, style, voice })
+    });
+    clearTimeout(retryHintTimer);
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`); }
     const data = await res.json();
-    let audioB64=null, audioMime='audio/mp3', songTitle=`${style} Song`, lyricsText='';
-    for (const c of (data.candidates||[])) {
-      for (const p of (c.content?.parts||[])) {
-        if (p.inlineData?.data&&!audioB64){ audioB64=p.inlineData.data; audioMime=p.inlineData.mimeType||'audio/mp3'; }
-        if (p.text) lyricsText+=p.text;
-      }
+    const { audio: audioB64, mimeType: audioMime, title: songTitle, lyrics: lyricsText, ttsMessage, audioSource } = data;
+
+    const card = document.createElement("div"); card.className = "song-result-card";
+
+    const header = document.createElement("div"); header.className = "song-result-title";
+    const isLyria = audioSource && audioSource.toLowerCase().includes("lyria");
+    const sourceBadge = audioSource
+      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "ðŸŽµ Lyria" : "ðŸ”Š TTS"}</span>`
+      : "";
+    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} Â· ${escapeHtml(voiceHint)}</span>`;
+    card.appendChild(header);
+
+    if (audioB64) {
+      const raw = atob(audioB64); const bytes = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+      const audioBlob    = new Blob([bytes], { type: audioMime || "audio/wav" });
+      const audioBlobUrl = URL.createObjectURL(audioBlob);
+      const audioEl = document.createElement("audio");
+      audioEl.controls = true; audioEl.preload = "auto";
+      audioEl.style.cssText = "width:100%;padding:10px 14px 0;accent-color:var(--green);";
+      audioEl.src = audioBlobUrl;
+      card.appendChild(audioEl);
+      const a = document.createElement("a"); a.className = "btn-download";
+      const ext = (audioMime || "audio/wav").split("/")[1] || "wav";
+      a.href = audioBlobUrl; a.download = `jeethy-song-${Date.now()}.${ext}`;
+      a.innerHTML = '<i class="fas fa-download"></i> Download Audio';
+      card.appendChild(a);
+    } else {
+      const notice = document.createElement("div");
+      notice.style.cssText = "display:flex;flex-direction:column;gap:8px;padding:10px 14px;font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);border-bottom:1px solid var(--border);";
+      const msg = ttsMessage || "Audio generation is temporarily unavailable â€” your lyrics are ready below. Try again in a few minutes.";
+      notice.innerHTML = `<div style="display:flex;align-items:flex-start;gap:8px;"><i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0;margin-top:2px"></i><span>${escapeHtml(msg)}</span></div>
+        <button onclick="_generateSong()" style="align-self:flex-start;padding:5px 14px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:11px;cursor:pointer;font-weight:600;">
+          <i class="fas fa-rotate-right"></i> Retry Audio
+        </button>`;
+      card.appendChild(notice);
     }
-    if (!audioB64) throw new Error('No audio generated. Please try again.');
-    const raw=atob(audioB64), bytes=new Uint8Array(raw.length);
-    for(let i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i);
-    const audioBlob=new Blob([bytes],{type:audioMime}), audioBlobUrl=URL.createObjectURL(audioBlob);
-    const titleMatch=lyricsText.match(/(?:title|song name)[:\s]+([^\n]+)/i);
-    if (titleMatch) songTitle=titleMatch[1].trim();
-    const card=document.createElement('div'); card.className='song-result-card';
-    card.innerHTML=`<div class="song-result-title"><i class="fas fa-music"></i> ${escapeHtml(songTitle)}<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:auto">${style} · ${voiceHint}</span></div><audio controls preload="auto" style="width:100%;margin-bottom:10px"></audio>${lyricsText?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);max-height:140px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;margin-bottom:10px">${escapeHtml(lyricsText)}</div>`:''}`;
-    card.querySelector('audio').src=audioBlobUrl;
-    const a=document.createElement('a'); a.className='btn-download'; a.href=audioBlobUrl;
-    a.download=`jeethy-song-${Date.now()}.mp3`; a.innerHTML='<i class="fas fa-download"></i> Download Song';
-    card.appendChild(a); resultsEl.innerHTML=''; resultsEl.appendChild(card);
-    document.querySelector('.panel-song .panel-inner-scroll').scrollTo({top:99999,behavior:'smooth'});
+
+    if (lyricsText) {
+      const lyricsWrap = document.createElement("div");
+      lyricsWrap.style.cssText = "background:var(--surface2);border-top:1px solid var(--border);padding:14px;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.75;max-height:320px;overflow-y:auto;";
+      lyricsWrap.textContent = lyricsText;
+      card.appendChild(lyricsWrap);
+    }
+
+    resultsEl.innerHTML = ""; resultsEl.appendChild(card);
+    document.querySelector(".panel-song .panel-inner-scroll")?.scrollTo({ top: 99999, behavior: "smooth" });
     incrementRequest();
-  } catch(err) { resultsEl.innerHTML=`<div class="error-card"><i class="fas fa-circle-exclamation"></i> ${err.message}</div>`; }
-  btn.disabled=false; btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
+  } catch (err) {
+    clearTimeout(retryHintTimer);
+    const isOverload = /overload|high demand|quota|rate.?limit/i.test(err.message || "");
+    resultsEl.innerHTML = `
+      <div class="error-card">
+        <i class="fas fa-circle-exclamation"></i>
+        ${escapeHtml(err.message)}
+        ${isOverload ? "<br/><small style='opacity:.7'>The TTS model is experiencing high demand. Please try again.</small>" : ""}
+        <br/><button onclick="_generateSong()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
+          <i class="fas fa-rotate-right"></i> Try Again
+        </button>
+      </div>`;
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
 }
 
-// ── UTILITIES ────────────────────────────
-function getActiveChip(groupId) { const el=document.querySelector(`#${groupId} .chip.active`); return el?el.textContent.trim():''; }
-function selectChip(el,groupId) { document.querySelectorAll(`#${groupId} .chip`).forEach(c=>c.classList.remove('active')); el.classList.add('active'); }
-function formatTime(d) { return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
-function escapeHtml(text) { return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function showToast(msg,type='info') {
-  const t=document.createElement('div');
-  t.style.cssText=`position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:${type==='error'?'#ef4444':'#10b981'};color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;animation:msgIn 0.3s ease;white-space:nowrap;`;
-  t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2500);
+// â•â• UTILITIES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function getActiveChip(groupId) {
+  const el = document.querySelector(`#${groupId} .chip.active`);
+  return el ? el.textContent.trim() : "";
+}
+function selectChip(el, groupId) {
+  document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove("active"));
+  el.classList.add("active");
+}
+function formatTime(d) { return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+function escapeHtml(t = "") {
+  return String(t)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+function showToast(msg, type = "info") {
+  const t = document.createElement("div");
+  t.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:${type === "error" ? "#ef4444" : "#10b981"};color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:99999;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;animation:msgIn 0.3s ease;`;
+  t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
 }
