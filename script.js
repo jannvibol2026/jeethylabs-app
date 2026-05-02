@@ -918,7 +918,7 @@ async function _generateSong() {
     const header = document.createElement("div"); header.className = "song-result-title";
     const isLyria = audioSource && audioSource.toLowerCase().includes("lyria");
     const sourceBadge = audioSource
-      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "🎵 Lyria / 🔊 TTS"}</span>`
+      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "🎵 Lyria" : "🔊 TTS"}</span>`
       : "";
     header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} . ${escapeHtml(voiceHint)}</span>`;
     card.appendChild(header);
