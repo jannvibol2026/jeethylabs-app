@@ -532,7 +532,8 @@ app.post('/api/image', async (req, res) => {
       ? `${prompt}, style: ${style}${orientHint}`
       : `${prompt}${orientHint}`;
 
-    let IMAGE_MODELS = ['gemini-2.0-flash-preview-image-generation', 'gemini-2.0-flash'];
+    // With:
+    let IMAGE_MODELS = ['imagen-3.0-generate-002', 'imagen-3.0-generate-001', 'gemini-2.0-flash-preview-image-generation', 'gemini-2.0-flash'];
     try {
       const m = classifyModels(await fetchAvailableModels(key));
       if (m.imageModels.length) IMAGE_MODELS = m.imageModels.map(x => x.name);
@@ -543,8 +544,9 @@ app.post('/api/image', async (req, res) => {
       try {
         const img = await withRetry(async () => {
           // Imagen models support native aspectRatio param; flash models use prompt hint only
-          const genConfig = { responseModalities: ['IMAGE', 'TEXT'] };
-          if (/imagen/i.test(model)) genConfig.aspectRatio = mappedRatio;
+        
+        const genConfig = { responseModalities: ['IMAGE', 'TEXT'] };
+          genConfig.aspectRatio = mappedRatio;
 
           const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
