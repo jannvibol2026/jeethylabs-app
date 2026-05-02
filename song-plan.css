@@ -1,6 +1,8 @@
-/* ═══════════════════════════════
-   song-plan.css  —  JeeThy Labs v5
-   ═══════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   song-plan.css  â€”  JeeThy Labs
+   UI styles for Song section plan badges,
+   custom lyrics panel, and result card.
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /* Plan row */
 .song-plan-row {
@@ -9,6 +11,7 @@
   gap: 8px;
   margin-bottom: 12px;
 }
+
 .song-plan-badge {
   font-size: 11px;
   font-weight: 700;
@@ -17,6 +20,7 @@
   border-radius: 99px;
   letter-spacing: .3px;
 }
+
 .song-duration-hint {
   font-size: 12px;
   color: #9ca3af;
@@ -26,6 +30,7 @@
 .custom-lyrics-wrap {
   margin-bottom: 14px;
 }
+
 .form-label-sub {
   font-size: 11px;
   color: #9ca3af;
@@ -33,7 +38,6 @@
   margin-left: 4px;
 }
 
-/* Custom lyrics textarea — resizable on all devices */
 #custom-lyrics-textarea {
   resize: vertical !important;
   min-height: 140px;
@@ -49,6 +53,7 @@
   margin-top: 8px;
   flex-wrap: wrap;
 }
+
 .lyrics-upload-btn {
   cursor: pointer;
   font-size: 12px;
@@ -60,13 +65,16 @@
   display: inline-block;
   transition: background .2s;
 }
+
 .lyrics-upload-btn:hover {
-  background: rgba(124,58,237,.12);
+  background: rgba(124, 58, 237, .12);
 }
+
 .lyrics-or-label {
   font-size: 11px;
   color: #6b7280;
 }
+
 .lyrics-clear-btn {
   margin-left: auto;
   font-size: 11px;
@@ -82,8 +90,8 @@
 
 /* Upgrade notice */
 .upgrade-notice-row {
-  background: rgba(124,58,237,.08);
-  border: 1px solid rgba(124,58,237,.25);
+  background: rgba(124, 58, 237, .08);
+  border: 1px solid rgba(124, 58, 237, .25);
   border-radius: 10px;
   padding: 10px 14px;
   margin-bottom: 14px;
@@ -93,17 +101,19 @@
   align-items: center;
   gap: 8px;
 }
-.pro-text  { color: #7c3aed; }
-.max-text  { color: #d97706; }
+
+.pro-text { color: #7c3aed; }
+.max-text { color: #d97706; }
 
 /* Song result card */
 .song-result-card {
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.07);
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .07);
   border-radius: 14px;
   overflow: hidden;
   margin-bottom: 12px;
 }
+
 .song-result-title {
   display: flex;
   align-items: center;
@@ -113,19 +123,19 @@
   color: #f3f4f6;
   font-size: 14px;
   font-weight: 600;
-  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
 }
 
 /* Lyrics display wrapper */
 .lyrics-display-wrap {
-  background: rgba(255,255,255,.03);
+  background: rgba(255, 255, 255, .03);
   margin: 0 12px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.07);
+  border: 1px solid rgba(255, 255, 255, .07);
   overflow: hidden;
 }
 
-/* Lyrics pre (read mode) */
+/* Lyrics read mode */
 .sp-lyrics-pre {
   padding: 14px 16px;
   font-size: 13px;
@@ -138,13 +148,13 @@
   max-height: 320px;
 }
 
-/* Lyrics editor (edit mode) */
+/* Lyrics edit mode */
 .sp-lyrics-editor {
   width: 100%;
   padding: 14px 16px;
   font-size: 13px;
   color: #d1d5db;
-  background: rgba(255,255,255,.05);
+  background: rgba(255, 255, 255, .05);
   border: none;
   outline: none;
   line-height: 1.9;
@@ -154,24 +164,26 @@
   box-sizing: border-box;
 }
 
-/* Edit button */
+/* Edit / Done button */
 .sp-lyrics-edit-btn {
   transition: all .2s;
 }
+
 .sp-lyrics-edit-btn:hover {
-  background: rgba(255,255,255,.1) !important;
+  background: rgba(255, 255, 255, .1) !important;
 }
 
 /* Upgrade modal */
 .upgrade-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.75);
+  background: rgba(0, 0, 0, .75);
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
 .upgrade-modal-box {
   background: #111827;
   border-radius: 18px;
@@ -179,13 +191,15 @@
   max-width: 320px;
   width: 90%;
   text-align: center;
-  box-shadow: 0 20px 60px rgba(0,0,0,.7);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
 }
+
 .upgrade-modal-title {
   color: #f3f4f6;
   font-size: 17px;
   margin-bottom: 8px;
 }
+
 .upgrade-modal-msg {
   color: #9ca3af;
   font-size: 13px;
@@ -193,7 +207,7 @@
   line-height: 1.6;
 }
 
-/* ── Responsive: Tablet ── */
+/* Tablet */
 @media (min-width: 768px) {
   #custom-lyrics-textarea {
     min-height: 180px;
@@ -212,7 +226,7 @@
   }
 }
 
-/* ── Responsive: Desktop ── */
+/* Desktop */
 @media (min-width: 1024px) {
   #custom-lyrics-textarea {
     min-height: 220px;
