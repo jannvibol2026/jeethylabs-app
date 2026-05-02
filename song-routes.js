@@ -207,11 +207,29 @@ async function generateWithLyria(prompt, style, voice, maxDurationSecs, apiKey) 
     throw new Error("Lyria returned no audio data.");
   }
 
+  /* ── Check if Lyria returned vocal lyrics or just style description ──
+     Lyria often returns instrumentation notes (e.g. "[0:0:] A smooth R&B intro...")
+     instead of actual singable lyrics. Detect and replace with real lyrics. ── */
+  let finalLyrics = lyric;
+  const isStyleDesc = !lyric || /^\[\d+:\d+[:\.]/.test(lyric.trim()) ||
+    /\b(intro|segment|anchored|instrumentation|synthesizer|percussion|melodic|atmospheric|distorted|electric guitar|bass guitar|drum kit|chord|tempo|rhythm section|vocalist-less|no vocal)/i.test(lyric || "");
+
+  if (isStyleDesc) {
+    try {
+      finalLyrics = await generateLyricsWithGemini(
+        `Create a complete ${style} song with ${voice.toLowerCase().includes("female") ? "female" : "male"} vocalist. Theme: ${prompt}. Write full singable vocal lyrics with [Verse 1], [Chorus], [Verse 2], [Bridge] sections. Title on first line as "Title: <name>".`,
+        apiKey
+      );
+    } catch (e) {
+      finalLyrics = lyric; // fallback to original if Gemini fails
+    }
+  }
+
   return {
-    title:       extractTitle(lyric) || `${style} Song`,
+    title:       extractTitle(finalLyrics) || extractTitle(lyric) || `${style} Song`,
     audio:       part.inlineData.data,
     mimeType:    part.inlineData.mimeType || "audio/wav",
-    lyrics:      lyric,
+    lyrics:      finalLyrics,
     audioSource: "Lyria",
   };
 }
