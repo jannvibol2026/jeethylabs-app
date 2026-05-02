@@ -1,6 +1,5 @@
 /* ═══════════════════════════════
-   song-plan.css  —  JeeThy Labs
-   Paste into style.css (end of file)
+   song-plan.css  —  JeeThy Labs v5
    ═══════════════════════════════ */
 
 /* Plan row */
@@ -32,6 +31,14 @@
   color: #9ca3af;
   font-weight: 400;
   margin-left: 4px;
+}
+
+/* Custom lyrics textarea — resizable on all devices */
+#custom-lyrics-textarea {
+  resize: vertical !important;
+  min-height: 140px;
+  line-height: 1.8;
+  font-size: 13px;
 }
 
 /* File upload row */
@@ -89,67 +96,79 @@
 .pro-text  { color: #7c3aed; }
 .max-text  { color: #d97706; }
 
-/* Song result cards */
+/* Song result card */
 .song-result-card {
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.07);
   border-radius: 14px;
-  padding: 16px;
+  overflow: hidden;
   margin-bottom: 12px;
 }
-.song-result-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
 .song-result-title {
-  color: #f3f4f6;
-  font-size: 14px;
-}
-.song-source-badge {
-  font-size: 10px;
-  background: rgba(34,197,94,.12);
-  color: #22c55e;
-  border: 1px solid rgba(34,197,94,.3);
-  padding: 2px 8px;
-  border-radius: 99px;
-}
-.song-lyrics-card {
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: 12px;
-  padding: 14px;
-  max-height: 300px;
-  overflow-y: auto;
-}
-.song-lyrics-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  margin-bottom: 10px;
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
+  padding: 12px 14px 10px;
+  color: #f3f4f6;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,.06);
 }
-.song-lyrics-pre {
+
+/* Lyrics display wrapper */
+.lyrics-display-wrap {
+  background: rgba(255,255,255,.03);
+  margin: 0 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.07);
+  overflow: hidden;
+}
+
+/* Lyrics pre (read mode) */
+.sp-lyrics-pre {
+  padding: 14px 16px;
   font-size: 13px;
   color: #d1d5db;
   white-space: pre-wrap;
-  line-height: 1.8;
+  line-height: 1.9;
   font-family: inherit;
   margin: 0;
+  overflow-y: auto;
+  max-height: 320px;
 }
 
-/* Upgrade modal overlay */
+/* Lyrics editor (edit mode) */
+.sp-lyrics-editor {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: #d1d5db;
+  background: rgba(255,255,255,.05);
+  border: none;
+  outline: none;
+  line-height: 1.9;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 220px;
+  box-sizing: border-box;
+}
+
+/* Edit button */
+.sp-lyrics-edit-btn {
+  transition: all .2s;
+}
+.sp-lyrics-edit-btn:hover {
+  background: rgba(255,255,255,.1) !important;
+}
+
+/* Upgrade modal */
 .upgrade-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.75);
   z-index: 9999;
+  display: flex;
   align-items: center;
   justify-content: center;
 }
@@ -173,37 +192,41 @@
   margin-bottom: 20px;
   line-height: 1.6;
 }
-/* Lyrics textarea resize - allow on all devices */
-#lyricsEditor {
-  resize: vertical;
-  min-height: 180px;
-}
 
-/* Desktop: larger textarea, bigger lyrics area */
+/* ── Responsive: Tablet ── */
 @media (min-width: 768px) {
-  .custom-lyrics-wrap textarea {
-    resize: vertical !important;
-    min-height: 200px;
+  #custom-lyrics-textarea {
+    min-height: 180px;
     font-size: 14px;
   }
-  #lyricsEditor {
-    min-height: 260px;
+  .sp-lyrics-pre {
+    max-height: 400px;
     font-size: 14px;
   }
-  #lyricsPreview {
-    max-height: 400px !important;
-    font-size: 14px !important;
+  .sp-lyrics-editor {
+    min-height: 280px;
+    font-size: 14px;
+  }
+  .song-result-card {
+    border-radius: 16px;
   }
 }
 
+/* ── Responsive: Desktop ── */
 @media (min-width: 1024px) {
-  .custom-lyrics-wrap textarea {
-    min-height: 240px;
+  #custom-lyrics-textarea {
+    min-height: 220px;
+    font-size: 14px;
   }
-  #lyricsEditor {
-    min-height: 320px;
+  .sp-lyrics-pre {
+    max-height: 480px;
+    font-size: 14px;
   }
-  #lyricsPreview {
-    max-height: 500px !important;
+  .sp-lyrics-editor {
+    min-height: 340px;
+    font-size: 14px;
+  }
+  .lyrics-display-wrap {
+    margin: 0 16px 16px;
   }
 }
