@@ -950,51 +950,9 @@ async function _generateSong() {
     }
 
     if (lyricsText) {
-      // â”€â”€ Lyrics header row with Edit button â”€â”€
-      const lyricsHeader = document.createElement("div");
-      lyricsHeader.style.cssText = "display:flex;align-items:center;justify-content:space-between;"
-        + "padding:10px 14px 6px;border-top:1px solid var(--border);";
-      lyricsHeader.innerHTML = `
-        <span style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;">
-          <i class="fas fa-microphone-lines" style="margin-right:5px;color:var(--green)"></i>Lyrics
-        </span>
-        <button class="sp-lyrics-edit-btn" onclick="toggleLyricsEdit(this)"
-          style="font-size:11px;padding:4px 12px;border-radius:20px;
-          border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);
-          color:#d1d5db;cursor:pointer;display:inline-flex;align-items:center;gap:5px;
-          transition:all .2s;">
-          <i class="fas fa-pen"></i> Edit
-        </button>`;
-      card.appendChild(lyricsHeader);
-
-      // â”€â”€ Lyrics wrapper â”€â”€
       const lyricsWrap = document.createElement("div");
-      lyricsWrap.className = "lyrics-display-wrap";
-      lyricsWrap.style.cssText = "background:rgba(255,255,255,.03);margin:0 12px 14px;"
-        + "border-radius:10px;border:1px solid rgba(255,255,255,.07);overflow:hidden;";
-
-      // Display pre (read mode)
-      const lyricsPre = document.createElement("pre");
-      lyricsPre.className = "sp-lyrics-pre";
-      lyricsPre.style.cssText = "padding:14px 16px;font-size:13px;color:#d1d5db;"
-        + "white-space:pre-wrap;line-height:1.9;font-family:inherit;margin:0;"
-        + "overflow-y:auto;max-height:320px;";
-      lyricsPre.textContent = lyricsText;
-
-      // Editor textarea (edit mode - hidden by default)
-      const lyricsEditor = document.createElement("textarea");
-      lyricsEditor.className = "sp-lyrics-editor";
-      lyricsEditor.value = lyricsText;
-      lyricsEditor.style.cssText = "display:none;width:100%;padding:14px 16px;font-size:13px;"
-        + "color:#d1d5db;background:rgba(255,255,255,.05);border:none;outline:none;"
-        + "line-height:1.9;font-family:inherit;resize:vertical;"
-        + "min-height:220px;box-sizing:border-box;";
-      lyricsEditor.addEventListener("input", function() {
-        lyricsPre.textContent = this.value;
-      });
-
-      lyricsWrap.appendChild(lyricsPre);
-      lyricsWrap.appendChild(lyricsEditor);
+      lyricsWrap.style.cssText = "background:var(--surface2);border-top:1px solid var(--border);padding:14px;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.75;max-height:320px;overflow-y:auto;";
+      lyricsWrap.textContent = lyricsText;
       card.appendChild(lyricsWrap);
     }
 
@@ -1015,33 +973,6 @@ async function _generateSong() {
       </div>`;
   }
   btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
-}
-
-/* --- toggleLyricsEdit - Edit/Done button handler --- */
-function toggleLyricsEdit(btn) {
-  const card    = btn.closest(".song-result-card") || document;
-  const preview = card.querySelector(".sp-lyrics-pre");
-  const editor  = card.querySelector(".sp-lyrics-editor");
-  if (!preview || !editor) return;
-  const isEditing = editor.style.display !== "none";
-  if (isEditing) {
-    preview.textContent  = editor.value;
-    preview.style.display = "block";
-    editor.style.display  = "none";
-    btn.innerHTML         = '<i class="fas fa-pen"></i> Edit';
-    btn.style.borderColor = "rgba(255,255,255,.15)";
-    btn.style.background  = "rgba(255,255,255,.06)";
-    btn.style.color       = "#d1d5db";
-  } else {
-    editor.value          = preview.textContent;
-    preview.style.display = "none";
-    editor.style.display  = "block";
-    editor.focus();
-    btn.innerHTML         = '<i class="fas fa-check"></i> Done';
-    btn.style.borderColor = "var(--green,#10b981)";
-    btn.style.background  = "rgba(16,185,129,.12)";
-    btn.style.color       = "var(--green,#10b981)";
-  }
 }
 
 // ===================== UTILITIES =====================
