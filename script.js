@@ -35,7 +35,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   initSwipe();
   renderPlanBadge();
   await fetchOwnerKey();
-  await fetchAvailableModels();
   await checkExistingSession();
   if (!currentUser) enforceAuthGate();
 });
