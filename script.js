@@ -735,7 +735,7 @@ async function _generateImage() {
       const imgRatioCss = RATIO_CSS_MAP[ratio] || "1/1";
       const img = document.createElement("img"); img.src = blobUrl; img.alt = `Generated ${i + 1}`;
       img.style.cssText = `width:100%;aspect-ratio:${imgRatioCss};object-fit:cover;border-radius:10px;cursor:pointer;display:block;`;
-      img.onclick = () => openFullscreen(blobUrl);
+      img.onclick = () => openFullscreen(blobUrl, ratio);
       grid.appendChild(img);
     });
     card.appendChild(grid);
@@ -767,12 +767,51 @@ async function _generateImage() {
   btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Image';
 }
 
-function openFullscreen(src) {
+function openFullscreen(src, ratio) {
+  const RATIO_CSS_MAP = { "1:1":"1/1", "9:16":"9/16", "16:9":"16/9" };
+  const ratioCss = RATIO_CSS_MAP[ratio] || null;
+
   const ov = document.createElement("div");
-  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:pointer;";
-  const img = document.createElement("img"); img.src = src;
-  img.style.cssText = "max-width:100%;max-height:100%;border-radius:12px;object-fit:contain;";
-  ov.appendChild(img); ov.onclick = () => ov.remove(); document.body.appendChild(ov);
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;";
+
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "position:relative;display:flex;align-items:center;justify-content:center;max-width:100%;max-height:100%;";
+
+  const img = document.createElement("img");
+  img.src = src;
+  // Apply correct aspect-ratio so fullscreen matches original generation
+  if (ratioCss) {
+    img.style.cssText = `aspect-ratio:${ratioCss};object-fit:contain;border-radius:14px;max-height:90vh;max-width:92vw;display:block;box-shadow:0 8px 48px rgba(0,0,0,.6);`;
+  } else {
+    img.style.cssText = "max-width:92vw;max-height:90vh;border-radius:14px;object-fit:contain;display:block;box-shadow:0 8px 48px rgba(0,0,0,.6);";
+  }
+
+  // Close button
+  const closeBtn = document.createElement("button");
+  closeBtn.innerHTML = '<i class="fas fa-xmark"></i>';
+  closeBtn.style.cssText = "position:fixed;top:16px;right:16px;background:rgba(255,255,255,.12);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);z-index:100000;transition:.2s;";
+  closeBtn.onmouseenter = () => closeBtn.style.background = "rgba(255,255,255,.22)";
+  closeBtn.onmouseleave = () => closeBtn.style.background = "rgba(255,255,255,.12)";
+  closeBtn.onclick = (e) => { e.stopPropagation(); ov.remove(); };
+
+  // Ratio badge
+  if (ratio) {
+    const badge = document.createElement("div");
+    badge.textContent = ratio;
+    badge.style.cssText = "position:fixed;top:16px;left:16px;background:rgba(124,58,237,.75);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;backdrop-filter:blur(8px);z-index:100000;letter-spacing:.4px;";
+    ov.appendChild(badge);
+  }
+
+  wrap.appendChild(img);
+  ov.appendChild(closeBtn);
+  ov.appendChild(wrap);
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+
+  // Close on Escape key
+  const onKey = (e) => { if (e.key === "Escape") { ov.remove(); document.removeEventListener("keydown", onKey); } };
+  document.addEventListener("keydown", onKey);
+
+  document.body.appendChild(ov);
 }
 
 // â•â• SONG GENERATE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
