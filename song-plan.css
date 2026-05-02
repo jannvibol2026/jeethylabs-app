@@ -173,3 +173,37 @@
   margin-bottom: 20px;
   line-height: 1.6;
 }
+/* Lyrics textarea resize - allow on all devices */
+#lyricsEditor {
+  resize: vertical;
+  min-height: 180px;
+}
+
+/* Desktop: larger textarea, bigger lyrics area */
+@media (min-width: 768px) {
+  .custom-lyrics-wrap textarea {
+    resize: vertical !important;
+    min-height: 200px;
+    font-size: 14px;
+  }
+  #lyricsEditor {
+    min-height: 260px;
+    font-size: 14px;
+  }
+  #lyricsPreview {
+    max-height: 400px !important;
+    font-size: 14px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .custom-lyrics-wrap textarea {
+    min-height: 240px;
+  }
+  #lyricsEditor {
+    min-height: 320px;
+  }
+  #lyricsPreview {
+    max-height: 500px !important;
+  }
+}
