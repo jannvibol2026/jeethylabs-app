@@ -546,7 +546,8 @@ app.post('/api/image', async (req, res) => {
           // Imagen models support native aspectRatio param; flash models use prompt hint only
         
         const genConfig = { responseModalities: ['IMAGE', 'TEXT'] };
-          genConfig.aspectRatio = mappedRatio;
+          // ✅ ក្រោយ (ត្រឹមត្រូវ — Imagen only):
+         if (/imagen/i.test(model)) genConfig.aspectRatio = mappedRatio;
 
           const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
