@@ -516,11 +516,21 @@ function cleanLyricsText(raw) {
 app.post('/api/image', async (req, res) => {
   try {
     const key = geminiKey();
-    const { prompt, style='' } = req.body;
+    const { prompt, style='', aspectRatio='1:1' } = req.body;
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
+    // Map and validate aspect ratio
+    const VALID_RATIOS = { '1:1':'1:1', '9:16':'9:16', '16:9':'16:9' };
+    const mappedRatio  = VALID_RATIOS[aspectRatio] || '1:1';
+
+    // Add orientation hint to prompt so even non-Imagen models try to respect ratio
+    const orientHint =
+      mappedRatio === '9:16' ? ', portrait orientation, vertical composition, tall image' :
+      mappedRatio === '16:9' ? ', landscape orientation, wide composition, horizontal image' : '';
+
     const fullPrompt = style && style.toLowerCase() !== 'none'
-      ? `${prompt}, style: ${style}` : prompt;
+      ? `${prompt}, style: ${style}${orientHint}`
+      : `${prompt}${orientHint}`;
 
     let IMAGE_MODELS = ['gemini-2.0-flash-preview-image-generation', 'gemini-2.0-flash'];
     try {
@@ -532,11 +542,15 @@ app.post('/api/image', async (req, res) => {
     for (const model of IMAGE_MODELS) {
       try {
         const img = await withRetry(async () => {
+          // Imagen models support native aspectRatio param; flash models use prompt hint only
+          const genConfig = { responseModalities: ['IMAGE', 'TEXT'] };
+          if (/imagen/i.test(model)) genConfig.aspectRatio = mappedRatio;
+
           const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [{ text: fullPrompt }] }],
-              generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+              generationConfig: genConfig,
             }),
           });
           const d = await safeJson(r, `/api/image ${model}`);
@@ -545,7 +559,7 @@ app.post('/api/image', async (req, res) => {
             if (p.inlineData?.data) return p.inlineData;
           throw new Error(`No image from ${model}`);
         }, { maxAttempts:3, baseDelayMs:1500, label:`image/${model}` });
-        return res.json({ data: img.data, mimeType: img.mimeType || 'image/png' });
+        return res.json({ data: img.data, mimeType: img.mimeType || 'image/png', aspectRatio: mappedRatio });
       } catch (err) { lastErr = err; }
     }
     res.status(500).json({ error: lastErr?.message || 'Image generation failed.' });
@@ -636,10 +650,23 @@ app.post('/api/song', auth, async (req, res) => {
     } else {
       musicPrompt = [
         `Create a complete original ${style} song approximately ${planCfg.durationHint} long.`,
-        `Theme: ${prompt}`,
+        `Theme/Story: ${prompt}`,
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Song structure: ${planCfg.structureHint}.`,
-        `Language: same as the theme (supports Khmer, English, and others).`,
+        ``,
+        `RHYMING RULES — YOU MUST FOLLOW STRICTLY:`,
+        `- Every 2 or 4 lines MUST end-rhyme using AABB or ABAB pattern.`,
+        `- If Khmer (ភាសាខ្មែរ): use beautiful Khmer end-rhyme (ជួនពាក្យ) that sounds natural when sung.`,
+        `  Khmer rhyme examples:`,
+        `    ស្រុកស្រែស្នេហ៍ខ្ញុំ / ក្រមុំតូចធំ  (ខ្ញុំ rhymes with ធំ)`,
+        `    នាំគ្នាទៅវត្ត / ម្តាយអើយកុំឃាត់  (វត្ត rhymes with ឃាត់)`,
+        `  Every line must have a natural Khmer end-sound that rhymes with the paired line.`,
+        `- If English: clear end-rhyme per couplet; internal rhyme is welcome bonus.`,
+        `- NEVER write 2+ consecutive lines with zero rhyme. Every pair must rhyme.`,
+        `- If Rap/Hip-hop style: use rapid rhyme flow, multi-syllable rhymes per line.`,
+        `- If Remix style: modern beat structure, catchy hook that repeats with rhyme.`,
+        ``,
+        `Language: auto-detect from theme (Khmer / English / mixed). Match the theme language exactly.`,
         `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
         `Target duration: ${planCfg.durationHint}.`,
         planKey === 'free'
