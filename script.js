@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 function enforceAuthGate() {
   const chatInput   = document.getElementById("chatInput");
   const chatSendBtn = document.getElementById("chatSendBtn");
-  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = "ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Sign in to start chatting..."; }
+  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = "🔒 Sign in to start chatting..."; }
   if (chatSendBtn) chatSendBtn.disabled = true;
   showPanelOverlay("panel-chat",  "chat");
   showPanelOverlay("panel-image", "image");
@@ -261,7 +261,7 @@ async function submitSignup(e) {
       of.style.display = "flex";
       document.getElementById("authOtpInput").value = "";
       startResendTimer(60);
-      showAuthMsg("Code ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚Â¼ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚Â¾! ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚Â¼ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€¹Ã…â€œÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ Email.", "success");
+      showAuthMsg("Code verified!‚ Email.", "success");
     } else { showAuthMsg(data.error || "Failed to send code.", "error"); }
   } catch (ex) { showAuthMsg("Network error. Check connection.", "error"); }
   btn.disabled = false;
@@ -300,7 +300,7 @@ async function resendOtp() {
       credentials: "include", body: JSON.stringify(_otpPending)
     });
     const data = await res.json();
-    if (res.ok) { showAuthMsg("Code ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€¹Ã…â€œÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚Â¼ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã‚Â¡Ãƒâ€¦Ã‚Â¾Ãƒâ€šÃ‚Â¾!", "success"); startResendTimer(60); }
+    if (res.ok) { showAuthMsg("Code sent!", "success"); startResendTimer(60); }
     else showAuthMsg(data.error || "Failed to resend.", "error");
   } catch (ex) { showAuthMsg("Network error.", "error"); }
 }
@@ -539,7 +539,7 @@ async function confirmPlan() {
     updateNavAvatar(currentUser);
     syncProfileSheet();
     closePlanModal();
-    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã‚Â½ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°", "success");
+    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! 🎉", "success");
   } catch (err) {
     showToast(err.message || "Network error.", "error");
   } finally {
@@ -725,7 +725,7 @@ async function _generateImage() {
   }
 
   try {
-    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""}ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ (up to 3ÃƒÆ’Ã¢â‚¬â€ retries)</div></div>`;
+    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""}images... (up to 3 retries)</div></div>`;
     const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne()));
     const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
     const errors  = results.filter(r => r.status === "rejected").map(r => r.reason?.message);
@@ -774,7 +774,7 @@ async function _generateImage() {
       <div class="error-card">
         <i class="fas fa-circle-exclamation"></i>
         ${escapeHtml(err.message)}
-        ${isOverload ? "<br/><small style='opacity:.7'>AI is busy ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â please wait and try again.</small>" : ""}
+        ${isOverload ? "<br/><small style='opacity:.7'>AI is busy — please wait</small>" : ""}
         <br/><button onclick="_generateImage()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--accent,#7c3aed);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Try Again
         </button>
@@ -895,11 +895,11 @@ async function _generateSong() {
   const btn       = document.getElementById("songGenBtn");
   const resultsEl = document.getElementById("songResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
-  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with LyriaÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ (~20ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ40s)</div></div>`;
+  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with Lyria... (~20-40s)</div></div>`;
 
   const retryHintTimer = setTimeout(() => {
     const lbl = document.getElementById("songLoadingLabel");
-    if (lbl) lbl.textContent = "Lyria is composingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ if slow, falling back to TTS ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â please wait";
+    if (lbl) lbl.textContent = "Lyria is composing..., if slow, falling back to TTS, please wait";
   }, 20000);
 
   try {
@@ -918,9 +918,9 @@ async function _generateSong() {
     const header = document.createElement("div"); header.className = "song-result-title";
     const isLyria = audioSource && audioSource.toLowerCase().includes("lyria");
     const sourceBadge = audioSource
-      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸Ãƒâ€¦Ã‚Â½Ãƒâ€šÃ‚Âµ Lyria" : "ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€¦  TTS"}</span>`
+      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "🎵 Lyria / 🔊 TTS"}</span>`
       : "";
-    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ${escapeHtml(voiceHint)}</span>`;
+    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} . ${escapeHtml(voiceHint)}</span>`;
     card.appendChild(header);
 
     if (audioB64) {
@@ -941,7 +941,7 @@ async function _generateSong() {
     } else {
       const notice = document.createElement("div");
       notice.style.cssText = "display:flex;flex-direction:column;gap:8px;padding:10px 14px;font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);border-bottom:1px solid var(--border);";
-      const msg = ttsMessage || "Audio generation is temporarily unavailable ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â your lyrics are ready below. Try again in a few minutes.";
+      const msg = ttsMessage || "Audio generation is temporarily unavailable, your lyrics are ready below. Try again in a few minutes.";
       notice.innerHTML = `<div style="display:flex;align-items:flex-start;gap:8px;"><i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0;margin-top:2px"></i><span>${escapeHtml(msg)}</span></div>
         <button onclick="_generateSong()" style="align-self:flex-start;padding:5px 14px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:11px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Retry Audio
