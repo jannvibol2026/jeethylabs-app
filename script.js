@@ -749,12 +749,15 @@ async function _generateImage() {
     const grid = document.createElement("div"); grid.className = `img-grid qty-${imgs.length}`;
 
     blobs.forEach((b, i) => {
+      // Container enforces aspect-ratio + clips via overflow:hidden (CSS cover approach)
+      const wrap = document.createElement("div");
+      wrap.style.cssText = `position:relative;width:100%;aspect-ratio:${imgRatioCss};overflow:hidden;border-radius:10px;cursor:pointer;`;
+      wrap.onclick = () => openFullscreen(b.blobUrl, ratio);
       const img = document.createElement("img");
-      img.src = b.blobUrl; img.alt = `Generated ${i + 1}`;
-      // = object-fit:cover fills the ratio frame cleanly  zooms to fill, no bars =
-      img.style.cssText = `width:100%;aspect-ratio:${imgRatioCss};object-fit:cover;border-radius:10px;cursor:pointer;display:block;`;
-      img.onclick = () => openFullscreen(b.blobUrl, ratio);
-      grid.appendChild(img);
+      img.src = b.blobUrl; img.alt = `Generated image ${i + 1}`;
+      img.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block;`;
+      wrap.appendChild(img);
+      grid.appendChild(wrap);
     });
     card.appendChild(grid);
 
