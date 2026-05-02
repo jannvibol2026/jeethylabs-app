@@ -503,7 +503,7 @@ function closePlanModal() {
 function selectPlan(plan) {
   document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === plan));
   const ps = document.getElementById("proSettingsInModal");
-  if (ps) ps.style.display = plan === "pro" ? "block" : "none";
+  if (ps) ps.style.display = (plan === "pro" || plan === "max") ? "block" : "none";
 }
 
 // ================ confirmPlan (FIXED) ================
