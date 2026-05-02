@@ -115,13 +115,32 @@ router.post("/song", optionalAuth, async (req, res) => {
   /* ── Build generation prompt ── */
   const voiceHint    = voice.toLowerCase().includes("female") ? "female vocalist" : "male vocalist";
   const durationHint = config.durationHint;
-  const songPrompt   = customLyrics
-    ? `Create a ${style} song with ${voiceHint}. Use these exact lyrics:\n\n${customLyrics}`
-    : `Create a complete ${style} song with ${voiceHint} voice. Theme: ${prompt}. Target duration: ${durationHint}. Include verse, chorus, bridge. Write full lyrics and generate the music.`;
+
+  /* ── Pre-generate vocal lyrics with Gemini first ──
+     Lyria returns style/instrumentation descriptions, not real vocal lyrics.
+     We always generate real lyrics first, then use them for both Lyria and TTS. ── */
+  const lyricsPrompt = customLyrics
+    ? `You are a professional songwriter. Write the full vocal lyrics for a ${style} song with ${voiceHint}. Use these exact lyrics as the base and format them cleanly with sections:\n\n${customLyrics}`
+    : `You are a professional songwriter. Write complete vocal lyrics for a ${style} song with ${voiceHint}. Theme: ${prompt}. Duration: ${durationHint}.\n\nFormat:\nTitle: <song name>\n\n[Verse 1]\n...\n\n[Chorus]\n...\n\n[Verse 2]\n...\n\n[Bridge]\n...\n\n[Outro]\n...\n\nWrite only the lyrics — no explanations, no descriptions.`;
+
+  let preGenLyrics = null;
+  try {
+    preGenLyrics = await generateLyricsWithGemini(lyricsPrompt, GEMINI_API_KEY);
+  } catch (e) {
+    console.warn("[song] Pre-gen lyrics failed:", e.message);
+  }
+
+  const songPrompt = preGenLyrics
+    ? `Create a ${style} song with ${voiceHint}. Sing these lyrics:\n\n${preGenLyrics}`
+    : (customLyrics
+        ? `Create a ${style} song with ${voiceHint}. Use these exact lyrics:\n\n${customLyrics}`
+        : `Create a complete ${style} song with ${voiceHint} voice. Theme: ${prompt}. Target duration: ${durationHint}. Include verse, chorus, bridge.`);
 
   /* ── Step 1: Try Lyria 3 Pro ── */
   try {
     const result = await generateWithLyria(songPrompt, style, voice, config.maxDuration, GEMINI_API_KEY);
+    /* Always return pre-generated lyrics (real vocals), not Lyria style description */
+    result.lyrics = preGenLyrics || result.lyrics;
     return res.json(result);
   } catch (lyriaErr) {
     console.warn("[song] Lyria failed:", lyriaErr.message, "→ trying TTS fallback");
@@ -129,7 +148,7 @@ router.post("/song", optionalAuth, async (req, res) => {
 
   /* ── Step 2: Generate lyrics with Gemini, then TTS ── */
   try {
-    const lyricsText = await generateLyricsWithGemini(songPrompt, GEMINI_API_KEY);
+    const lyricsText = preGenLyrics || await generateLyricsWithGemini(songPrompt, GEMINI_API_KEY);
     const ttsResult  = await generateTTS(lyricsText, voice, GEMINI_API_KEY);
 
     if (ttsResult.audio) {
