@@ -122,7 +122,8 @@ async function _generateSong() {
 
   const prompt = (document.getElementById("songPrompt")?.value || "").trim();
   const customLyricsEl = document.getElementById("custom-lyrics-textarea");
-  const customLyrics   = (customLyricsEl?.value || "").trim();
+  const customLyrics   = (customLyricsEl?.value || window._spRegenLyrics || "").trim();
+  if (window._spRegenLyrics) window._spRegenLyrics = null; /* clear after use */
 
   if (!prompt && !customLyrics) {
     if (typeof showToast === "function") showToast("Please enter a song description", "error");
@@ -245,13 +246,20 @@ async function _generateSong() {
 
     /* ── Lyrics section ── */
     if (lyricsText) {
+      /* Strip timestamp tags like [0:00], [0:00.00], [verse], [chorus] etc for clean display */
+      const _cleanLyrics = (txt) => txt
+        .replace(/\[\d+:\d+(?:\.\d+)?\]/g, "")   /* [0:00] [1:23.45] */
+        .replace(/\[\d+\.\d+,\d+\.\d+\]/g, "") /* [0.00,1.23] */
+        .trim();
+      const cleanedLyrics = _cleanLyrics(lyricsText);
+
       /* Lyrics header row */
       const lyricsHeader = document.createElement("div");
       lyricsHeader.style.cssText = "display:flex;align-items:center;justify-content:space-between;"
         + "padding:10px 14px 6px;border-top:1px solid var(--border);";
       lyricsHeader.innerHTML = `
         <span style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;">
-          <i class="fas fa-microphone-lines" style="margin-right:5px;color:var(--green)"></i>Lyrics
+          <i class="fas fa-microphone-lines" style="margin-right:5px;color:var(--green,#10b981)"></i>Lyrics
         </span>
         <button class="sp-lyrics-edit-btn" onclick="toggleLyricsEdit(this)"
           style="font-size:11px;padding:4px 12px;border-radius:20px;
@@ -268,18 +276,18 @@ async function _generateSong() {
       lyricsWrap.style.cssText = "background:rgba(255,255,255,.03);margin:0 12px 14px;"
         + "border-radius:10px;border:1px solid rgba(255,255,255,.07);overflow:hidden;";
 
-      /* Display <pre> */
+      /* Display <pre> — shows cleaned lyrics */
       const lyricsPre = document.createElement("pre");
       lyricsPre.className = "sp-lyrics-pre";
       lyricsPre.style.cssText = "padding:14px 16px;font-size:13px;color:#d1d5db;"
         + "white-space:pre-wrap;line-height:1.9;font-family:inherit;margin:0;"
         + "overflow-y:auto;max-height:320px;";
-      lyricsPre.textContent = lyricsText;
+      lyricsPre.textContent = cleanedLyrics;
 
-      /* Edit <textarea> */
+      /* Edit <textarea> — editable, hidden by default */
       const lyricsEditor = document.createElement("textarea");
       lyricsEditor.className = "sp-lyrics-editor";
-      lyricsEditor.value = lyricsText;
+      lyricsEditor.value = cleanedLyrics;
       lyricsEditor.style.cssText = "display:none;width:100%;padding:14px 16px;font-size:13px;"
         + "color:#d1d5db;background:rgba(255,255,255,.05);border:none;outline:none;"
         + "line-height:1.9;font-family:inherit;resize:vertical;"
@@ -291,6 +299,33 @@ async function _generateSong() {
       lyricsWrap.appendChild(lyricsPre);
       lyricsWrap.appendChild(lyricsEditor);
       card.appendChild(lyricsWrap);
+
+      /* Regenerate footer — shown when in edit mode */
+      const regenFooter = document.createElement("div");
+      regenFooter.className = "sp-regen-footer";
+      regenFooter.style.cssText = "display:none;padding:8px 14px 14px;";
+      regenFooter.innerHTML = `
+        <button class="sp-regen-btn"
+          style="width:100%;padding:9px 16px;border-radius:20px;border:none;cursor:pointer;font-size:13px;
+          font-weight:600;background:linear-gradient(90deg,var(--green,#10b981),#059669);
+          color:#fff;display:flex;align-items:center;justify-content:center;gap:7px;
+          transition:opacity .2s;">
+          <i class="fas fa-wand-magic-sparkles"></i> Regenerate with these Lyrics
+        </button>`;
+      regenFooter.querySelector(".sp-regen-btn").addEventListener("click", function() {
+        const editedLyrics = lyricsEditor.value.trim() || lyricsPre.textContent.trim();
+        if (!editedLyrics) return;
+        /* Put lyrics into custom-lyrics-textarea so _generateSong picks it up */
+        const customTA = document.getElementById("custom-lyrics-textarea");
+        if (customTA) {
+          customTA.value = editedLyrics;
+        } else {
+          /* fallback: store globally */
+          window._spRegenLyrics = editedLyrics;
+        }
+        _generateSong();
+      });
+      card.appendChild(regenFooter);
     }
 
     if (resultsEl) { resultsEl.innerHTML = ""; resultsEl.appendChild(card); }
@@ -326,6 +361,7 @@ function toggleLyricsEdit(btn) {
   const wrap    = btn.closest(".song-result-card") || document;
   const preview = wrap.querySelector(".sp-lyrics-pre");
   const editor  = wrap.querySelector(".sp-lyrics-editor");
+  const footer  = wrap.querySelector(".sp-regen-footer");
   if (!preview || !editor) return;
 
   const isEditing = editor.style.display !== "none";
@@ -335,6 +371,7 @@ function toggleLyricsEdit(btn) {
     preview.textContent     = editor.value;
     preview.style.display   = "block";
     editor.style.display    = "none";
+    if (footer) footer.style.display = "none";
     btn.innerHTML           = '<i class="fas fa-pen"></i> Edit';
     btn.style.borderColor   = "rgba(255,255,255,.15)";
     btn.style.background    = "rgba(255,255,255,.06)";
@@ -345,6 +382,7 @@ function toggleLyricsEdit(btn) {
     preview.style.display   = "none";
     editor.style.display    = "block";
     editor.focus();
+    if (footer) footer.style.display = "block";
     btn.innerHTML           = '<i class="fas fa-check"></i> Done';
     btn.style.borderColor   = "var(--green,#10b981)";
     btn.style.background    = "rgba(16,185,129,.12)";
