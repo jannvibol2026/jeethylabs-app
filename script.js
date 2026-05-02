@@ -441,7 +441,7 @@ function syncProfileSheet() {
   const pct   = Math.min(100, Math.round(used / limit * 100));
   if (u) {
     const init = (u.name || "U").charAt(0).toUpperCase();
-    const set  = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"; };
+    const set  = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || "—"; };
     set("ppHeroName",   u.name);
     set("ppHeroEmail",  u.email);
     set("ppInfoName",   u.name);
@@ -627,7 +627,7 @@ async function _sendChat() {
     incrementRequest();
   } catch (err) {
     removeTyping(typingId);
-    appendMessage("bot", "ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡ ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¸Ãƒâ€šÃ‚Â " + err.message);
+    appendMessage("bot", "⚠ " + err.message);
   }
   isChatLoading = false;
   if (sendBtn) sendBtn.disabled = false;
@@ -981,7 +981,7 @@ async function _generateSong() {
         + "overflow-y:auto;max-height:320px;";
       lyricsPre.textContent = lyricsText;
 
-      // Editor textarea (edit mode â€” hidden by default)
+      // Editor textarea (edit mode - hidden by default)
       const lyricsEditor = document.createElement("textarea");
       lyricsEditor.className = "sp-lyrics-editor";
       lyricsEditor.value = lyricsText;
@@ -1017,7 +1017,7 @@ async function _generateSong() {
   btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
 }
 
-/* â”€â”€â”€ toggleLyricsEdit â€” Edit/Done button handler â”€â”€â”€ */
+/* --- toggleLyricsEdit - Edit/Done button handler --- */
 function toggleLyricsEdit(btn) {
   const card    = btn.closest(".song-result-card") || document;
   const preview = card.querySelector(".sp-lyrics-pre");
