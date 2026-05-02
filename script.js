@@ -748,16 +748,13 @@ async function _generateImage() {
     const card = document.createElement("div"); card.className = "img-result-card";
     const grid = document.createElement("div"); grid.className = `img-grid qty-${imgs.length}`;
 
-    blobs.forEach((b, i) => {
-      // Container enforces aspect-ratio + clips via overflow:hidden (CSS cover approach)
-      const wrap = document.createElement("div");
-      wrap.style.cssText = `position:relative;width:100%;aspect-ratio:${imgRatioCss};overflow:hidden;border-radius:10px;cursor:pointer;`;
-      wrap.onclick = () => openFullscreen(b.blobUrl, ratio);
+    renderedUrls.forEach((url, i) => {
       const img = document.createElement("img");
-      img.src = b.blobUrl; img.alt = `Generated image ${i + 1}`;
-      img.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block;`;
-      wrap.appendChild(img);
-      grid.appendChild(wrap);
+      img.src = url;
+      img.alt = `Generated image ${i + 1}`;
+      img.style.cssText = "width:100%;height:auto;display:block;border-radius:10px;cursor:pointer;";
+      img.onclick = () => openFullscreen(url, ratio);
+      grid.appendChild(img);
     });
     card.appendChild(grid);
 
@@ -794,38 +791,28 @@ function renderCoverCanvas(blobUrl, ratioStr) {
   return new Promise((resolve) => {
     const RATIO_MAP = { "1:1": 1, "9:16": 9/16, "16:9": 16/9 };
     const targetRatio = RATIO_MAP[ratioStr] || 1;
-
     const img = new Image();
     img.onload = () => {
       const srcW = img.naturalWidth;
       const srcH = img.naturalHeight;
-      const srcRatio = srcW / srcH;
-
-      // Canvas size: keep source dimension on the longer axis, derive the other
       let canvasW, canvasH;
       if (targetRatio >= 1) {
-        canvasW = srcW > srcH ? srcW : srcH;
+        canvasW = Math.max(srcW, srcH);
         canvasH = Math.round(canvasW / targetRatio);
       } else {
-        canvasH = srcW > srcH ? srcW : srcH;
+        canvasH = Math.max(srcW, srcH);
         canvasW = Math.round(canvasH * targetRatio);
       }
-
-      // Cover: scale image so it fills entire canvas, then center
-      const scaleX = canvasW / srcW;
-      const scaleY = canvasH / srcH;
-      const scale  = Math.max(scaleX, scaleY);
-      const drawW  = Math.round(srcW * scale);
-      const drawH  = Math.round(srcH * scale);
-      const dx     = Math.round((canvasW - drawW) / 2);
-      const dy     = Math.round((canvasH - drawH) / 2);
-
+      const scale = Math.max(canvasW / srcW, canvasH / srcH);
+      const drawW = Math.round(srcW * scale);
+      const drawH = Math.round(srcH * scale);
+      const dx = Math.round((canvasW - drawW) / 2);
+      const dy = Math.round((canvasH - drawH) / 2);
       const canvas = document.createElement("canvas");
-      canvas.width  = canvasW;
+      canvas.width = canvasW;
       canvas.height = canvasH;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, dx, dy, drawW, drawH);
-      canvas.toBlob(blob => resolve(blob ? URL.createObjectURL(blob) : blobUrl), "image/jpeg", 0.95);
+      canvas.getContext("2d").drawImage(img, dx, dy, drawW, drawH);
+      canvas.toBlob(b => resolve(b ? URL.createObjectURL(b) : blobUrl), "image/jpeg", 0.95);
     };
     img.onerror = () => resolve(blobUrl);
     img.src = blobUrl;
