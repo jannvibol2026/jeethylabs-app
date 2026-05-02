@@ -374,6 +374,31 @@ function _spToast(msg, ms) {
   document.body.appendChild(t);
   setTimeout(() => t.remove(), ms);
 }
+function toggleLyricsEdit(btn) {
+  const preview = document.getElementById("lyricsPreview");
+  const editor  = document.getElementById("lyricsEditor");
+  if (!preview || !editor) return;
+  const isEditing = editor.style.display !== "none";
+  if (isEditing) {
+    // Save mode
+    preview.textContent = editor.value;
+    preview.style.display  = "block";
+    editor.style.display   = "none";
+    btn.innerHTML = '<i class="fas fa-pen"></i> Edit';
+    btn.style.borderColor  = "rgba(255,255,255,.15)";
+    btn.style.background   = "rgba(255,255,255,.06)";
+  } else {
+    // Edit mode
+    editor.value = preview.textContent;
+    preview.style.display  = "none";
+    editor.style.display   = "block";
+    editor.focus();
+    btn.innerHTML = '<i class="fas fa-check"></i> Done';
+    btn.style.borderColor  = "var(--green,#10b981)";
+    btn.style.background   = "rgba(16,185,129,.12)";
+    btn.style.color        = "var(--green,#10b981)";
+  }
+}
 
 /* ─────────────────────────────────────────────────────────
    Auto-hook into goToPanel (Song tab = index 2)
