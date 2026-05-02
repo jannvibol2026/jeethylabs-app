@@ -58,7 +58,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 /* FORM */
 .form-group{display:flex;flex-direction:column;gap:6px}
 .form-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)}
-.form-textarea{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:inherit;font-size:14px;resize:none;line-height:1.55;outline:none;transition:border-color .2s}
+.form-textarea{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:inherit;font-size:14px;resize: vertical;line-height:1.55;outline:none;transition:border-color .2s}
 .form-textarea:focus{border-color:rgba(168,85,247,.5)}
 .form-input{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;width:100%;transition:border-color .2s}
 .form-input:focus{border-color:rgba(168,85,247,.5)}
