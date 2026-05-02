@@ -288,13 +288,50 @@ async function _generateSong_extended() {
 
     // Lyrics display
     if (lyricsText) {
-      const lyricsWrap = document.createElement("div");
-      lyricsWrap.style.cssText = "background:var(--surface2);border-top:1px solid var(--border);"
-        + "padding:14px;font-size:13px;color:var(--text2);white-space:pre-wrap;"
-        + "line-height:1.75;max-height:320px;overflow-y:auto;";
-      lyricsWrap.textContent = lyricsText;
-      card.appendChild(lyricsWrap);
-    }
+  // Lyrics header + Edit button
+  const lyricsHeader = document.createElement("div");
+  lyricsHeader.style.cssText = "display:flex;align-items:center;justify-content:space-between;"
+    + "padding:10px 14px 4px;border-top:1px solid var(--border);";
+  lyricsHeader.innerHTML = `
+    <span style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;">
+      <i class="fas fa-music" style="margin-right:5px;color:var(--green)"></i>Lyrics
+    </span>
+    <button id="lyricsEditBtn" onclick="toggleLyricsEdit(this)"
+      style="font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.15);
+      background:rgba(255,255,255,.06);color:#d1d5db;cursor:pointer;display:flex;align-items:center;gap:5px;">
+      <i class="fas fa-pen"></i> Edit
+    </button>`;
+  card.appendChild(lyricsHeader);
+
+  // Lyrics display (pre)
+  const lyricsWrap = document.createElement("div");
+  lyricsWrap.className = "lyrics-display-wrap";
+  lyricsWrap.style.cssText = "background:rgba(255,255,255,.03);margin:0 10px 10px;border-radius:10px;"
+    + "border:1px solid rgba(255,255,255,.07);overflow:hidden;";
+
+  const lyricsPre = document.createElement("pre");
+  lyricsPre.id = "lyricsPreview";
+  lyricsPre.style.cssText = "padding:14px;font-size:13px;color:#d1d5db;white-space:pre-wrap;"
+    + "line-height:1.85;font-family:inherit;margin:0;"
+    + "max-height:300px;overflow-y:auto;";
+  lyricsPre.textContent = lyricsText;
+
+  // Lyrics editor (hidden by default)
+  const lyricsEditor = document.createElement("textarea");
+  lyricsEditor.id = "lyricsEditor";
+  lyricsEditor.value = lyricsText;
+  lyricsEditor.style.cssText = "display:none;width:100%;padding:14px;font-size:13px;"
+    + "color:#d1d5db;background:rgba(255,255,255,.04);border:none;outline:none;"
+    + "white-space:pre-wrap;line-height:1.85;font-family:inherit;resize:vertical;"
+    + "min-height:200px;box-sizing:border-box;";
+  lyricsEditor.addEventListener("input", function() {
+    lyricsPre.textContent = this.value;
+  });
+
+  lyricsWrap.appendChild(lyricsPre);
+  lyricsWrap.appendChild(lyricsEditor);
+  card.appendChild(lyricsWrap);
+}
 
     if (resultsEl) { resultsEl.innerHTML = ""; resultsEl.appendChild(card); }
     document.querySelector(".panel-song .panel-inner-scroll")
