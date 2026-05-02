@@ -7,8 +7,7 @@
 <link rel="stylesheet" href="style.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Noto+Sans+Khmer:wght@400;500;700&display=swap" rel="stylesheet"/>
-<link href="style_fixes.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 </head>
 <body>
 
@@ -59,8 +58,7 @@
           <div class="msg msg-bot">
             <div class="msg-avatar"><i class="fas fa-brain"></i></div>
             <div class="msg-bubble">
-              <!-- FIX 1: Added khmer-safe class for Unicode rendering -->
-              <p class="khmer-safe">Hello! I'm <strong>JeeThy Assistant</strong>, your smart AI helper.</p>
+              <p>Hello! I'm <strong>JeeThy Assistant</strong>, your smart AI helper.</p>
               <p>Sign in to start chatting! &#x1F44B;</p>
               <span class="msg-time" id="welcomeTime"></span>
             </div>
@@ -103,34 +101,14 @@
             <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Other</button>
           </div>
         </div>
-
-        <!-- FIX 2: Aspect Ratio chips with data-ratio attributes -->
         <div class="form-group">
           <label class="form-label">Aspect Ratio</label>
           <div class="chip-group" id="imgRatioGroup">
-            <button class="chip ratio-chip active" data-ratio="1:1"
-              onclick="selectRatioChip(this)">
-              <span class="ratio-icon ratio-square"></span> 1:1
-            </button>
-            <button class="chip ratio-chip" data-ratio="9:16"
-              onclick="selectRatioChip(this)">
-              <span class="ratio-icon ratio-portrait"></span> 9:16
-            </button>
-            <button class="chip ratio-chip" data-ratio="16:9"
-              onclick="selectRatioChip(this)">
-              <span class="ratio-icon ratio-landscape"></span> 16:9
-            </button>
-            <button class="chip ratio-chip" data-ratio="4:3"
-              onclick="selectRatioChip(this)">
-              <span class="ratio-icon ratio-standard"></span> 4:3
-            </button>
-            <button class="chip ratio-chip" data-ratio="3:4"
-              onclick="selectRatioChip(this)">
-              <span class="ratio-icon ratio-portrait34"></span> 3:4
-            </button>
+            <button class="chip active" onclick="selectChip(this,'imgRatioGroup')">1:1</button>
+            <button class="chip" onclick="selectChip(this,'imgRatioGroup')">9:16</button>
+            <button class="chip" onclick="selectChip(this,'imgRatioGroup')">16:9</button>
           </div>
         </div>
-
         <div class="form-row">
           <div class="form-group half">
             <label class="form-label">Quality</label>
@@ -159,6 +137,7 @@
     <section class="panel panel-song">
       <div class="panel-inner panel-inner-scroll">
 
+        <!-- Header -->
         <div class="panel-header">
           <div class="panel-icon green"><i class="fas fa-music"></i></div>
           <div>
@@ -167,31 +146,25 @@
           </div>
         </div>
 
+        <!-- Song Description -->
         <div class="form-group">
           <label class="form-label">Song Description</label>
-          <textarea id="songPrompt" class="form-textarea khmer-safe"
+          <textarea id="songPrompt" class="form-textarea"
             placeholder="Describe the song: mood, theme, story..." rows="3"></textarea>
         </div>
 
-        <!-- FIX 3: Genre chips — added Rap, Remix, R&B, Lo-fi -->
+        <!-- Genre / Style -->
         <div class="form-group">
           <label class="form-label">Genre / Style</label>
-          <div class="chip-group chip-group-wrap" id="songStyleGroup">
+          <div class="chip-group" id="songStyleGroup">
             <button class="chip active" onclick="selectChip(this,'songStyleGroup')">Pop</button>
             <button class="chip" onclick="selectChip(this,'songStyleGroup')">Sad</button>
             <button class="chip" onclick="selectChip(this,'songStyleGroup')">Relaxing</button>
-            <button class="chip chip-rap" onclick="selectChip(this,'songStyleGroup')">
-              <i class="fas fa-microphone-alt" style="font-size:10px"></i> Rap
-            </button>
-            <button class="chip chip-remix" onclick="selectChip(this,'songStyleGroup')">
-              <i class="fas fa-rotate" style="font-size:10px"></i> Remix
-            </button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">R&amp;B</button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">Lo-fi</button>
             <button class="chip" onclick="selectChip(this,'songStyleGroup')">Other</button>
           </div>
         </div>
 
+        <!-- Vocalist -->
         <div class="form-group">
           <label class="form-label">Vocalist</label>
           <div class="chip-group" id="songVoiceGroup">
@@ -204,71 +177,48 @@
           </div>
         </div>
 
+        <!-- ── Plan badge + duration hint ── -->
         <div class="song-plan-row">
           <span id="song-plan-badge" class="song-plan-badge"></span>
           <span id="song-duration-hint" class="song-duration-hint"></span>
         </div>
 
-        <!-- FIX 3B: Custom Lyrics Panel — cleaner, flexible design -->
+        <!-- ── Custom Lyrics Panel (PRO / MAX only, hidden for FREE) ── -->
         <div id="custom-lyrics-panel" style="display:none" class="custom-lyrics-wrap">
-          <div class="lyrics-label-row">
-            <label class="form-label" style="margin:0">
-              <i class="fas fa-pen-nib" style="color:#7c3aed;margin-right:5px;"></i>
-              Custom Lyrics
-            </label>
-            <span class="form-label-sub">optional — replaces AI lyrics</span>
-            <span id="lyrics-char-count" class="lyrics-char-count">0 chars</span>
-          </div>
-
-          <div class="lyrics-textarea-wrap">
-            <textarea
-              id="custom-lyrics-textarea"
-              class="form-textarea lyrics-textarea khmer-safe"
-              placeholder="Paste or type your lyrics here...
-
-Supports Khmer ភាសាខ្មែរ and English
-
-[Verse 1]
-Your lyrics line 1
-Your lyrics line 2
-
-[Chorus]
-Chorus line 1
-Chorus line 2"
-              rows="8"
-              oninput="updateLyricsCount(this)"></textarea>
-            <div class="lyrics-toolbar">
-              <button type="button" class="lyrics-tool-btn" onclick="insertLyricsTag('[Verse 1]')" title="Add Verse">V</button>
-              <button type="button" class="lyrics-tool-btn" onclick="insertLyricsTag('[Chorus]')" title="Add Chorus">C</button>
-              <button type="button" class="lyrics-tool-btn" onclick="insertLyricsTag('[Bridge]')" title="Add Bridge">B</button>
-              <button type="button" class="lyrics-tool-btn" onclick="insertLyricsTag('[Outro]')" title="Add Outro">O</button>
-            </div>
-          </div>
-
+          <label class="form-label">
+            <i class="fas fa-pen-nib" style="color:#7c3aed;margin-right:5px;"></i>
+            Custom Lyrics
+            <span class="form-label-sub">(optional — replaces AI lyrics)</span>
+          </label>
+          <textarea id="custom-lyrics-textarea" class="form-textarea"
+            placeholder="Paste your custom lyrics here...&#10;&#10;Supports Khmer &#x1797;&#x17B6;&#x179F;&#x17B6;&#x1781;&#x17D2;&#x1798;&#x17D2;&#x17A2;&#x179A; and English&#10;&#10;[Verse 1]&#10;Your lyrics here..."
+            rows="7" style="resize:vertical;line-height:1.8;font-size:13px;"></textarea>
           <div class="lyrics-file-row">
             <label for="lyrics-file-input" class="lyrics-upload-btn">
               <i class="fas fa-folder-open"></i> Upload .txt / .lrc
             </label>
-            <input type="file" id="lyrics-file-input" accept=".txt,.lrc,.text" style="display:none"
-              onchange="handleLyricsFile(event)">
+            <input type="file" id="lyrics-file-input" accept=".txt,.lrc,.text" style="display:none">
             <span class="lyrics-or-label">or paste above</span>
             <button type="button" class="lyrics-clear-btn"
-              onclick="clearLyrics()">
+              onclick="document.getElementById('custom-lyrics-textarea').value=''">
               <i class="fas fa-xmark"></i> Clear
             </button>
           </div>
         </div>
 
+        <!-- ── Upgrade notice for FREE users ── -->
         <div id="custom-lyrics-upgrade-notice" style="display:none" class="upgrade-notice-row">
           <i class="fas fa-lock"></i>
           Custom lyrics available on
           <strong class="pro-text">PRO</strong> &amp; <strong class="max-text">MAX</strong> plans.
         </div>
 
+        <!-- Generate Button -->
         <button class="btn-generate btn-green" id="songGenBtn" onclick="generateSong()">
           <i class="fas fa-wand-magic-sparkles"></i> Generate Song
         </button>
 
+        <!-- Results -->
         <div class="results-wrap" id="songResults"></div>
 
       </div>
@@ -277,8 +227,9 @@ Chorus line 2"
   </div>
 </main>
 
-<!-- ═══════════ MODALS ═══════════ -->
+<!-- ═══════════ MODALS (outside <main>) ═══════════ -->
 
+<!-- Upgrade Modal (Custom Lyrics lock) -->
 <div id="upgrade-modal" class="upgrade-modal-overlay" style="display:none">
   <div class="upgrade-modal-box">
     <div style="font-size:36px;margin-bottom:12px;">&#x1F680;</div>
@@ -286,7 +237,9 @@ Chorus line 2"
     <p id="upgrade-modal-message" class="upgrade-modal-msg"></p>
     <button class="btn-generate btn-purple"
       onclick="document.getElementById('upgrade-modal').style.display='none'"
-      style="width:100%;margin-top:0;">Got it</button>
+      style="width:100%;margin-top:0;">
+      Got it
+    </button>
   </div>
 </div>
 
@@ -306,40 +259,56 @@ Chorus line 2"
       </div>
       <div id="authMsg" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;"></div>
       <form id="authLoginForm" onsubmit="submitLogin(event)" style="display:flex;flex-direction:column;gap:10px;">
-        <div><label class="form-label">Email</label>
-          <input type="email" id="authLoginEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/></div>
-        <div><label class="form-label">Password</label>
-          <input type="password" id="authLoginPass" class="form-input" placeholder="Your password" required autocomplete="current-password"/></div>
+        <div>
+          <label class="form-label">Email</label>
+          <input type="email" id="authLoginEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
+        </div>
+        <div>
+          <label class="form-label">Password</label>
+          <input type="password" id="authLoginPass" class="form-input" placeholder="Your password" required autocomplete="current-password"/>
+        </div>
         <button type="submit" id="authLoginBtn" class="btn-generate btn-purple" style="margin-bottom:0">
-          <i class="fas fa-arrow-right-to-bracket"></i> Login</button>
+          <i class="fas fa-arrow-right-to-bracket"></i> Login
+        </button>
       </form>
       <form id="authSignupForm" onsubmit="submitSignup(event)" style="display:none;flex-direction:column;gap:10px;">
-        <div><label class="form-label">Full Name</label>
-          <input type="text" id="authSignupName" class="form-input" placeholder="Your name" required autocomplete="name"/></div>
-        <div><label class="form-label">Email</label>
-          <input type="email" id="authSignupEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/></div>
-        <div><label class="form-label">Password</label>
-          <input type="password" id="authSignupPass" class="form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password"/></div>
+        <div>
+          <label class="form-label">Full Name</label>
+          <input type="text" id="authSignupName" class="form-input" placeholder="Your name" required autocomplete="name"/>
+        </div>
+        <div>
+          <label class="form-label">Email</label>
+          <input type="email" id="authSignupEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
+        </div>
+        <div>
+          <label class="form-label">Password</label>
+          <input type="password" id="authSignupPass" class="form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password"/>
+        </div>
         <button type="submit" id="authSignupBtn" class="btn-generate btn-purple" style="margin-bottom:0">
-          <i class="fas fa-paper-plane"></i> Send Verification Code</button>
+          <i class="fas fa-paper-plane"></i> Send Verification Code
+        </button>
       </form>
       <div id="authOtpForm" style="display:none;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
           <i class="fas fa-envelope-circle-check" style="font-size:2rem;color:#a855f7;margin-bottom:8px;display:block;"></i>
-          <p style="font-size:13px;color:#9ca3af;margin:0;">Code បានផ្ញើទៅ</p>
+          <p style="font-size:13px;color:#9ca3af;margin:0;">Code &#x200B;&#x1794;&#x17B6;&#x1793;&#x1795;&#x17D2;&#x1789;&#x17BE;&#x179F;&#x200B;&#x178F;&#x17C4;</p>
           <p id="otpEmailDisplay" style="font-size:14px;font-weight:700;color:#fff;margin:4px 0 0;"></p>
         </div>
-        <div><label class="form-label">Verification Code (6 digits)</label>
+        <div>
+          <label class="form-label">Verification Code (6 digits)</label>
           <input type="text" id="authOtpInput" class="form-input" placeholder="_ _ _ _ _ _"
             maxlength="6" inputmode="numeric"
             style="text-align:center;font-size:1.5rem;font-weight:700;letter-spacing:0.4em;"
-            oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
+            oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
+        </div>
         <div style="display:flex;gap:8px;">
           <button type="button" onclick="backToSignup()" class="btn-generate"
             style="flex:1;margin-bottom:0;background:var(--surface2);color:#9ca3af;">
-            <i class="fas fa-arrow-left"></i> Back</button>
+            <i class="fas fa-arrow-left"></i> Back
+          </button>
           <button type="button" onclick="submitOtp()" id="authOtpBtn" class="btn-generate btn-purple" style="flex:2;margin-bottom:0">
-            <i class="fas fa-check-circle"></i> Verify &amp; Create Account</button>
+            <i class="fas fa-check-circle"></i> Verify &amp; Create Account
+          </button>
         </div>
         <div style="text-align:center;">
           <button type="button" onclick="resendOtp()" id="resendOtpBtn"
@@ -514,54 +483,5 @@ Chorus line 2"
 
 <script src="script.js"></script>
 <script src="song-plan.js"></script>
-
-<!-- FIX 2: Aspect ratio JS helper -->
-<script>
-function selectRatioChip(btn) {
-  document.querySelectorAll('#imgRatioGroup .ratio-chip').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active');
-}
-function getSelectedRatio() {
-  const active = document.querySelector('#imgRatioGroup .ratio-chip.active');
-  return active ? active.dataset.ratio : '1:1';
-}
-
-// FIX 3: Custom lyrics helpers
-function updateLyricsCount(el) {
-  const counter = document.getElementById('lyrics-char-count');
-  if (counter) counter.textContent = el.value.length + ' chars';
-}
-function clearLyrics() {
-  const ta = document.getElementById('custom-lyrics-textarea');
-  if (ta) { ta.value = ''; updateLyricsCount(ta); }
-}
-function insertLyricsTag(tag) {
-  const ta = document.getElementById('custom-lyrics-textarea');
-  if (!ta) return;
-  const pos = ta.selectionStart;
-  const val = ta.value;
-  ta.value = val.slice(0, pos) + (pos > 0 ? '\n' : '') + tag + '\n' + val.slice(pos);
-  ta.focus();
-  updateLyricsCount(ta);
-}
-function handleLyricsFile(e) {
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const ta = document.getElementById('custom-lyrics-textarea');
-    if (ta) { ta.value = ev.target.result; updateLyricsCount(ta); }
-  };
-  reader.readAsText(file);
-  e.target.value = '';
-}
-
-// Patch generateImage to pass ratio correctly
-const _origGenerateImage = typeof _generateImage !== 'undefined' ? _generateImage : null;
-document.addEventListener('DOMContentLoaded', () => {
-  // Ensure ratio is passed from data-ratio attribute
-  const origFetch = window.fetch;
-  // Override only /api/image calls to inject correct aspectRatio
-});
-</script>
 </body>
 </html>
