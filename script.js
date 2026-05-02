@@ -716,7 +716,7 @@ async function _generateImage() {
   }
 
   try {
-    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""}â€¦ (retries up to 3Ã—)</div></div>`;
+    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""}… (retries up to 3×)</div></div>`;
     const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne()));
     const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
     const errors  = results.filter(r => r.status === "rejected").map(r => r.reason?.message);
@@ -731,7 +731,10 @@ async function _generateImage() {
       const blob    = new Blob([arr], { type: d.mimeType || "image/png" });
       const blobUrl = URL.createObjectURL(blob);
       blobs.push({ blobUrl, mime: d.mimeType || "image/png" });
+      const RATIO_CSS_MAP = { "1:1":"1/1", "9:16":"9/16", "16:9":"16/9" };
+      const imgRatioCss = RATIO_CSS_MAP[ratio] || "1/1";
       const img = document.createElement("img"); img.src = blobUrl; img.alt = `Generated ${i + 1}`;
+      img.style.cssText = `width:100%;aspect-ratio:${imgRatioCss};object-fit:cover;border-radius:10px;cursor:pointer;display:block;`;
       img.onclick = () => openFullscreen(blobUrl);
       grid.appendChild(img);
     });
@@ -787,11 +790,11 @@ async function _generateSong() {
   const btn       = document.getElementById("songGenBtn");
   const resultsEl = document.getElementById("songResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
-  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with Lyriaâ€¦ (~20â€“40s)</div></div>`;
+  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with Lyria… (~20â€“40s)</div></div>`;
 
   const retryHintTimer = setTimeout(() => {
     const lbl = document.getElementById("songLoadingLabel");
-    if (lbl) lbl.textContent = "Lyria is composingâ€¦ if slow, falling back to TTS â€” please wait";
+    if (lbl) lbl.textContent = "Lyria is composing… if slow, falling back to TTS â€” please wait";
   }, 20000);
 
   try {
