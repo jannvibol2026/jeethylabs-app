@@ -60,6 +60,7 @@ async function initSongSection() {
 
 function _renderSongPlanUI(planInfo) {
   const plan   = (planInfo.plan || "free").toLowerCase();
+  window._spCurrentPlan = plan; /* store for lyrics auto-fill */
   const colors = { free: "#6b7280", pro: "#7c3aed", max: "#d97706" };
 
   const badge = document.getElementById("song-plan-badge");
@@ -319,6 +320,7 @@ async function _generateSong() {
         const customTA = document.getElementById("custom-lyrics-textarea");
         if (customTA) {
           customTA.value = editedLyrics;
+          customTA.dataset.autoFilled = "0"; /* user edited — don't override next time */
         } else {
           /* fallback: store globally */
           window._spRegenLyrics = editedLyrics;
@@ -331,6 +333,24 @@ async function _generateSong() {
     if (resultsEl) { resultsEl.innerHTML = ""; resultsEl.appendChild(card); }
     document.querySelector(".panel-song .panel-inner-scroll")
       ?.scrollTo({ top: 99999, behavior: "smooth" });
+
+    /* ── Auto-fill custom-lyrics-textarea for PRO/MAX ── */
+    if (cleanedLyrics) {
+      const _plan = (window._spCurrentPlan || "free").toLowerCase();
+      const customTA = document.getElementById("custom-lyrics-textarea");
+      const customPanel = document.getElementById("custom-lyrics-panel");
+      if ((_plan === "pro" || _plan === "max") && customTA && customPanel) {
+        /* Only fill if user hasn't typed their own lyrics */
+        if (!customTA.value.trim() || customTA.dataset.autoFilled === "1") {
+          customTA.value = cleanedLyrics;
+          customTA.dataset.autoFilled = "1";
+          /* Highlight to let user know it was filled */
+          customTA.style.transition = "border-color .4s";
+          customTA.style.borderColor = "var(--green,#10b981)";
+          setTimeout(() => { customTA.style.borderColor = ""; }, 2000);
+        }
+      }
+    }
 
     if (typeof incrementRequest === "function") incrementRequest();
 
