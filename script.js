@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 function enforceAuthGate() {
   const chatInput   = document.getElementById("chatInput");
   const chatSendBtn = document.getElementById("chatSendBtn");
-  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = "Ã°Å¸â€â€™ Sign in to start chatting..."; }
+  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = "ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬â„¢ Sign in to start chatting..."; }
   if (chatSendBtn) chatSendBtn.disabled = true;
   showPanelOverlay("panel-chat",  "chat");
   showPanelOverlay("panel-image", "image");
@@ -261,7 +261,7 @@ async function submitSignup(e) {
       of.style.display = "flex";
       document.getElementById("authOtpInput").value = "";
       startResendTimer(60);
-      showAuthMsg("Code Ã¡Å¾ÂÃ¡Å¸â€™Ã¡Å¾Å¡Ã¡Å¾Â¼Ã¡Å¾Å“Ã¡Å¾â€Ã¡Å¾Â¶Ã¡Å¾â€œÃ¡Å¾â€¢Ã¡Å¸â€™Ã¡Å¾â€°Ã¡Å¾Â¾! Ã¡Å¾Å¸Ã¡Å¾Â¼Ã¡Å¾ËœÃ¡Å¾â€“Ã¡Å¾Â·Ã¡Å¾â€œÃ¡Å¾Â·Ã¡Å¾ÂÃ¡Å¸â€™Ã¡Å¾â„¢ Email.", "success");
+      showAuthMsg("Code ÃƒÂ¡Ã…Â¾Ã‚ÂÃƒÂ¡Ã…Â¸Ã¢â‚¬â„¢ÃƒÂ¡Ã…Â¾Ã…Â¡ÃƒÂ¡Ã…Â¾Ã‚Â¼ÃƒÂ¡Ã…Â¾Ã…â€œÃƒÂ¡Ã…Â¾Ã¢â‚¬ÂÃƒÂ¡Ã…Â¾Ã‚Â¶ÃƒÂ¡Ã…Â¾Ã¢â‚¬Å“ÃƒÂ¡Ã…Â¾Ã¢â‚¬Â¢ÃƒÂ¡Ã…Â¸Ã¢â‚¬â„¢ÃƒÂ¡Ã…Â¾Ã¢â‚¬Â°ÃƒÂ¡Ã…Â¾Ã‚Â¾! ÃƒÂ¡Ã…Â¾Ã…Â¸ÃƒÂ¡Ã…Â¾Ã‚Â¼ÃƒÂ¡Ã…Â¾Ã‹Å“ÃƒÂ¡Ã…Â¾Ã¢â‚¬â€œÃƒÂ¡Ã…Â¾Ã‚Â·ÃƒÂ¡Ã…Â¾Ã¢â‚¬Å“ÃƒÂ¡Ã…Â¾Ã‚Â·ÃƒÂ¡Ã…Â¾Ã‚ÂÃƒÂ¡Ã…Â¸Ã¢â‚¬â„¢ÃƒÂ¡Ã…Â¾Ã¢â€žÂ¢ Email.", "success");
     } else { showAuthMsg(data.error || "Failed to send code.", "error"); }
   } catch (ex) { showAuthMsg("Network error. Check connection.", "error"); }
   btn.disabled = false;
@@ -300,7 +300,7 @@ async function resendOtp() {
       credentials: "include", body: JSON.stringify(_otpPending)
     });
     const data = await res.json();
-    if (res.ok) { showAuthMsg("Code Ã¡Å¾ÂÃ¡Å¸â€™Ã¡Å¾ËœÃ¡Å¾Â¸Ã¡Å¾ÂÃ¡Å¸â€™Ã¡Å¾Å¡Ã¡Å¾Â¼Ã¡Å¾Å“Ã¡Å¾â€Ã¡Å¾Â¶Ã¡Å¾â€œÃ¡Å¾â€¢Ã¡Å¸â€™Ã¡Å¾â€°Ã¡Å¾Â¾!", "success"); startResendTimer(60); }
+    if (res.ok) { showAuthMsg("Code ÃƒÂ¡Ã…Â¾Ã‚ÂÃƒÂ¡Ã…Â¸Ã¢â‚¬â„¢ÃƒÂ¡Ã…Â¾Ã‹Å“ÃƒÂ¡Ã…Â¾Ã‚Â¸ÃƒÂ¡Ã…Â¾Ã‚ÂÃƒÂ¡Ã…Â¸Ã¢â‚¬â„¢ÃƒÂ¡Ã…Â¾Ã…Â¡ÃƒÂ¡Ã…Â¾Ã‚Â¼ÃƒÂ¡Ã…Â¾Ã…â€œÃƒÂ¡Ã…Â¾Ã¢â‚¬ÂÃƒÂ¡Ã…Â¾Ã‚Â¶ÃƒÂ¡Ã…Â¾Ã¢â‚¬Å“ÃƒÂ¡Ã…Â¾Ã¢â‚¬Â¢ÃƒÂ¡Ã…Â¸Ã¢â‚¬â„¢ÃƒÂ¡Ã…Â¾Ã¢â‚¬Â°ÃƒÂ¡Ã…Â¾Ã‚Â¾!", "success"); startResendTimer(60); }
     else showAuthMsg(data.error || "Failed to resend.", "error");
   } catch (ex) { showAuthMsg("Network error.", "error"); }
 }
@@ -441,7 +441,7 @@ function syncProfileSheet() {
   const pct   = Math.min(100, Math.round(used / limit * 100));
   if (u) {
     const init = (u.name || "U").charAt(0).toUpperCase();
-    const set  = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || "Ã¢â‚¬â€"; };
+    const set  = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"; };
     set("ppHeroName",   u.name);
     set("ppHeroEmail",  u.email);
     set("ppInfoName",   u.name);
@@ -539,7 +539,7 @@ async function confirmPlan() {
     updateNavAvatar(currentUser);
     syncProfileSheet();
     closePlanModal();
-    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! Ã°Å¸Å½â€°", "success");
+    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! ÃƒÂ°Ã…Â¸Ã…Â½Ã¢â‚¬Â°", "success");
   } catch (err) {
     showToast(err.message || "Network error.", "error");
   } finally {
@@ -627,7 +627,7 @@ async function _sendChat() {
     incrementRequest();
   } catch (err) {
     removeTyping(typingId);
-    appendMessage("bot", "Ã¢Å¡ Ã¯Â¸Â " + err.message);
+    appendMessage("bot", "ÃƒÂ¢Ã…Â¡ ÃƒÂ¯Ã‚Â¸Ã‚Â " + err.message);
   }
   isChatLoading = false;
   if (sendBtn) sendBtn.disabled = false;
@@ -725,7 +725,7 @@ async function _generateImage() {
   }
 
   try {
-    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""}â€¦ (up to 3Ã— retries)</div></div>`;
+    resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""}Ã¢â‚¬Â¦ (up to 3Ãƒâ€” retries)</div></div>`;
     const results = await Promise.allSettled(Array.from({ length: qty }, () => fetchOne()));
     const imgs    = results.filter(r => r.status === "fulfilled").map(r => r.value);
     const errors  = results.filter(r => r.status === "rejected").map(r => r.reason?.message);
@@ -739,14 +739,12 @@ async function _generateImage() {
       return { blobUrl: URL.createObjectURL(new Blob([arr], { type: d.mimeType || "image/png" })), mime: d.mimeType || "image/png" };
     });
 
-    const RATIO_CSS_MAP = { "1:1":"1/1", "9:16":"9/16", "16:9":"16/9" };
-    const imgRatioCss = RATIO_CSS_MAP[ratio] || "1/1";
-
-    // For download: render canvas with cover-fill so saved file matches what user sees
-    const canvasUrls = await Promise.all(blobs.map(b => renderCoverCanvas(b.blobUrl, ratio)));
+    // Render all blobs onto canvas with the correct aspect ratio (cover-fill)
+    // renderedUrls is used for BOTH display and download
+    const renderedUrls = await Promise.all(blobs.map(b => renderCoverCanvas(b.blobUrl, ratio)));
 
     const card = document.createElement("div"); card.className = "img-result-card";
-    const grid = document.createElement("div"); grid.className = `img-grid qty-${imgs.length}`;
+    const grid = document.createElement("div"); grid.className = `img-grid qty-${renderedUrls.length}`;
 
     renderedUrls.forEach((url, i) => {
       const img = document.createElement("img");
@@ -760,10 +758,10 @@ async function _generateImage() {
 
     const dlWrap = document.createElement("div");
     dlWrap.style.cssText = "padding:12px;display:flex;flex-direction:column;gap:8px;";
-    canvasUrls.forEach((dlUrl, i) => {
+    renderedUrls.forEach((url, i) => {
       const a = document.createElement("a"); a.className = "btn-download";
-      a.href = dlUrl; a.download = `jeethy-image-${Date.now()}-${i + 1}.jpg`;
-      a.innerHTML = `<i class="fas fa-download"></i> Download Image${canvasUrls.length > 1 ? " " + (i + 1) : ""}`;
+      a.href = url; a.download = `jeethy-image-${Date.now()}-${i + 1}.jpg`;
+      a.innerHTML = `<i class="fas fa-download"></i> Download Image${renderedUrls.length > 1 ? " " + (i + 1) : ""}`;
       dlWrap.appendChild(a);
     });
     card.appendChild(dlWrap);
@@ -776,7 +774,7 @@ async function _generateImage() {
       <div class="error-card">
         <i class="fas fa-circle-exclamation"></i>
         ${escapeHtml(err.message)}
-        ${isOverload ? "<br/><small style='opacity:.7'>AI is busy â€” please wait and try again.</small>" : ""}
+        ${isOverload ? "<br/><small style='opacity:.7'>AI is busy Ã¢â‚¬â€ please wait and try again.</small>" : ""}
         <br/><button onclick="_generateImage()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--accent,#7c3aed);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Try Again
         </button>
@@ -786,33 +784,48 @@ async function _generateImage() {
 }
 
 // Render image onto canvas using cover-fill (zoom to fill ratio exactly).
-// = This is what the preview shows  download matches preview 1:1. =
+// Robust: toBlob + toDataURL fallback + try/catch for Android Chrome compatibility.
 function renderCoverCanvas(blobUrl, ratioStr) {
   return new Promise((resolve) => {
-    const RATIO_MAP = { "1:1": 1, "9:16": 9/16, "16:9": 16/9 };
-    const targetRatio = RATIO_MAP[ratioStr] || 1;
+    const RATIO_MAP = { "1:1": 1, "9:16": 9 / 16, "16:9": 16 / 9 };
+    const targetRatio = RATIO_MAP[ratioStr];
+    if (!targetRatio) { resolve(blobUrl); return; }
     const img = new Image();
+    img.crossOrigin = "anonymous";
     img.onload = () => {
-      const srcW = img.naturalWidth;
-      const srcH = img.naturalHeight;
-      let canvasW, canvasH;
+      const srcW = img.naturalWidth  || 512;
+      const srcH = img.naturalHeight || 512;
+      let cW, cH;
       if (targetRatio >= 1) {
-        canvasW = Math.max(srcW, srcH);
-        canvasH = Math.round(canvasW / targetRatio);
+        cW = Math.max(srcW, srcH);
+        cH = Math.round(cW / targetRatio);
       } else {
-        canvasH = Math.max(srcW, srcH);
-        canvasW = Math.round(canvasH * targetRatio);
+        cH = Math.max(srcW, srcH);
+        cW = Math.round(cH * targetRatio);
       }
-      const scale = Math.max(canvasW / srcW, canvasH / srcH);
-      const drawW = Math.round(srcW * scale);
-      const drawH = Math.round(srcH * scale);
-      const dx = Math.round((canvasW - drawW) / 2);
-      const dy = Math.round((canvasH - drawH) / 2);
-      const canvas = document.createElement("canvas");
-      canvas.width = canvasW;
-      canvas.height = canvasH;
-      canvas.getContext("2d").drawImage(img, dx, dy, drawW, drawH);
-      canvas.toBlob(b => resolve(b ? URL.createObjectURL(b) : blobUrl), "image/jpeg", 0.95);
+      const scale = Math.max(cW / srcW, cH / srcH);
+      const dW = Math.round(srcW * scale);
+      const dH = Math.round(srcH * scale);
+      const dx = Math.round((cW - dW) / 2);
+      const dy = Math.round((cH - dH) / 2);
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width  = cW;
+        canvas.height = cH;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(blobUrl); return; }
+        ctx.drawImage(img, dx, dy, dW, dH);
+        if (typeof canvas.toBlob === "function") {
+          canvas.toBlob(blob => {
+            resolve((blob && blob.size > 0) ? URL.createObjectURL(blob) : canvas.toDataURL("image/jpeg", 0.95));
+          }, "image/jpeg", 0.95);
+        } else {
+          resolve(canvas.toDataURL("image/jpeg", 0.95));
+        }
+      } catch (e) {
+        console.error("[renderCoverCanvas]", e);
+        resolve(blobUrl);
+      }
     };
     img.onerror = () => resolve(blobUrl);
     img.src = blobUrl;
@@ -882,11 +895,11 @@ async function _generateSong() {
   const btn       = document.getElementById("songGenBtn");
   const resultsEl = document.getElementById("songResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
-  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with Lyriaâ€¦ (~20Ã¢â‚¬â€œ40s)</div></div>`;
+  resultsEl.innerHTML = `<div class="loading-card green-loader"><div class="loading-spinner"></div><div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with LyriaÃ¢â‚¬Â¦ (~20ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“40s)</div></div>`;
 
   const retryHintTimer = setTimeout(() => {
     const lbl = document.getElementById("songLoadingLabel");
-    if (lbl) lbl.textContent = "Lyria is composingâ€¦ if slow, falling back to TTS Ã¢â‚¬â€ please wait";
+    if (lbl) lbl.textContent = "Lyria is composingÃ¢â‚¬Â¦ if slow, falling back to TTS ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â please wait";
   }, 20000);
 
   try {
@@ -905,9 +918,9 @@ async function _generateSong() {
     const header = document.createElement("div"); header.className = "song-result-title";
     const isLyria = audioSource && audioSource.toLowerCase().includes("lyria");
     const sourceBadge = audioSource
-      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "Ã°Å¸Å½Âµ Lyria" : "Ã°Å¸â€Å  TTS"}</span>`
+      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Âµ Lyria" : "ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ…  TTS"}</span>`
       : "";
-    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} Ã‚Â· ${escapeHtml(voiceHint)}</span>`;
+    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} Ãƒâ€šÃ‚Â· ${escapeHtml(voiceHint)}</span>`;
     card.appendChild(header);
 
     if (audioB64) {
@@ -928,7 +941,7 @@ async function _generateSong() {
     } else {
       const notice = document.createElement("div");
       notice.style.cssText = "display:flex;flex-direction:column;gap:8px;padding:10px 14px;font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);border-bottom:1px solid var(--border);";
-      const msg = ttsMessage || "Audio generation is temporarily unavailable Ã¢â‚¬â€ your lyrics are ready below. Try again in a few minutes.";
+      const msg = ttsMessage || "Audio generation is temporarily unavailable ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â your lyrics are ready below. Try again in a few minutes.";
       notice.innerHTML = `<div style="display:flex;align-items:flex-start;gap:8px;"><i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0;margin-top:2px"></i><span>${escapeHtml(msg)}</span></div>
         <button onclick="_generateSong()" style="align-self:flex-start;padding:5px 14px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:11px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Retry Audio
