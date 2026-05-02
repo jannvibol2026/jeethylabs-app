@@ -1,50 +1,22 @@
 /* ═══════════════════════════════════════════════════════════
-   song-plan.js  —  JeeThy Labs  (FIXED v4 — matches script.js)
-   ═══════════════════════════════════════════════════════════
-
-   KEY FACTS from script.js:
-   - Token key:   localStorage.getItem("jl_token")
-   - Auth state:  window.currentUser  (set by onLoginSuccess)
-   - Auth modal:  openAuthModal("song")
-   - Song call:   _generateSong_extended() — defined in script.js, we MUST NOT
-                  override generateSong() or _generateSong_extended() here.
-                  Instead we EXTEND the song section UI only.
+   song-plan.js  —  JeeThy Labs  (FIXED v5)
    ═══════════════════════════════════════════════════════════ */
 
-/* ─────────────────────────────────────────────────────────
-   Token — uses exact key from script.js ("jl_token")
-   ───────────────────────────────────────────────────────── */
 function _getSongToken() {
-  // Primary: exact key used in script.js
   const t = localStorage.getItem("jl_token");
   if (t) return t;
-
-  // Secondary: session cookie (script.js uses credentials:"include")
-  // (cookies are sent automatically — just return a placeholder so
-  //  _isUserLoggedIn() knows auth may still be valid)
   return null;
 }
 
-/* ─────────────────────────────────────────────────────────
-   Auth state — reads window.currentUser set by script.js
-   ───────────────────────────────────────────────────────── */
 function _isUserLoggedIn() {
-  // Best: currentUser set by onLoginSuccess in script.js
   if (window.currentUser && window.currentUser.email) return true;
-  // Fallback: token in localStorage
   if (localStorage.getItem("jl_token")) return true;
-  // Fallback: profile wrap visible
   const wrap = document.getElementById("userProfileWrap");
   if (wrap && wrap.style.display !== "none" && wrap.style.display !== "") return true;
   return false;
 }
 
-/* ─────────────────────────────────────────────────────────
-   Plan — reads from window.currentUser + PLAN_LIMITS
-   (both set by script.js)
-   ───────────────────────────────────────────────────────── */
 async function _detectPlan() {
-  // 1. currentUser.plan is the source of truth (set by onLoginSuccess)
   const user = window.currentUser;
   if (user && user.plan) {
     const plan = user.plan.toLowerCase();
@@ -52,15 +24,11 @@ async function _detectPlan() {
     if (plan === "pro") return { plan: "pro", durationHint: "2 – 3 minutes",             customLyrics: true };
     return { plan: "free", durationHint: "under 1 minute", customLyrics: false };
   }
-
-  // 2. userPlan global (set by script.js selectPlan / confirmPlan)
   if (window.userPlan) {
     const plan = window.userPlan.toLowerCase();
     if (plan === "max") return { plan: "max", durationHint: "3 – 4 minutes (full song)", customLyrics: true };
     if (plan === "pro") return { plan: "pro", durationHint: "2 – 3 minutes",             customLyrics: true };
   }
-
-  // 3. Try API with "jl_token"
   const token = _getSongToken();
   if (token) {
     try {
@@ -74,8 +42,6 @@ async function _detectPlan() {
       }
     } catch (e) { /* ignore */ }
   }
-
-  // 4. DOM badges (planBadge set by renderPlanBadge in script.js)
   const selectors = ["#planBadge","#pdBadge","#ppInfoPlan","#ppPlanBadge"];
   for (const sel of selectors) {
     const el = document.querySelector(sel);
@@ -84,21 +50,14 @@ async function _detectPlan() {
     if (txt.includes("max")) return { plan: "max", durationHint: "3 – 4 minutes (full song)", customLyrics: true };
     if (txt.includes("pro")) return { plan: "pro", durationHint: "2 – 3 minutes",             customLyrics: true };
   }
-
   return { plan: "free", durationHint: "under 1 minute", customLyrics: false };
 }
 
-/* ─────────────────────────────────────────────────────────
-   Init Song UI — called when Song tab opens
-   ───────────────────────────────────────────────────────── */
 async function initSongSection() {
   const planInfo = await _detectPlan();
   _renderSongPlanUI(planInfo);
 }
 
-/* ─────────────────────────────────────────────────────────
-   Render plan UI badges / custom lyrics panel
-   ───────────────────────────────────────────────────────── */
 function _renderSongPlanUI(planInfo) {
   const plan   = (planInfo.plan || "free").toLowerCase();
   const colors = { free: "#6b7280", pro: "#7c3aed", max: "#d97706" };
@@ -125,9 +84,6 @@ function _renderSongPlanUI(planInfo) {
   }
 }
 
-/* ─────────────────────────────────────────────────────────
-   Custom lyrics file upload
-   ───────────────────────────────────────────────────────── */
 function _bindLyricsFileUpload() {
   const fileInput = document.getElementById("lyrics-file-input");
   const textarea  = document.getElementById("custom-lyrics-textarea");
@@ -148,25 +104,20 @@ function _bindLyricsFileUpload() {
 }
 
 /* ─────────────────────────────────────────────────────────
-   generateSong — replaces the one in script.js
-   Uses window.currentUser (same as script.js does)
-   ───────────────────────────────────────────────────────── */
+   generateSong — entry point from Generate Song button
+───────────────────────────────────────────────────────── */
 function generateSong() {
-  // Use EXACTLY the same auth check as script.js
   if (!window.currentUser) {
     if (typeof openAuthModal === "function") openAuthModal("song");
     return;
   }
-  // Call the extended version
-  _generateSong_extended();
+  _generateSong();
 }
 
 /* ─────────────────────────────────────────────────────────
-   Extended _generateSong_extended — adds custom lyrics support
-   while preserving 100% of the original script.js logic
-   ───────────────────────────────────────────────────────── */
-async function _generateSong_extended() {
-  // Quota check — use script.js checkQuota()
+   _generateSong — main song generation with full lyrics UI
+───────────────────────────────────────────────────────── */
+async function _generateSong() {
   if (typeof checkQuota === "function" && !checkQuota()) return;
 
   const prompt = (document.getElementById("songPrompt")?.value || "").trim();
@@ -178,7 +129,6 @@ async function _generateSong_extended() {
     return;
   }
 
-  // Use script.js getActiveChip if available
   const getChip = (id) => {
     if (typeof getActiveChip === "function") return getActiveChip(id);
     return document.querySelector(`#${id} .chip.active`)?.textContent?.trim() || "";
@@ -214,7 +164,7 @@ async function _generateSong_extended() {
       headers,
       credentials: "include",
       body: JSON.stringify({
-        prompt: customLyrics || prompt,  // custom lyrics takes priority
+        prompt: customLyrics || prompt,
         style,
         voice,
         customLyrics: customLyrics || null
@@ -226,48 +176,55 @@ async function _generateSong_extended() {
 
     const data = await res.json();
     const { audio: audioB64, mimeType: audioMime, title: songTitle,
-            lyrics: lyricsText, lyricsOnly, ttsMessage, audioSource } = data;
+            lyrics: lyricsText, ttsMessage, audioSource } = data;
 
-    const escHtml = typeof escapeHtml === "function" ? escapeHtml : (s) => String(s||"")
-      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const escHtml = typeof escapeHtml === "function" ? escapeHtml : (s) => String(s || "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-    const card = document.createElement("div"); card.className = "song-result-card";
+    const card = document.createElement("div");
+    card.className = "song-result-card";
 
-    // Header
-    const header = document.createElement("div"); header.className = "song-result-title";
+    /* ── Header ── */
+    const header = document.createElement("div");
+    header.className = "song-result-title";
     const isLyria     = audioSource && audioSource.toLowerCase().includes("lyria");
     const sourceBadge = audioSource
       ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;
-          background:${isLyria?"rgba(168,85,247,.18)":"rgba(16,185,129,.15)"};
-          color:${isLyria?"#a855f7":"#10b981"};
-          border:1px solid ${isLyria?"rgba(168,85,247,.3)":"rgba(16,185,129,.3)"};">
-          ${isLyria?"🎵 Lyria":"🔊 TTS"}</span>` : "";
-    header.innerHTML = `<i class="fas fa-music"></i> ${escHtml(songTitle || style + " Song")}
+          background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};
+          color:${isLyria ? "#a855f7" : "#10b981"};
+          border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">
+          ${isLyria ? "🎵 Lyria" : "🔊 TTS"}</span>` : "";
+    header.innerHTML = `
+      <i class="fas fa-music"></i> ${escHtml(songTitle || style + " Song")}
       ${sourceBadge}
       <span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">
         ${escHtml(style)} · ${escHtml(voiceHint)}
       </span>`;
     card.appendChild(header);
 
-    // Audio player
+    /* ── Audio player ── */
     if (audioB64) {
-      const raw = atob(audioB64); const bytes = new Uint8Array(raw.length);
+      const raw = atob(audioB64);
+      const bytes = new Uint8Array(raw.length);
       for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
       const blob    = new Blob([bytes], { type: audioMime || "audio/wav" });
       const blobUrl = URL.createObjectURL(blob);
+
       const audioEl = document.createElement("audio");
-      audioEl.controls = true; audioEl.preload = "auto";
+      audioEl.controls = true;
+      audioEl.preload  = "auto";
       audioEl.style.cssText = "width:100%;padding:10px 14px 0;accent-color:var(--green);";
       audioEl.src = blobUrl;
       card.appendChild(audioEl);
 
       const ext = (audioMime || "audio/wav").split("/")[1] || "wav";
-      const a   = document.createElement("a"); a.className = "btn-download";
-      a.href = blobUrl; a.download = `jeethy-song-${Date.now()}.${ext}`;
+      const a   = document.createElement("a");
+      a.className = "btn-download";
+      a.href      = blobUrl;
+      a.download  = `jeethy-song-${Date.now()}.${ext}`;
       a.innerHTML = '<i class="fas fa-download"></i> Download Audio';
       card.appendChild(a);
     } else {
-      // Lyrics-only notice
       const notice = document.createElement("div");
       notice.style.cssText = "display:flex;flex-direction:column;gap:8px;padding:10px 14px;"
         + "font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);"
@@ -278,7 +235,7 @@ async function _generateSong_extended() {
           <i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0;margin-top:2px"></i>
           <span>${escHtml(msg)}</span>
         </div>
-        <button onclick="_generateSong_extended()"
+        <button onclick="_generateSong()"
           style="align-self:flex-start;padding:5px 14px;border-radius:20px;border:none;
           background:var(--green,#10b981);color:#fff;font-size:11px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Retry Audio
@@ -286,52 +243,55 @@ async function _generateSong_extended() {
       card.appendChild(notice);
     }
 
-    // Lyrics display
+    /* ── Lyrics section ── */
     if (lyricsText) {
-  // Lyrics header + Edit button
-  const lyricsHeader = document.createElement("div");
-  lyricsHeader.style.cssText = "display:flex;align-items:center;justify-content:space-between;"
-    + "padding:10px 14px 4px;border-top:1px solid var(--border);";
-  lyricsHeader.innerHTML = `
-    <span style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;">
-      <i class="fas fa-music" style="margin-right:5px;color:var(--green)"></i>Lyrics
-    </span>
-    <button id="lyricsEditBtn" onclick="toggleLyricsEdit(this)"
-      style="font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.15);
-      background:rgba(255,255,255,.06);color:#d1d5db;cursor:pointer;display:flex;align-items:center;gap:5px;">
-      <i class="fas fa-pen"></i> Edit
-    </button>`;
-  card.appendChild(lyricsHeader);
+      /* Lyrics header row */
+      const lyricsHeader = document.createElement("div");
+      lyricsHeader.style.cssText = "display:flex;align-items:center;justify-content:space-between;"
+        + "padding:10px 14px 6px;border-top:1px solid var(--border);";
+      lyricsHeader.innerHTML = `
+        <span style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;">
+          <i class="fas fa-microphone-lines" style="margin-right:5px;color:var(--green)"></i>Lyrics
+        </span>
+        <button class="sp-lyrics-edit-btn" onclick="toggleLyricsEdit(this)"
+          style="font-size:11px;padding:4px 12px;border-radius:20px;
+          border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);
+          color:#d1d5db;cursor:pointer;display:inline-flex;align-items:center;gap:5px;
+          transition:all .2s;">
+          <i class="fas fa-pen"></i> Edit
+        </button>`;
+      card.appendChild(lyricsHeader);
 
-  // Lyrics display (pre)
-  const lyricsWrap = document.createElement("div");
-  lyricsWrap.className = "lyrics-display-wrap";
-  lyricsWrap.style.cssText = "background:rgba(255,255,255,.03);margin:0 10px 10px;border-radius:10px;"
-    + "border:1px solid rgba(255,255,255,.07);overflow:hidden;";
+      /* Lyrics wrapper */
+      const lyricsWrap = document.createElement("div");
+      lyricsWrap.className = "lyrics-display-wrap";
+      lyricsWrap.style.cssText = "background:rgba(255,255,255,.03);margin:0 12px 14px;"
+        + "border-radius:10px;border:1px solid rgba(255,255,255,.07);overflow:hidden;";
 
-  const lyricsPre = document.createElement("pre");
-  lyricsPre.id = "lyricsPreview";
-  lyricsPre.style.cssText = "padding:14px;font-size:13px;color:#d1d5db;white-space:pre-wrap;"
-    + "line-height:1.85;font-family:inherit;margin:0;"
-    + "max-height:300px;overflow-y:auto;";
-  lyricsPre.textContent = lyricsText;
+      /* Display <pre> */
+      const lyricsPre = document.createElement("pre");
+      lyricsPre.className = "sp-lyrics-pre";
+      lyricsPre.style.cssText = "padding:14px 16px;font-size:13px;color:#d1d5db;"
+        + "white-space:pre-wrap;line-height:1.9;font-family:inherit;margin:0;"
+        + "overflow-y:auto;max-height:320px;";
+      lyricsPre.textContent = lyricsText;
 
-  // Lyrics editor (hidden by default)
-  const lyricsEditor = document.createElement("textarea");
-  lyricsEditor.id = "lyricsEditor";
-  lyricsEditor.value = lyricsText;
-  lyricsEditor.style.cssText = "display:none;width:100%;padding:14px;font-size:13px;"
-    + "color:#d1d5db;background:rgba(255,255,255,.04);border:none;outline:none;"
-    + "white-space:pre-wrap;line-height:1.85;font-family:inherit;resize:vertical;"
-    + "min-height:200px;box-sizing:border-box;";
-  lyricsEditor.addEventListener("input", function() {
-    lyricsPre.textContent = this.value;
-  });
+      /* Edit <textarea> */
+      const lyricsEditor = document.createElement("textarea");
+      lyricsEditor.className = "sp-lyrics-editor";
+      lyricsEditor.value = lyricsText;
+      lyricsEditor.style.cssText = "display:none;width:100%;padding:14px 16px;font-size:13px;"
+        + "color:#d1d5db;background:rgba(255,255,255,.05);border:none;outline:none;"
+        + "line-height:1.9;font-family:inherit;resize:vertical;"
+        + "min-height:220px;box-sizing:border-box;";
+      lyricsEditor.addEventListener("input", function() {
+        lyricsPre.textContent = this.value;
+      });
 
-  lyricsWrap.appendChild(lyricsPre);
-  lyricsWrap.appendChild(lyricsEditor);
-  card.appendChild(lyricsWrap);
-}
+      lyricsWrap.appendChild(lyricsPre);
+      lyricsWrap.appendChild(lyricsEditor);
+      card.appendChild(lyricsWrap);
+    }
 
     if (resultsEl) { resultsEl.innerHTML = ""; resultsEl.appendChild(card); }
     document.querySelector(".panel-song .panel-inner-scroll")
@@ -342,13 +302,13 @@ async function _generateSong_extended() {
   } catch (err) {
     clearTimeout(retryHintTimer);
     const isOverload = /overload|high demand|quota|rate.?limit/i.test(err.message || "");
-    const escHtml = typeof escapeHtml === "function" ? escapeHtml : (s) => String(s||"");
+    const escHtml = typeof escapeHtml === "function" ? escapeHtml : (s) => String(s || "");
     if (resultsEl) resultsEl.innerHTML = `
       <div class="error-card">
         <i class="fas fa-circle-exclamation"></i>
         ${escHtml(err.message)}
         ${isOverload ? "<br/><small style='opacity:.7'>High demand — please wait a moment and retry.</small>" : ""}
-        <br/><button onclick="_generateSong_extended()"
+        <br/><button onclick="_generateSong()"
           style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;
           background:var(--green,#10b981);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Try Again
@@ -360,8 +320,41 @@ async function _generateSong_extended() {
 }
 
 /* ─────────────────────────────────────────────────────────
-   Toast helper (uses script.js showToast if available)
-   ───────────────────────────────────────────────────────── */
+   toggleLyricsEdit — Edit / Done button handler
+───────────────────────────────────────────────────────── */
+function toggleLyricsEdit(btn) {
+  const wrap    = btn.closest(".song-result-card") || document;
+  const preview = wrap.querySelector(".sp-lyrics-pre");
+  const editor  = wrap.querySelector(".sp-lyrics-editor");
+  if (!preview || !editor) return;
+
+  const isEditing = editor.style.display !== "none";
+
+  if (isEditing) {
+    /* Save → back to preview */
+    preview.textContent     = editor.value;
+    preview.style.display   = "block";
+    editor.style.display    = "none";
+    btn.innerHTML           = '<i class="fas fa-pen"></i> Edit';
+    btn.style.borderColor   = "rgba(255,255,255,.15)";
+    btn.style.background    = "rgba(255,255,255,.06)";
+    btn.style.color         = "#d1d5db";
+  } else {
+    /* Switch to editor */
+    editor.value            = preview.textContent;
+    preview.style.display   = "none";
+    editor.style.display    = "block";
+    editor.focus();
+    btn.innerHTML           = '<i class="fas fa-check"></i> Done';
+    btn.style.borderColor   = "var(--green,#10b981)";
+    btn.style.background    = "rgba(16,185,129,.12)";
+    btn.style.color         = "var(--green,#10b981)";
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Toast helper
+───────────────────────────────────────────────────────── */
 function _spToast(msg, ms) {
   if (typeof showToast === "function") { showToast(msg, "info"); return; }
   ms = ms || 3000;
@@ -374,40 +367,15 @@ function _spToast(msg, ms) {
   document.body.appendChild(t);
   setTimeout(() => t.remove(), ms);
 }
-function toggleLyricsEdit(btn) {
-  const preview = document.getElementById("lyricsPreview");
-  const editor  = document.getElementById("lyricsEditor");
-  if (!preview || !editor) return;
-  const isEditing = editor.style.display !== "none";
-  if (isEditing) {
-    // Save mode
-    preview.textContent = editor.value;
-    preview.style.display  = "block";
-    editor.style.display   = "none";
-    btn.innerHTML = '<i class="fas fa-pen"></i> Edit';
-    btn.style.borderColor  = "rgba(255,255,255,.15)";
-    btn.style.background   = "rgba(255,255,255,.06)";
-  } else {
-    // Edit mode
-    editor.value = preview.textContent;
-    preview.style.display  = "none";
-    editor.style.display   = "block";
-    editor.focus();
-    btn.innerHTML = '<i class="fas fa-check"></i> Done';
-    btn.style.borderColor  = "var(--green,#10b981)";
-    btn.style.background   = "rgba(16,185,129,.12)";
-    btn.style.color        = "var(--green,#10b981)";
-  }
-}
 
 /* ─────────────────────────────────────────────────────────
    Auto-hook into goToPanel (Song tab = index 2)
-   ───────────────────────────────────────────────────────── */
-(function() {
+───────────────────────────────────────────────────────── */
+(function () {
   function patch() {
     if (typeof goToPanel === "function" && !goToPanel._spPatched) {
       const _orig = goToPanel;
-      window.goToPanel = function(index) {
+      window.goToPanel = function (index) {
         _orig.call(this, index);
         if (index === 2) setTimeout(initSongSection, 120);
       };
@@ -417,19 +385,16 @@ function toggleLyricsEdit(btn) {
     return false;
   }
 
-  if (!patch()) {
-    document.addEventListener("DOMContentLoaded", patch);
-  }
+  if (!patch()) document.addEventListener("DOMContentLoaded", patch);
 
-  document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", function () {
     const tabs = document.querySelectorAll(".tab");
-    tabs.forEach(function(tab, idx) {
+    tabs.forEach(function (tab, idx) {
       if (idx === 2 && tab.classList.contains("active")) setTimeout(initSongSection, 200);
     });
   });
 
-  // Song tab click safety net
-  document.addEventListener("click", function(e) {
+  document.addEventListener("click", function (e) {
     const tab = e.target.closest(".tab");
     if (!tab) return;
     const idx = Array.from(document.querySelectorAll(".tab")).indexOf(tab);
