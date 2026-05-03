@@ -86,7 +86,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 /* MODALS */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-overlay.open{opacity:1;pointer-events:all}
-.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:360px;box-shadow:0 24px 64px rgba(0,0,0,.6);overflow:hidden}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:360px;box-shadow:0 24px 64px rgba(0,0,0,.6);overflow:visible}
 .modal-wide{max-width:480px}
 .modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);background:var(--surface2)}
 .modal-header h3{font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
