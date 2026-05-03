@@ -391,13 +391,13 @@ Your lyrics here..."
 <div class="modal-overlay" id="settingsModal">
   <div class="modal-box">
     <div class="modal-header">
-      <h3><i class="fas fa-gear"></i> Pro Settings</h3>
+      <h3><i class="fas fa-gear"></i> Account Settings</h3>
       <button class="modal-close" onclick="closeSettings()"><i class="fas fa-xmark"></i></button>
     </div>
     <div class="modal-body">
-      <p class="modal-desc">As a Pro user, JeeThy Labs' owner key is used by default.</p>
+      <p class="modal-desc">JeeThy Labs' owner key is used by default. Enable below to use your own API key.</p>
       <div class="settings-toggle-row">
-        <label class="settings-label"><i class="fas fa-key"></i> Use my own API key</label>
+        <span class="settings-label"><i class="fas fa-key"></i> Use my own API key</span>
         <label class="toggle-switch">
           <input type="checkbox" id="useOwnKeyToggle" onchange="updateSettingsUI()"/>
           <span class="toggle-slider"></span>
