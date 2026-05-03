@@ -16,7 +16,7 @@ const PLAN_LIMITS = {
 let currentPanel  = 0;
 let userPlan      = "free";
 let proCustomKey  = "";
-let useOwnKey     = false;
+let _ownKeyOn = false;
 let ownerApiKey   = "";
 let requestCount  = 0;
 let chatHistory   = [];
@@ -561,9 +561,17 @@ function openSettings() {
 }
 function closeSettings() { const m = document.getElementById("settingsModal"); if (m) m.classList.remove("open"); }
 function updateSettingsUI() {
-  const t = document.getElementById("useOwnKeyToggle");
-  const s = document.getElementById("customKeySection");
-  if (t && s) s.style.display = t.checked ? "block" : "none";
+  const btn  = document.getElementById("ownKeyToggleBtn");
+  const knob = document.getElementById("ownKeyKnob");
+  const sec  = document.getElementById("customKeySection");
+  if (btn)  btn.style.background  = _ownKeyOn ? "var(--primary)" : "rgba(255,255,255,.12)";
+  if (btn)  btn.style.borderColor = _ownKeyOn ? "var(--primary)" : "var(--border)";
+  if (knob) knob.style.transform  = _ownKeyOn ? "translateX(20px)" : "translateX(0)";
+  if (sec)  sec.style.display     = _ownKeyOn ? "block" : "none";
+}
+function toggleOwnKey() {
+  useOwnKey = _ownKeyOn;
+  updateSettingsUI();
 }
 function saveSettings() {
   const t = document.getElementById("useOwnKeyToggle");
