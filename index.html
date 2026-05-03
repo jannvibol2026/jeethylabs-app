@@ -141,7 +141,10 @@
               <button onclick="clearRefImg(event)" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:24px;height:24px;color:#fff;font-size:13px;cursor:pointer;line-height:1">×</button>
             </div>
           </div>
-          <input type="file" id="refImgInput" accept="image/*" style="display:none" onchange="handleRefImgUpload(event)"/>
+          <input type="file" id="refImgInput"
+  accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
+  style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"
+  onchange="handleRefImgUpload(event)"/>
         </div>
         <button class="btn-generate btn-cyan" id="imgGenBtn" onclick="generateImage()">
           <i class="fas fa-wand-magic-sparkles"></i> Generate Image
