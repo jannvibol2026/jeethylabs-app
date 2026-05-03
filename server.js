@@ -516,7 +516,7 @@ function cleanLyricsText(raw) {
 app.post('/api/image', async (req, res) => {
   try {
     const key = geminiKey();
-    const { prompt, style='', aspectRatio='1:1' } = req.body;
+    const { prompt, style='', aspectRatio='1:1', referenceImageBase64, referenceImageMime } = req.body;
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
     // Map and validate aspect ratio
@@ -552,7 +552,14 @@ app.post('/api/image', async (req, res) => {
           const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: fullPrompt }] }],
+              contents: [{
+                parts: [
+                  ...(referenceImageBase64 ? [{ inlineData: { mimeType: referenceImageMime || 'image/jpeg', data: referenceImageBase64 } }] : []),
+                  { text: referenceImageBase64
+                      ? 'Using the uploaded image as a visual reference (keep the same person/face/body), ' + fullPrompt
+                      : fullPrompt }
+                ]
+              }],
               generationConfig: genConfig,
             }),
           });
