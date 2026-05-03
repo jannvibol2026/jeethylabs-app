@@ -16,7 +16,8 @@ const PLAN_LIMITS = {
 let currentPanel  = 0;
 let userPlan      = "free";
 let proCustomKey  = "";
-let _ownKeyOn = false;
+let useOwnKey     = false;
+let _ownKeyOn     = false;
 let ownerApiKey   = "";
 let requestCount  = 0;
 let chatHistory   = [];
@@ -556,7 +557,7 @@ function openSettings() {
   const m = document.getElementById("settingsModal"); if (!m) return;
   m.classList.add("open");
   document.getElementById("customKeyInput").value    = proCustomKey;
-  document.getElementById("useOwnKeyToggle").checked = useOwnKey;
+  _ownKeyOn = useOwnKey;
   updateSettingsUI();
 }
 function closeSettings() { const m = document.getElementById("settingsModal"); if (m) m.classList.remove("open"); }
@@ -570,14 +571,12 @@ function updateSettingsUI() {
   if (sec)  sec.style.display     = _ownKeyOn ? "block" : "none";
 }
 function toggleOwnKey() {
-  useOwnKey = _ownKeyOn;
+  _ownKeyOn = !_ownKeyOn;
   updateSettingsUI();
 }
 function saveSettings() {
-  const t = document.getElementById("useOwnKeyToggle");
   const k = document.getElementById("customKeyInput").value.trim();
-  if (!t) return;
-  useOwnKey = t.checked;
+  useOwnKey = _ownKeyOn;
   if (useOwnKey) {
     if (!k) return showToast("Enter your API key first", "error");
     proCustomKey = k; showToast("Using your own API key", "success");
