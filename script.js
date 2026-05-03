@@ -702,22 +702,32 @@ function openRefImgUpload() {
     showToast("Reference image upload is available on Pro & Max plans only", "error");
     return;
   }
-  document.getElementById("refImgInput").click();
+  const inp = document.getElementById("refImgInput");
+  if (!inp) return;
+  inp.value = "";
+  setTimeout(() => inp.click(), 50);
 }
 function handleRefImgUpload(e) {
-  const file = e.target.files[0];
+  const file = e.target.files && e.target.files[0];
   if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    showToast("Please select an image file", "error"); return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showToast("Image too large. Max 10MB.", "error"); return;
+  }
   const reader = new FileReader();
   reader.onload = ev => {
     const dataUrl   = ev.target.result;
     _refImgBase64   = dataUrl.split(',')[1];
     _refImgMime     = file.type || 'image/jpeg';
-    document.getElementById('refImgThumb').src           = dataUrl;
-    document.getElementById('refImgPlaceholder').style.display = 'none';
-    document.getElementById('refImgPreview').style.display     = 'block';
+    document.getElementById('refImgThumb').src                  = dataUrl;
+    document.getElementById('refImgPlaceholder').style.display  = 'none';
+    document.getElementById('refImgPreview').style.display      = 'block';
     document.getElementById('refImgDropZone').style.borderColor = 'var(--cyan,#06b6d4)';
     document.getElementById('refImgDropZone').style.background  = 'rgba(6,182,212,.06)';
   };
+  reader.onerror = () => showToast("Failed to read image. Try another file.", "error");
   reader.readAsDataURL(file);
 }
 function clearRefImg(e) {
