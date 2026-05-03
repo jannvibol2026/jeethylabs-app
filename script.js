@@ -423,10 +423,11 @@ function closeDd() {
   const dd = document.getElementById("profileDropdown");
   if (dd) dd.classList.remove("open");
 }
+// ✅ AFTER (bubble phase = normal):
 document.addEventListener("click", e => {
   const wrap = document.getElementById("userProfileWrap");
   if (wrap && !wrap.contains(e.target)) closeDd();
-}, true);
+});
 
 // =================== PROFILE SHEET ===================
 function openProfileSheet()  { syncProfileSheet(); document.getElementById("ppOverlay").classList.add("open"); }
