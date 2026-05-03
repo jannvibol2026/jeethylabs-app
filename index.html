@@ -397,12 +397,11 @@ Your lyrics here..."
     <div class="modal-body">
       <p class="modal-desc">JeeThy Labs' owner key is used by default. Enable below to use your own API key.</p>
       <div class="settings-toggle-row">
-        <span class="settings-label"><i class="fas fa-key"></i> Use my own API key</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="useOwnKeyToggle" onchange="updateSettingsUI()"/>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
+  <span class="settings-label"><i class="fas fa-key"></i> Use my own API key</span>
+  <div id="ownKeyToggleBtn" onclick="toggleOwnKey()" style="width:44px;height:24px;border-radius:24px;position:relative;flex-shrink:0;background:rgba(255,255,255,.12);border:1px solid var(--border);transition:background .2s,border-color .2s;cursor:pointer">
+    <div id="ownKeyKnob" style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform .2s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>
+  </div>
+</div>
       <div id="customKeySection" style="display:none">
         <div class="form-group" style="margin-top:12px">
           <label class="form-label">Your Google AI API Key</label>
