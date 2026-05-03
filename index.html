@@ -126,6 +126,23 @@
             </div>
           </div>
         </div>
+        <!-- ── Reference Image Upload ── -->
+        <div class="form-group" id="refImgSection">
+          <label class="form-label">Reference Image <span style="font-size:10px;color:var(--text2);font-weight:400">(optional)</span> <span class="pro-badge" style="font-size:10px;vertical-align:middle">PRO</span></label>
+          <div id="refImgDropZone" onclick="openRefImgUpload()"
+            style="border:2px dashed var(--border);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:rgba(255,255,255,.03)">
+            <div id="refImgPlaceholder">
+              <i class="fas fa-image" style="font-size:22px;color:var(--text2);margin-bottom:6px;display:block"></i>
+              <span style="font-size:12px;color:var(--text2)">Tap to upload reference image</span><br>
+              <span style="font-size:11px;color:var(--text2);opacity:.6">Face, body, style reference</span>
+            </div>
+            <div id="refImgPreview" style="display:none;position:relative">
+              <img id="refImgThumb" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px" alt="reference"/>
+              <button onclick="clearRefImg(event)" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:24px;height:24px;color:#fff;font-size:13px;cursor:pointer;line-height:1">×</button>
+            </div>
+          </div>
+          <input type="file" id="refImgInput" accept="image/*" style="display:none" onchange="handleRefImgUpload(event)"/>
+        </div>
         <button class="btn-generate btn-cyan" id="imgGenBtn" onclick="generateImage()">
           <i class="fas fa-wand-magic-sparkles"></i> Generate Image
         </button>
