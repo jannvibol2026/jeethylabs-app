@@ -1,6 +1,6 @@
-/* ═══════════════════════════════════════════════════════════
-   song-plan.js  —  JeeThy Labs  (FIXED v5)
-   ═══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   song-plan.js  â€”  JeeThy Labs  (FIXED v5)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 function _getSongToken() {
   const t = localStorage.getItem("jl_token");
@@ -20,14 +20,14 @@ async function _detectPlan() {
   const user = window.currentUser;
   if (user && user.plan) {
     const plan = user.plan.toLowerCase();
-    if (plan === "max") return { plan: "max", durationHint: "3 – 4 minutes (full song)", customLyrics: true };
-    if (plan === "pro") return { plan: "pro", durationHint: "2 – 3 minutes",             customLyrics: true };
+    if (plan === "max") return { plan: "max", durationHint: "3 â€“ 4 minutes (full song)", customLyrics: true };
+    if (plan === "pro") return { plan: "pro", durationHint: "2 â€“ 3 minutes",             customLyrics: true };
     return { plan: "free", durationHint: "under 1 minute", customLyrics: false };
   }
   if (window.userPlan) {
     const plan = window.userPlan.toLowerCase();
-    if (plan === "max") return { plan: "max", durationHint: "3 – 4 minutes (full song)", customLyrics: true };
-    if (plan === "pro") return { plan: "pro", durationHint: "2 – 3 minutes",             customLyrics: true };
+    if (plan === "max") return { plan: "max", durationHint: "3 â€“ 4 minutes (full song)", customLyrics: true };
+    if (plan === "pro") return { plan: "pro", durationHint: "2 â€“ 3 minutes",             customLyrics: true };
   }
   const token = _getSongToken();
   if (token) {
@@ -47,8 +47,8 @@ async function _detectPlan() {
     const el = document.querySelector(sel);
     if (!el) continue;
     const txt = el.textContent.trim().toLowerCase();
-    if (txt.includes("max")) return { plan: "max", durationHint: "3 – 4 minutes (full song)", customLyrics: true };
-    if (txt.includes("pro")) return { plan: "pro", durationHint: "2 – 3 minutes",             customLyrics: true };
+    if (txt.includes("max")) return { plan: "max", durationHint: "3 â€“ 4 minutes (full song)", customLyrics: true };
+    if (txt.includes("pro")) return { plan: "pro", durationHint: "2 â€“ 3 minutes",             customLyrics: true };
   }
   return { plan: "free", durationHint: "under 1 minute", customLyrics: false };
 }
@@ -71,7 +71,7 @@ function _renderSongPlanUI(planInfo) {
   }
 
   const hint = document.getElementById("song-duration-hint");
-  if (hint) hint.textContent = "⏱ ~" + (planInfo.durationHint || "under 1 minute");
+  if (hint) hint.textContent = "â± ~" + (planInfo.durationHint || "under 1 minute");
 
   const panel  = document.getElementById("custom-lyrics-panel");
   const notice = document.getElementById("custom-lyrics-upgrade-notice");
@@ -98,15 +98,15 @@ function _bindLyricsFileUpload() {
     reader.onload = function(ev) {
       textarea.value = ev.target.result;
       fileInput.value = "";
-      _spToast("Lyrics loaded ✅");
+      _spToast("Lyrics loaded âœ…");
     };
     reader.readAsText(file, "utf-8");
   });
 }
 
-/* ─────────────────────────────────────────────────────────
-   generateSong — entry point from Generate Song button
-───────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   generateSong â€” entry point from Generate Song button
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function generateSong() {
   if (!window.currentUser) {
     if (typeof openAuthModal === "function") openAuthModal("song");
@@ -115,9 +115,9 @@ function generateSong() {
   _generateSong();
 }
 
-/* ─────────────────────────────────────────────────────────
-   _generateSong — main song generation with full lyrics UI
-───────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   _generateSong â€” main song generation with full lyrics UI
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 async function _generateSong() {
   if (typeof checkQuota === "function" && !checkQuota()) return;
 
@@ -148,12 +148,12 @@ async function _generateSong() {
   if (resultsEl) resultsEl.innerHTML = `
     <div class="loading-card green-loader">
       <div class="loading-spinner"></div>
-      <div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with Lyria… (~20–40s)</div>
+      <div class="loading-label" id="songLoadingLabel">Writing lyrics &amp; generating music with Lyriaâ€¦ (~20â€“40s)</div>
     </div>`;
 
   const retryHintTimer = setTimeout(() => {
     const lbl = document.getElementById("songLoadingLabel");
-    if (lbl) lbl.textContent = "Lyria is composing… if slow, falling back to TTS — please wait";
+    if (lbl) lbl.textContent = "Lyria is composingâ€¦ if slow, falling back to TTS â€” please wait";
   }, 20000);
 
   try {
@@ -186,7 +186,7 @@ async function _generateSong() {
     const card = document.createElement("div");
     card.className = "song-result-card";
 
-    /* ── Header ── */
+    /* â”€â”€ Header â”€â”€ */
     const header = document.createElement("div");
     header.className = "song-result-title";
     const isLyria     = audioSource && audioSource.toLowerCase().includes("lyria");
@@ -195,16 +195,16 @@ async function _generateSong() {
           background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};
           color:${isLyria ? "#a855f7" : "#10b981"};
           border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">
-          ${isLyria ? "🎵 Lyria" : "🔊 TTS"}</span>` : "";
+          ${isLyria ? "ðŸŽµ Lyria" : "ðŸ”Š TTS"}</span>` : "";
     header.innerHTML = `
       <i class="fas fa-music"></i> ${escHtml(songTitle || style + " Song")}
       ${sourceBadge}
       <span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">
-        ${escHtml(style)} · ${escHtml(voiceHint)}
+        ${escHtml(style)} Â· ${escHtml(voiceHint)}
       </span>`;
     card.appendChild(header);
 
-    /* ── Audio player ── */
+    /* â”€â”€ Audio player â”€â”€ */
     if (audioB64) {
       const raw = atob(audioB64);
       const bytes = new Uint8Array(raw.length);
@@ -219,7 +219,8 @@ async function _generateSong() {
       audioEl.src = blobUrl;
       card.appendChild(audioEl);
 
-      const ext = (audioMime || "audio/wav").split("/")[1] || "wav";
+      /* Always download as .mp3 â€” mpeg/mp3 are same codec, mp3 opens everywhere */
+      const ext = "mp3";
       const a   = document.createElement("a");
       a.className = "btn-download";
       a.href      = blobUrl;
@@ -231,7 +232,7 @@ async function _generateSong() {
       notice.style.cssText = "display:flex;flex-direction:column;gap:8px;padding:10px 14px;"
         + "font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);"
         + "border-bottom:1px solid var(--border);";
-      const msg = ttsMessage || "Audio generation temporarily unavailable — lyrics ready below. Try again shortly.";
+      const msg = ttsMessage || "Audio generation temporarily unavailable â€” lyrics ready below. Try again shortly.";
       notice.innerHTML = `
         <div style="display:flex;align-items:flex-start;gap:8px;">
           <i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0;margin-top:2px"></i>
@@ -245,7 +246,7 @@ async function _generateSong() {
       card.appendChild(notice);
     }
 
-    /* ── Lyrics section ── */
+    /* â”€â”€ Lyrics section â”€â”€ */
     /* Declared outside if-block so auto-fill below can access cleanedLyrics */
     const _cleanLyrics = (txt) => (txt || "")
       .replace(/\[\d+:\d+(?:\.\d+)?\]/g, "")   /* [0:00] [1:23.45] */
@@ -278,7 +279,7 @@ async function _generateSong() {
       lyricsWrap.style.cssText = "background:rgba(255,255,255,.03);margin:0 12px 14px;"
         + "border-radius:10px;border:1px solid rgba(255,255,255,.07);overflow:hidden;";
 
-      /* Display <pre> — shows cleaned lyrics */
+      /* Display <pre> â€” shows cleaned lyrics */
       const lyricsPre = document.createElement("pre");
       lyricsPre.className = "sp-lyrics-pre";
       lyricsPre.style.cssText = "padding:14px 16px;font-size:13px;color:#d1d5db;"
@@ -286,7 +287,7 @@ async function _generateSong() {
         + "overflow-y:auto;max-height:320px;";
       lyricsPre.textContent = cleanedLyrics;
 
-      /* Edit <textarea> — editable, hidden by default */
+      /* Edit <textarea> â€” editable, hidden by default */
       const lyricsEditor = document.createElement("textarea");
       lyricsEditor.className = "sp-lyrics-editor";
       lyricsEditor.value = cleanedLyrics;
@@ -302,7 +303,7 @@ async function _generateSong() {
       lyricsWrap.appendChild(lyricsEditor);
       card.appendChild(lyricsWrap);
 
-      /* Regenerate footer — shown when in edit mode */
+      /* Regenerate footer â€” shown when in edit mode */
       const regenFooter = document.createElement("div");
       regenFooter.className = "sp-regen-footer";
       regenFooter.style.cssText = "display:none;padding:8px 14px 14px;";
@@ -321,7 +322,7 @@ async function _generateSong() {
         const customTA = document.getElementById("custom-lyrics-textarea");
         if (customTA) {
           customTA.value = editedLyrics;
-          customTA.dataset.autoFilled = "0"; /* user edited — don't override next time */
+          customTA.dataset.autoFilled = "0"; /* user edited â€” don't override next time */
         } else {
           /* fallback: store globally */
           window._spRegenLyrics = editedLyrics;
@@ -335,7 +336,7 @@ async function _generateSong() {
     document.querySelector(".panel-song .panel-inner-scroll")
       ?.scrollTo({ top: 99999, behavior: "smooth" });
 
-    /* ── Auto-fill custom-lyrics-textarea for PRO/MAX ── */
+    /* â”€â”€ Auto-fill custom-lyrics-textarea for PRO/MAX â”€â”€ */
     if (cleanedLyrics) {
       const _plan = (window._spCurrentPlan || "free").toLowerCase();
       const customTA = document.getElementById("custom-lyrics-textarea");
@@ -363,7 +364,7 @@ async function _generateSong() {
       <div class="error-card">
         <i class="fas fa-circle-exclamation"></i>
         ${escHtml(err.message)}
-        ${isOverload ? "<br/><small style='opacity:.7'>High demand — please wait a moment and retry.</small>" : ""}
+        ${isOverload ? "<br/><small style='opacity:.7'>High demand â€” please wait a moment and retry.</small>" : ""}
         <br/><button onclick="_generateSong()"
           style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;
           background:var(--green,#10b981);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
@@ -375,9 +376,9 @@ async function _generateSong() {
   if (btn) { btn.disabled = false; btn.innerHTML = origHTML || '<i class="fas fa-wand-magic-sparkles"></i> Generate Song'; }
 }
 
-/* ─────────────────────────────────────────────────────────
-   toggleLyricsEdit — Edit / Done button handler
-───────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   toggleLyricsEdit â€” Edit / Done button handler
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function toggleLyricsEdit(btn) {
   const wrap    = btn.closest(".song-result-card") || document;
   const preview = wrap.querySelector(".sp-lyrics-pre");
@@ -388,7 +389,7 @@ function toggleLyricsEdit(btn) {
   const isEditing = editor.style.display !== "none";
 
   if (isEditing) {
-    /* Save → back to preview */
+    /* Save â†’ back to preview */
     preview.textContent     = editor.value;
     preview.style.display   = "block";
     editor.style.display    = "none";
@@ -411,9 +412,9 @@ function toggleLyricsEdit(btn) {
   }
 }
 
-/* ─────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Toast helper
-───────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function _spToast(msg, ms) {
   if (typeof showToast === "function") { showToast(msg, "info"); return; }
   ms = ms || 3000;
@@ -427,9 +428,9 @@ function _spToast(msg, ms) {
   setTimeout(() => t.remove(), ms);
 }
 
-/* ─────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Auto-hook into goToPanel (Song tab = index 2)
-───────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 (function () {
   function patch() {
     if (typeof goToPanel === "function" && !goToPanel._spPatched) {
