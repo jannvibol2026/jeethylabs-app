@@ -246,13 +246,14 @@ async function _generateSong() {
     }
 
     /* ── Lyrics section ── */
+    /* Declared outside if-block so auto-fill below can access cleanedLyrics */
+    const _cleanLyrics = (txt) => (txt || "")
+      .replace(/\[\d+:\d+(?:\.\d+)?\]/g, "")   /* [0:00] [1:23.45] */
+      .replace(/\[\d+\.\d+,\d+\.\d+\]/g, "") /* [0.00,1.23] */
+      .trim();
+    const cleanedLyrics = _cleanLyrics(lyricsText);
+
     if (lyricsText) {
-      /* Strip timestamp tags like [0:00], [0:00.00], [verse], [chorus] etc for clean display */
-      const _cleanLyrics = (txt) => txt
-        .replace(/\[\d+:\d+(?:\.\d+)?\]/g, "")   /* [0:00] [1:23.45] */
-        .replace(/\[\d+\.\d+,\d+\.\d+\]/g, "") /* [0.00,1.23] */
-        .trim();
-      const cleanedLyrics = _cleanLyrics(lyricsText);
 
       /* Lyrics header row */
       const lyricsHeader = document.createElement("div");
