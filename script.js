@@ -18,6 +18,8 @@ let userPlan      = "free";
 let proCustomKey  = "";
 let useOwnKey     = false;
 let _ownKeyOn     = false;
+let _refImgBase64 = null;
+let _refImgMime   = null;
 let ownerApiKey   = "";
 let requestCount  = 0;
 let chatHistory   = [];
@@ -693,6 +695,45 @@ function formatMarkdown(text) {
 }
 
 // =================== IMAGE GENERATE ===================
+// ── Reference Image Upload ──────────────────────────────────
+function openRefImgUpload() {
+  if (userPlan !== "pro" && userPlan !== "max") {
+    showUpgradeModal();
+    showToast("Reference image upload is available on Pro & Max plans only", "error");
+    return;
+  }
+  document.getElementById("refImgInput").click();
+}
+function handleRefImgUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dataUrl   = ev.target.result;
+    _refImgBase64   = dataUrl.split(',')[1];
+    _refImgMime     = file.type || 'image/jpeg';
+    document.getElementById('refImgThumb').src           = dataUrl;
+    document.getElementById('refImgPlaceholder').style.display = 'none';
+    document.getElementById('refImgPreview').style.display     = 'block';
+    document.getElementById('refImgDropZone').style.borderColor = 'var(--cyan,#06b6d4)';
+    document.getElementById('refImgDropZone').style.background  = 'rgba(6,182,212,.06)';
+  };
+  reader.readAsDataURL(file);
+}
+function clearRefImg(e) {
+  if (e) e.stopPropagation();
+  _refImgBase64 = null;
+  _refImgMime   = null;
+  const inp = document.getElementById('refImgInput');
+  if (inp) inp.value = '';
+  const ph  = document.getElementById('refImgPlaceholder');
+  const pv  = document.getElementById('refImgPreview');
+  const dz  = document.getElementById('refImgDropZone');
+  if (ph) ph.style.display = 'block';
+  if (pv) pv.style.display = 'none';
+  if (dz) { dz.style.borderColor = 'var(--border)'; dz.style.background = 'rgba(255,255,255,.03)'; }
+}
+
 function generateImage() {
   if (!currentUser) { openAuthModal("image"); return; }
   _generateImage();
@@ -705,7 +746,9 @@ async function _generateImage() {
   if (!prompt) return showToast("Please enter a prompt", "error");
   const style  = getActiveChip("imgStyleGroup");
   const ratio  = getActiveChip("imgRatioGroup");
-  const qty    = parseInt(getActiveChip("imgQtyGroup")) || 1;
+  const qty       = parseInt(getActiveChip("imgQtyGroup")) || 1;
+  const refBase64 = _refImgBase64 || null;
+  const refMime   = _refImgMime   || null;
 
   // Inject ratio hint into prompt so AI generates composition matching the ratio
   const RATIO_HINTS = {
@@ -726,7 +769,10 @@ async function _generateImage() {
     const r = await fetch("/api/image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: fullPrompt, aspectRatio: ratio, style })
+      body: JSON.stringify({
+        prompt: fullPrompt, aspectRatio: ratio, style,
+        ...(refBase64 ? { referenceImageBase64: refBase64, referenceImageMime: refMime } : {})
+      })
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
