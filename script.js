@@ -138,7 +138,8 @@ async function checkExistingSession() {
 }
 
 function getActiveApiKey() {
-  if (userPlan === "pro" && useOwnKey && proCustomKey) return proCustomKey;
+ // ✅ NEW
+if ((userPlan === "pro" || userPlan === "max") && useOwnKey && proCustomKey) return proCustomKey;
   return ownerApiKey;
 }
 
@@ -548,8 +549,9 @@ async function confirmPlan() {
 }
 
 // ====================== SETTINGS ======================
+// ✅ NEW
 function openSettings() {
-  if (userPlan !== "pro") { showToast("Settings available on Pro plan", "error"); openPlanModal(); return; }
+  if (userPlan !== "pro" && userPlan !== "max") { showToast("Settings available on Pro and Max plans", "error"); openPlanModal(); return; }
   const m = document.getElementById("settingsModal"); if (!m) return;
   m.classList.add("open");
   document.getElementById("customKeyInput").value    = proCustomKey;
