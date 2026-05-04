@@ -1230,15 +1230,197 @@ function showToast(msg, type = "info") {
 
 
 // ════ Khmer Music Rhythm Dataset v1 — JeeThy Labs ════
+// ============================================================
+// KHMER RHYTHM DATASET — Rich Lyria-optimized prompts v2.0
+// Each entry contains: label, bpm range, full Lyria prompt
+// Covers: drum patterns, instruments, scale/mode, mood, production style
+// ============================================================
+
 const KHMER_RHYTHM_DB = {
-  romvong:     {label:'រាំវង់ (Romvong)',      bpm:[90,110],  desc:'Romvong traditional Cambodian circular dance music, steady 4/4 groove at 90-110 BPM, smooth flowing feel, suitable for slow circular partner dancing'},
-  romkbach:    {label:'រាំក្បាច់ (Romkbach)',  bpm:[80,100],  desc:'Romkbach Cambodian smooth elegant dance style at 80-100 BPM, sparse kick pattern, relaxed snare, graceful flowing movement'},
-  saravan:     {label:'សារ៉ាវ៉ាន់ (Saravan)',  bpm:[95,115],  desc:'Saravan Cambodian folk dance at 95-115 BPM, syncopated kick pattern, bouncy energetic groove stronger than Romvong, lively Khmer folk feel'},
-  kantreum:    {label:'កន្ទ្រឹម (Kantreum)',   bpm:[110,130], desc:'Kantreum fast traditional Cambodian dance at 110-130 BPM, 16-step syncopated kick and snare, full 16th-note hi-hat grid, energetic bounce for fast leg dancing'},
-  madison:     {label:'ម៉ាឌីសុន (Madison)',    bpm:[100,120], desc:'Madison Cambodian-adapted structured dance at 100-120 BPM, clean kick pattern, syncopated hi-hat, blends well with modern EDM and Pop production'},
-  cha_cha_cha: {label:'ឆា ឆា ឆា (Cha Cha)',  bpm:[110,130], desc:'Cha Cha Cha latin-influenced Cambodian dance at 110-130 BPM, syncopated kick with latin clave rhythmic pattern, lively and playful'},
-  taloong:     {label:'តាឡូង (Taloong)',       bpm:[120,140], desc:'Taloong fast driving Cambodian rhythm at 120-140 BPM, kick on every 2 steps creating urgency, high energy traditional Khmer dance'},
-  slow:        {label:'ចង្វាក់យឺត (Slow)',     bpm:[60,80],   desc:'Khmer Slow Ballad at 60-80 BPM, minimal kick on beat 1, classic snare on 2 and 4, sparse hi-hat, deeply emotional and romantic Cambodian feel'},
+
+  romvong: {
+    label: 'រាំវង់ (Romvong)',
+    bpm: [90, 110],
+    desc: 'Khmer Romvong — traditional Cambodian circular dance music with warm, friendly, wedding/party feel. '
+        + 'Tempo: 90-110 BPM, 4/4 time signature, medium energy. '
+        + 'Core Khmer instruments: Chhing (small cymbals) as the constant rhythmic heartbeat on every 8th note — this is the most important element. '
+        + 'Skor Thom (deep barrel drum) as kick on beat 1 and beat 3. '
+        + 'Sampho (mid drum) as soft snare accent on beat 2 and beat 4. '
+        + 'Roneat Ek (bright xylophone) as the main melody — smooth, repetitive, easy Khmer folk ornamentation. '
+        + 'Khim (hammered dulcimer) for light arpeggio layer. '
+        + 'Tro U (bowed string) for soft bass melody. '
+        + 'Chapey (long-neck lute) optional rhythmic chord support. '
+        + 'Drum feel: human, not fully quantized — add 5-15ms swing variation. '
+        + 'Bass: simple root notes, low volume, do not overplay. '
+        + 'Melody: smooth circular phrasing with Khmer folk slides, trills, and call-and-response. '
+        + 'Mix priority: Chhing is loudest timekeeper, then Roneat Ek melody, then Skor Thom, then Sampho, bass and Khim are subtle support. '
+        + 'Do NOT use Western EDM drums. Keep rhythm human, danceable, and culturally Khmer.',
+  },
+
+  saravan: {
+    label: 'សារ៉ាវ៉ាន់ (Saravan)',
+    bpm: [95, 115],
+    desc: 'Khmer Saravan — bouncy festive village dance music with playful, lively feel. '
+        + 'Tempo: 95-115 BPM, 4/4 time signature, medium-high energy. '
+        + 'Core Khmer instruments: Chhing (finger cymbals) as strong timekeeper with slight swing feel. '
+        + 'Skor Thom (deep drum) with syncopated bouncy kick movement — more dynamic than Romvong. '
+        + 'Sampho (mid drum) with stronger accents on beat 2 and beat 4. '
+        + 'Roneat Ek (bright xylophone) as bright lead melody with lively ornaments. '
+        + 'Khim (dulcimer) for rhythmic sparkle. '
+        + 'Tro Sau (expressive bowed fiddle) as expressive melody layer. '
+        + 'Drum feel: syncopated kick pattern, slight swing on Chhing pulse, human timing with 5-15ms variation. '
+        + 'Bass: root-note bass with small rhythmic movement, not complex. '
+        + 'Melody: short repeated Khmer folk phrases, lively ornaments, call-and-response structure. '
+        + 'Mix priority: Chhing and Skor Thom and Roneat Ek equally prominent, Sampho strong backbeat, bass moderate. '
+        + 'Do NOT use heavy Western drums. Keep energy festive and Khmer village folk style.',
+  },
+
+  kantreum: {
+    label: 'កន្ទ្រឹម (Kantreum)',
+    bpm: [110, 135],
+    desc: 'Khmer Kantreum — fast energetic folk dance music, powerful and festive. '
+        + 'Tempo: 110-135 BPM, 4/4 time signature, high energy. '
+        + 'Core Khmer instruments: Skor Thom (deep drum) as strong driving kick with syncopated pattern. '
+        + 'Sampho or clap as sharp strong backbeat accent. '
+        + 'Chhing (cymbals) in fast 16th-note or 8th-note pulse. '
+        + 'Chapey (long-neck lute) for rhythmic plucked groove. '
+        + 'Roneat Ek (xylophone) or bright synth lead for fast Khmer folk melody. '
+        + 'Electric bass or Tro U for driving bass line. '
+        + 'Drum feel: strong syncopated kick, sharp backbeat, fast Chhing pulse — powerful and driving. '
+        + 'Slight human timing variation 5-15ms to keep it alive. '
+        + 'Bass: stronger than Romvong, repetitive dance-focused root movement. '
+        + 'Melody: fast Khmer folk phrases, repeated energetic hooks, ornaments. '
+        + 'Mix priority: Skor Thom is the loudest driving force, bass strong, Sampho sharp, Chapey rhythmic, melody cuts through. '
+        + 'This can use some modern production but must keep Khmer percussion identity clearly audible.',
+  },
+
+  madison: {
+    label: 'ម៉ាឌីសុន (Madison)',
+    bpm: [100, 120],
+    desc: 'Khmer Madison — structured Cambodian line dance with retro party feel, clean and danceable. '
+        + 'Tempo: 100-120 BPM, 4/4 time signature, medium-high energy. '
+        + 'Instruments: modern drum kit or Skor Thom hybrid kick on beat 1 and beat 3. '
+        + 'Snare or Sampho on beat 2 and beat 4 — clean sharp backbeat. '
+        + 'Hi-hat or Chhing on straight 8th notes. '
+        + 'Bass guitar with simple walking or root-fifth movement. '
+        + 'Piano or Khim (dulcimer) for harmonic support. '
+        + 'Roneat Ek (xylophone) for Khmer melodic flavor and identity. '
+        + 'Drum feel: clean and structured, more precise than Romvong, suitable for synchronized line dancing. '
+        + 'Bass: simple root-fifth walking bass, clear and groovy. '
+        + 'Melody: catchy, repetitive, danceable Khmer-inflected phrases. '
+        + 'Mix priority: kick and snare prominent, bass strong and present, hi-hat steady, Roneat/Khim add Khmer color. '
+        + 'Blend Khmer traditional instruments with modern pop production for 1970s Cambodian pop feel.',
+  },
+
+  romkbach: {
+    label: 'រាំក្បាច់ (Romkbach)',
+    bpm: [75, 95],
+    desc: 'Khmer Romkbach — elegant graceful traditional Cambodian slow dance, refined and dignified. '
+        + 'Tempo: 75-95 BPM, 4/4 time signature, low-medium energy. '
+        + 'Core Khmer instruments: Tro Sau (expressive bowed fiddle) as the main emotional melody lead — most important. '
+        + 'Roneat Ek (xylophone) for melodic decoration and response phrases. '
+        + 'Khim (hammered dulcimer) for soft harmonic layer. '
+        + 'Chhing (finger cymbals) very light and spaced timekeeper, do not overwhelm. '
+        + 'Sampho (mid drum) very soft accents only, must not dominate. '
+        + 'Drum feel: very soft percussion, human and relaxed, long spaces between hits. '
+        + 'Bass: very soft, minimal, long sustained root notes only. '
+        + 'Melody: graceful, deeply ornamented, emotional Khmer phrasing with slides, vibrato, and long sustained notes. '
+        + 'Tro Sau should carry the full emotional weight — flowing and expressive like classical Apsara court music. '
+        + 'Mix priority: Tro Sau is dominant, Roneat Ek secondary, Chhing and Khim are subtle texture, drums and bass barely audible. '
+        + 'This is traditional Cambodian court dance music — ceremonial, dignified, ancient in feel.',
+  },
+
+  slow: {
+    label: 'ចង្វាក់យឺត (Slow Ballad)',
+    bpm: [60, 80],
+    desc: 'Khmer Slow Ballad — deeply romantic emotional Cambodian ballad with nostalgic, heartfelt feel. '
+        + 'Tempo: 60-80 BPM, 4/4 time signature, low energy, cinematic and intimate. '
+        + 'Core Khmer instruments: Tro Sau or Tro U (bowed string) as emotional lead melody — must carry the feeling. '
+        + 'Khim (dulcimer) or piano for soft harmonic support. '
+        + 'Roneat Ek (xylophone) for light melodic response phrases. '
+        + 'Minimal soft drum — very soft kick barely on beat 1. '
+        + 'Soft Sampho or snare brushstroke on beat 2 and beat 4. '
+        + 'Chhing or shaker only if needed — very quiet. '
+        + 'Bass: very simple, warm, long sustained root notes, do not rush. '
+        + 'Melody: slow and deeply emotional with slides, vibrato, and long sustained phrases. '
+        + 'Long silence and space between notes — let the emotion breathe. '
+        + 'Mix priority: lead Tro Sau melody at 100%, harmony instruments at 75%, bass minimal, drums barely present. '
+        + 'Cinematic string swells, spacious reverb, intimate vocal quality. '
+        + 'Reference feel: classic Khmer ballads by Sinn Sisamouth or Ros Sereysothea — timeless, emotional, Cambodian identity.',
+  },
+
+  taloong: {
+    label: 'តាឡូង (Taloong)',
+    bpm: [125, 145],
+    desc: 'Khmer Taloong — fastest and most driving traditional Cambodian dance rhythm, urgent and exhilarating. '
+        + 'Tempo: 125-145 BPM, 4/4 time signature, very high energy. '
+        + 'Core Khmer instruments: Skor Taloong (double-headed drum) as the primary rhythmic driver — relentless and powerful. '
+        + 'Kick pattern: four-on-the-floor with additional kick on beat 2-and — dense and urgent. '
+        + 'Chhing (finger cymbals) in very rapid double-time pulse. '
+        + 'Roneat Ek (xylophone) playing fast pentatonic melodic runs up and down the scale. '
+        + 'Electric bass or Tro U with driving eighth-note pulse. '
+        + 'Snare or Sampho cracking hard on beat 2 and beat 4. '
+        + 'Drum feel: intense, driving, slightly human — snare rolls and fills at phrase endings. '
+        + 'Bass: strong and repetitive, pushing forward momentum. '
+        + 'Melody: rapid Khmer pentatonic minor runs, fast ornaments, energetic hooks. '
+        + 'Mix priority: Skor Taloong drum dominant, bass strong, Chhing rapid pulse, melody cuts through clearly. '
+        + 'Traditional Khmer festival drumming at full sprint — wild, unstoppable, exhilarating.',
+  },
+
+  cha_cha_cha: {
+    label: 'ឆា ឆា ឆា (Cha Cha)',
+    bpm: [110, 130],
+    desc: 'Khmer Cha Cha — Latin-influenced Cambodian dance rhythm with Khmer melodic identity, playful and seductive. '
+        + 'Tempo: 110-130 BPM, 4/4 time signature, medium-high energy. '
+        + 'Rhythm: Latin 3-2 son clave pattern on woodblock or rim as rhythmic foundation. '
+        + 'Kick syncopated on beat 1 and beat 4-and. '
+        + 'Snare with ghost notes on beat 2 and beat 4. '
+        + 'Maracas or hi-hat shaker on every 8th note for Latin texture. '
+        + 'Chhing (finger cymbals) replacing or blending with Latin percussion for Khmer identity. '
+        + 'Instruments: brass section stabs (trumpet, trombone), piano montuno pattern, '
+        + 'congas and timbales for Latin percussion body, '
+        + 'Cambodian Khloy flute or Roneat Ek for the melodic Khmer lead. '
+        + 'Bass with tumbao pattern — syncopated Latin bass movement. '
+        + 'Melody: Khmer-inflected mixolydian or minor scale with chromatic Latin voice leading. '
+        + 'Mix priority: brass and percussion prominent, Roneat/Khloy for Khmer color, bass rhythmic and syncopated. '
+        + 'Reference feel: Cambodian 1960s golden era — Sinn Sisamouth meets Latin salsa, couples dancing at Phnom Penh nightclubs.',
+  },
+
+  chapey: {
+    label: 'ចាប៉ី (Chapey Dang Veng)',
+    bpm: [70, 95],
+    desc: 'Chapey Dang Veng — ancient Cambodian long-neck lute storytelling tradition, UNESCO Intangible Cultural Heritage. '
+        + 'Tempo: 70-95 BPM with rubato feel — tempo breathes naturally with the story. '
+        + 'Primary instrument: Chapey dong veng (long two-string lute) — the entire music is built around this instrument. '
+        + 'Rhythm comes from chapey plucking: steady bass thumb on beats 1 and 3, '
+        + 'ornamented finger picking on off-beats, occasional percussive body slap for accent. '
+        + 'Optional minimal skor hand drum for light rhythmic support. '
+        + 'Chhing very lightly if present — must not dominate. '
+        + 'Scale: Cambodian open modal tuning with microtonal bends, blues-adjacent but distinctly Khmer. '
+        + 'Mood: ancient, wise, storytelling — like a monk reciting Khmer epic poetry about Angkor Wat. '
+        + 'Spiritual, deeply rooted in Cambodian identity and oral tradition. '
+        + 'Production: very raw and dry, close-mic acoustic, minimal processing — '
+        + 'imperfections are authentic and beautiful, must sound ancient, not polished. '
+        + 'Reference feel: Kong Nay or Chum Ngek playing chapey — Cambodia oldest living blues tradition.',
+  },
+
+  lbokkatob: {
+    label: 'លេបកតប (Lbok Katob / Ayai)',
+    bpm: [80, 100],
+    desc: 'Lbok Katob — traditional Cambodian improvised call-and-response folk singing style, witty and playful. '
+        + 'Tempo: 80-100 BPM, 4/4, moderate and conversational energy. '
+        + 'Light syncopated percussion underneath vocal improvisation — space is very important. '
+        + 'Skor drum accenting phrase endings to punctuate the vocal exchange. '
+        + 'Chhing (finger cymbals) marking the steady beat gently as the timekeeper. '
+        + 'Bass note every two beats anchoring the harmony, very simple. '
+        + 'Roneat Ek (xylophone) filling melodic phrases between vocal exchanges. '
+        + 'Chapey (long-neck lute) for bass harmonic support and rhythmic color. '
+        + 'Scale: simple bright pentatonic in major mode — supports witty comedic vocal exchange. '
+        + 'Mood: playful, humorous, spontaneous — two performers teasing each other in song. '
+        + 'Production: lively and natural, moderate room reverb, dynamic space for call-and-response. '
+        + 'Reference feel: Cambodian folk theater music — a living tradition of wit, storytelling, and village comedy in song.',
+  },
+
 };
 
 // Stored value for "Other" chip selection
@@ -1259,30 +1441,27 @@ function closeOtherStyleModal() {
   document.body.style.overflow = '';
 }
 function selectOtherStyle(el, value) {
-  // Deactivate all main genre chips
   document.querySelectorAll('#songStyleGroup .chip').forEach(c => c.classList.remove('active'));
-  // Deactivate all other-style chips in modal
   document.querySelectorAll('.other-style-chip').forEach(c => c.classList.remove('active'));
-  // Activate selected chip
   el.classList.add('active');
-  // Activate the Other button
   const otherBtn = document.getElementById('chipOtherStyle');
   if (otherBtn) otherBtn.classList.add('active');
-  // Store value
   _otherStyleValue = value;
-  // Update Other button label
   const label = el.textContent.trim();
-  const short = label.length > 12 ? label.substring(0, 11) + '…' : label;
+  const short = label.length > 12 ? label.substring(0, 11) + '\u2026' : label;
   if (otherBtn) otherBtn.innerHTML = '<i class="fas fa-th-large" style="font-size:11px"></i> ' + short;
-  // Close modal
   closeOtherStyleModal();
-  // Hide custom panel if open
   const panel = document.getElementById('custom-style-panel');
   if (panel) panel.style.display = 'none';
 }
 function buildKhmerRhythmPrompt(key) {
-  const r = KHMER_RHYTHM_DB[key ? key.toLowerCase().replace(/[^a-z_]/g,'') : ''];
+  const cleanKey = key ? key.toLowerCase().replace(/[^a-z_]/g, '') : '';
+  const r = KHMER_RHYTHM_DB[cleanKey];
   if (!r) return null;
   const bpmMid = Math.round((r.bpm[0] + r.bpm[1]) / 2);
-  return r.desc + '. Target tempo: ' + bpmMid + ' BPM (range ' + r.bpm[0] + '-' + r.bpm[1] + ' BPM). This is traditional Cambodian Khmer music — generate authentic Khmer rhythmic feel and sound.';
+  return (
+    r.desc
+    + ' Target tempo: ' + bpmMid + ' BPM (range ' + r.bpm[0] + '-' + r.bpm[1] + ' BPM).'
+    + ' Generate authentic Cambodian Khmer music. Prioritize Chhing as timekeeper, Skor Thom and Sampho as traditional drum foundation, Roneat Ek and Khim and Tro as melodic identity. Keep rhythm human with slight swing, danceable, and culturally Khmer. Do not use heavy Western trap drums or EDM drops.'
+  );
 }
