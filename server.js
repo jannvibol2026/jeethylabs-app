@@ -29,15 +29,15 @@ const PLAN_CONFIG = {
     customLyrics:    false,
   },
   pro: {
-    durationHint:    '2 to 3 minutes',
-    durationSeconds: 180,
+    durationHint:    'between 2 minutes 10 seconds and 3 minutes 20 seconds (target around 2 minutes 45 seconds)',
+    durationSeconds: 165,
     structureHint:   'Intro -> Verse 1 -> Pre-Chorus -> Chorus -> Verse 2 -> Pre-Chorus -> Chorus -> Bridge -> Final Chorus -> Outro',
     customLyrics:    true,
   },
   max: {
-    durationHint:    '3 to 4 minutes (full-length)',
+    durationHint:    'between 3 minutes 35 seconds and 4 minutes 25 seconds (target around 4 minutes)',
     durationSeconds: 240,
-    structureHint:   'Intro -> Verse 1 -> Pre-Chorus -> Chorus -> Verse 2 -> Pre-Chorus -> Chorus -> Bridge -> Final Chorus -> Extended Outro',
+    structureHint:   'Intro -> Verse 1 -> Pre-Chorus -> Chorus -> Verse 2 -> Pre-Chorus -> Chorus -> Bridge -> Final Chorus -> Extended Outro with instrumental fade-out',
     customLyrics:    true,
   },
 };
@@ -647,11 +647,15 @@ function buildInstrumentPrompt(instrument) {
   }
   if (khmerDesc.length > 0) {
     lines.push('');
-    lines.push('=== KHMER INSTRUMENT GUIDANCE FOR LYRIA ===');
-    lines.push('Feature these traditional Cambodian instruments prominently in the audio output:');
-    khmerDesc.forEach((d, i) => lines.push((i+1) + '. ' + d));
-    lines.push('Blend these instruments authentically into the arrangement. Music must sound genuinely Cambodian/Southeast Asian in timbre and texture.');
-    lines.push('============================================');
+    lines.push('IMPORTANT - CAMBODIAN TRADITIONAL INSTRUMENTS REQUIRED:');
+    lines.push('The following Cambodian Khmer instruments MUST be clearly audible and prominent in the generated audio:');
+    khmerDesc.forEach((d, i) => lines.push('- ' + d));
+    lines.push('');
+    lines.push('Sound design requirements:');
+    lines.push('- These instruments must be the PRIMARY melodic or rhythmic voice in the arrangement.');
+    lines.push('- Preserve the authentic acoustic timbres of each Cambodian instrument.');
+    lines.push('- The overall music texture must sound Southeast Asian and Cambodian.');
+    lines.push('- Do NOT replace these with generic Western instrument equivalents.');
   }
   return lines;
 }
@@ -676,7 +680,7 @@ app.post('/api/song', auth, async (req, res) => {
     let musicPrompt;
     if (customLyrics && planCfg.customLyrics) {
       musicPrompt = [
-        `Create a complete original ${style} song approximately ${planCfg.durationHint} long.`,
+        `[DURATION REQUIREMENT: Generate audio that is ${planCfg.durationHint}. This is a strict requirement.]`,
         `Use EXACTLY the following lyrics - do not change any words:`,
         `---`,
         customLyrics.trim(),
@@ -691,7 +695,7 @@ app.post('/api/song', auth, async (req, res) => {
       ].join('\n');
     } else {
       musicPrompt = [
-        `Create a complete original ${style} song approximately ${planCfg.durationHint} long.`,
+        `[DURATION REQUIREMENT: Generate audio that is ${planCfg.durationHint}. This is a strict requirement.]`,
         `Theme/Story: ${prompt}`,
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Song structure: ${planCfg.structureHint}.`,
@@ -741,7 +745,10 @@ app.post('/api/song', auth, async (req, res) => {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: musicPrompt }] }],
-            generationConfig: { responseModalities: ['AUDIO', 'TEXT'] },
+            generationConfig: {
+              responseModalities: ['AUDIO', 'TEXT'],
+              temperature: 1.0,
+            },
           }),
         });
         const d = await safeJson(r, `/api/song Lyria ${model}`);
