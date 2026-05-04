@@ -1043,7 +1043,9 @@ async function _generateSong() {
   const voice      = getActiveChip("songVoiceGroup").replace(/[^\w\s]/g, "").trim();
   // instrument/tempo/mood read above with isCustom logic
   const customLyrics = null; // Custom lyrics removed — use prompt textarea
-  const voiceHint = voice.toLowerCase().includes("female") ? "female vocalist" : "male vocalist";
+  const voiceHint = voice.toLowerCase().includes("duet")
+    ? "male and female duet vocalists, call-and-response singing, two voices"
+    : voice.toLowerCase().includes("female") ? "female vocalist" : "male vocalist";
   const btn       = document.getElementById("songGenBtn");
   const resultsEl = document.getElementById("songResults");
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Composing...';
@@ -1198,8 +1200,9 @@ function getMultiChips(multiKey) {
 function selectChip(el, groupId) {
   document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove("active"));
   el.classList.add("active");
-  // If selecting a non-custom genre chip → hide panel + reset instrument/tempo/mood to Auto
+  // If selecting a non-custom, non-other genre chip → clear Other value + hide custom panel
   if (groupId === 'songStyleGroup' && !el.classList.contains('chip-custom') && !el.classList.contains('chip-other')) {
+    _otherStyleValue = null;
     const panel = document.getElementById('custom-style-panel');
     if (panel) panel.style.display = 'none';
     // Reset custom sub-chips to Auto immediately (incl. multi-select instrument chips)
