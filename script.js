@@ -1430,10 +1430,16 @@ const KHMER_RHYTHM_DB = {
 let _otherStyleValue = null;
 
 function openOtherStyleModal() {
+  // Ensure we're on Song tab (panel index 2)
+  if (typeof goToPanel === 'function') goToPanel(2);
+  // Deselect all other genre chips (mutual exclusion)
+  document.querySelectorAll('#songStyleGroup .chip').forEach(c => c.classList.remove('active'));
+  const otherChip = document.getElementById('chipOtherStyle');
+  if (otherChip) otherChip.classList.add('active');
   const bd = document.getElementById('otherStyleBackdrop');
   const md = document.getElementById('otherStyleModal');
   if (bd) bd.style.display = 'block';
-  if (md) md.style.display = 'block';
+  if (md) md.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 }
 function closeOtherStyleModal() {
