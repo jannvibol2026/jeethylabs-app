@@ -8,6 +8,13 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+.chip-other{border-color:#38bdf8;color:#38bdf8}
+.chip-other.active{background:#38bdf8;color:#0f172a}
+.chip-sm{font-size:11px !important;padding:5px 10px !important}
+.khmer-chip{border-color:#a78bfa !important;color:#a78bfa !important}
+.khmer-chip.active{background:#a78bfa !important;color:#fff !important}
+</style>
 </head>
 <body>
 
@@ -178,16 +185,56 @@
           <label class="form-label">Genre / Style</label>
           <div class="chip-group" id="songStyleGroup">
             <button class="chip active" onclick="selectChip(this,'songStyleGroup')">Pop</button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">Sad</button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">Relaxing</button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">Rap</button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">Remix</button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">R&amp;B</button>
             <button class="chip" onclick="selectChip(this,'songStyleGroup')">Rock</button>
             <button class="chip" onclick="selectChip(this,'songStyleGroup')">Jazz</button>
+            <button class="chip chip-other" id="chipOtherStyle" onclick="openOtherStyleModal()">
+              <i class="fas fa-grid-2" style="font-size:11px"></i> Other
+            </button>
             <button class="chip chip-custom" id="chipCustomStyle" onclick="selectChipCustom(this)">
               <i class="fas fa-sliders" style="font-size:11px"></i> Custom
             </button>
+          </div>
+
+          <!-- BACKDROP -->
+          <div id="otherStyleBackdrop" onclick="closeOtherStyleModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9998;backdrop-filter:blur(4px);"></div>
+
+          <!-- OTHER STYLE BOTTOM SHEET -->
+          <div id="otherStyleModal" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#1c1b19;border-radius:20px 20px 0 0;padding:20px 16px 44px;max-height:84vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,.6);">
+            <div style="width:40px;height:4px;background:#3a3938;border-radius:4px;margin:0 auto 16px;"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <h3 style="font-size:15px;font-weight:700;color:#e2e0dc;margin:0;">🎵 Genre / Style</h3>
+              <button onclick="closeOtherStyleModal()" style="background:rgba(255,255,255,.08);border:none;color:#ccc;font-size:16px;cursor:pointer;padding:6px 14px;border-radius:10px;line-height:1;">✕</button>
+            </div>
+
+            <div style="font-size:9px;color:#60a5fa;letter-spacing:.7px;text-transform:uppercase;margin-bottom:8px;opacity:.9;">🌍 International</div>
+            <div class="chip-group" style="margin-bottom:22px;">
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Sad')">Sad</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Relaxing')">Relaxing</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Rap')">Rap</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Remix')">Remix</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'R&B')">R&amp;B</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Classical')">Classical</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'EDM')">EDM</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Country')">Country</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Soul')">Soul</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Blues')">Blues</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Folk')">Folk</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Metal')">Metal</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Reggae')">Reggae</button>
+              <button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Latin')">Latin</button>
+            </div>
+
+            <div style="font-size:9px;color:#a78bfa;letter-spacing:.7px;text-transform:uppercase;margin-bottom:8px;opacity:.9;">🇰🇭 ចង្វាក់ខ្មែរ (Khmer Rhythm)</div>
+            <div class="chip-group">
+              <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="romvong"     onclick="selectOtherStyle(this,'romvong')">រាំវង់</button>
+              <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="romkbach"    onclick="selectOtherStyle(this,'romkbach')">រាំក្បាច់</button>
+              <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="saravan"     onclick="selectOtherStyle(this,'saravan')">សារ៉ាវ៉ាន់</button>
+              <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="kantreum"    onclick="selectOtherStyle(this,'kantreum')">កន្ទ្រឹម</button>
+              <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="madison"     onclick="selectOtherStyle(this,'madison')">ម៉ាឌីសុន</button>
+              <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="cha_cha_cha" onclick="selectOtherStyle(this,'cha_cha_cha')">ឆា ឆា ឆា</button>
+              <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="taloong"     onclick="selectOtherStyle(this,'taloong')">តាឡូង</button>
+              <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="slow"        onclick="selectOtherStyle(this,'slow')">ចង្វាក់យឺត</button>
+            </div>
           </div>
 
           <!-- Custom pop-up panel: Instrument / Tempo / Mood — shown only when Custom chip active -->
@@ -549,6 +596,57 @@
   </div>
 </div>
 
+<script>
+// ════ Other Style Modal + Khmer Rhythm Dataset ════
+const KHMER_RHYTHM_DB = {
+  romvong:     {label:'រាំវង់ (Romvong)',      bpm:[90,110],  desc:'Romvong traditional Cambodian circular dance music, steady 4/4 groove, smooth flowing feel, suitable for slow circular partner dancing'},
+  romkbach:    {label:'រាំក្បាច់ (Romkbach)',  bpm:[80,100],  desc:'Romkbach Cambodian smooth elegant dance style, sparse kick pattern, relaxed snare, graceful flowing movement'},
+  saravan:     {label:'សារ៉ាវ៉ាន់ (Saravan)',  bpm:[95,115],  desc:'Saravan Cambodian folk dance, syncopated kick pattern, bouncy energetic groove stronger than Romvong, lively Khmer folk feel'},
+  kantreum:    {label:'កន្ទ្រឹម (Kantreum)',   bpm:[110,130], desc:'Kantreum fast traditional Cambodian dance, 16-step syncopated kick and snare, full 16th-note hi-hat grid, energetic bounce for fast leg dancing'},
+  madison:     {label:'ម៉ាឌីសុន (Madison)',    bpm:[100,120], desc:'Madison Cambodian-adapted structured dance, clean kick on beats 1 and 3, syncopated hi-hat, blends well with modern EDM and Pop'},
+  cha_cha_cha: {label:'ឆា ឆា ឆា (Cha Cha)',  bpm:[110,130], desc:'Cha Cha Cha latin-influenced Cambodian dance, syncopated kick with latin clave rhythmic pattern, lively and playful'},
+  taloong:     {label:'តាឡូង (Taloong)',       bpm:[120,140], desc:'Taloong fast driving Cambodian rhythm, kick on every 2 steps creating urgency, high energy traditional Khmer dance'},
+  slow:        {label:'ចង្វាក់យឺត (Slow)',     bpm:[60,80],   desc:'Khmer Slow Ballad, minimal kick on beat 1, classic snare on 2 and 4, sparse hi-hat, deeply emotional and romantic Cambodian feel'},
+};
+
+let _otherStyleValue = null;
+
+function openOtherStyleModal() {
+  document.getElementById('otherStyleBackdrop').style.display = 'block';
+  document.getElementById('otherStyleModal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+function closeOtherStyleModal() {
+  document.getElementById('otherStyleBackdrop').style.display = 'none';
+  document.getElementById('otherStyleModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+function selectOtherStyle(el, value) {
+  document.querySelectorAll('#songStyleGroup .chip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.other-style-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  const otherBtn = document.getElementById('chipOtherStyle');
+  otherBtn.classList.add('active');
+  _otherStyleValue = value;
+  const label = el.textContent.trim();
+  const short = label.length > 12 ? label.substring(0,11)+'…' : label;
+  otherBtn.innerHTML = '<i class="fas fa-grid-2" style="font-size:11px"></i> ' + short;
+  closeOtherStyleModal();
+}
+function getSelectedSongStyle() {
+  const active = document.querySelector('#songStyleGroup .chip.active');
+  if (!active) return 'Pop';
+  if (active.id === 'chipOtherStyle') return _otherStyleValue || 'Pop';
+  if (active.id === 'chipCustomStyle') return 'Custom';
+  return active.textContent.trim();
+}
+function buildKhmerRhythmPrompt(key) {
+  const r = KHMER_RHYTHM_DB[key];
+  if (!r) return null;
+  const bpmMid = Math.round((r.bpm[0] + r.bpm[1]) / 2);
+  return r.desc + '. Tempo: ' + bpmMid + ' BPM (range ' + r.bpm[0] + '-' + r.bpm[1] + ' BPM). This is traditional Cambodian Khmer music — generate authentic Khmer rhythmic feel.';
+}
+</script>
 <script src="script.js"></script>
 <script src="song-plan.js"></script>
 </body>
