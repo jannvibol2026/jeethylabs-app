@@ -170,10 +170,10 @@
         <div class="form-group">
           <label class="form-label">Song Description</label>
           <textarea id="songPrompt" class="form-textarea"
-            placeholder="Describe the song: mood, theme, story..." rows="3"></textarea>
+            placeholder="Describe the song: mood, theme, story, or paste your lyrics here..." rows="4"></textarea>
         </div>
 
-        <!-- Genre / Style -->
+        <!-- Genre / Style — "Other" renamed to "Custom" -->
         <div class="form-group">
           <label class="form-label">Genre / Style</label>
           <div class="chip-group" id="songStyleGroup">
@@ -185,7 +185,47 @@
             <button class="chip" onclick="selectChip(this,'songStyleGroup')">R&amp;B</button>
             <button class="chip" onclick="selectChip(this,'songStyleGroup')">Rock</button>
             <button class="chip" onclick="selectChip(this,'songStyleGroup')">Jazz</button>
-            <button class="chip" onclick="selectChip(this,'songStyleGroup')">Other</button>
+            <button class="chip chip-custom" id="chipCustomStyle" onclick="selectChipCustom(this)">
+              <i class="fas fa-sliders" style="font-size:11px"></i> Custom
+            </button>
+          </div>
+
+          <!-- Custom pop-up panel: Instrument / Tempo / Mood — shown only when Custom chip active -->
+          <div id="custom-style-panel" class="custom-style-panel" style="display:none;">
+            <div class="custom-style-grid">
+              <div class="form-group">
+                <label class="form-label" style="font-size:10px"><i class="fas fa-guitar" style="margin-right:4px;opacity:.7"></i>Instrument</label>
+                <div class="chip-group chip-group-sm" id="songInstrumentGroup">
+                  <button class="chip chip-sm active" onclick="selectChip(this,'songInstrumentGroup')">Auto</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Guitar</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Piano</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Violin</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Drum</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Bass</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Flute</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-size:10px"><i class="fas fa-gauge-high" style="margin-right:4px;opacity:.7"></i>Tempo</label>
+                <div class="chip-group chip-group-sm" id="songTempoGroup">
+                  <button class="chip chip-sm active" onclick="selectChip(this,'songTempoGroup')">Auto</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songTempoGroup')">Slow</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songTempoGroup')">Medium</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songTempoGroup')">Fast</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-size:10px"><i class="fas fa-face-smile" style="margin-right:4px;opacity:.7"></i>Mood</label>
+                <div class="chip-group chip-group-sm" id="songMoodGroup">
+                  <button class="chip chip-sm active" onclick="selectChip(this,'songMoodGroup')">Auto</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Happy</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Romantic</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Energetic</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Melancholic</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Epic</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -202,102 +242,16 @@
           </div>
         </div>
 
-        <!-- ── Plan badge + duration hint ── -->
+        <!-- Plan badge + duration hint -->
         <div class="song-plan-row">
           <span id="song-plan-badge" class="song-plan-badge"></span>
           <span id="song-duration-hint" class="song-duration-hint"></span>
-        </div>
-
-        <!-- ── Custom Lyrics Panel (PRO / MAX only, hidden for FREE) ── -->
-        <div id="custom-lyrics-panel" style="display:none" class="custom-lyrics-wrap">
-          <label class="form-label">
-            <i class="fas fa-pen-nib" style="color:#7c3aed;margin-right:5px;"></i>
-            Custom Lyrics
-            <span class="form-label-sub">(optional — replaces AI lyrics)</span>
-          </label>
-          <textarea id="custom-lyrics-textarea" class="form-textarea"
-            placeholder="វាយ lyrics ភាសាខ្មែរ ឬ English ទីនេះ...
-
-AI នឹងជួន (rhyme) ឱ្យស្អាត
-ឧ.:
-ស្រុកស្រែស្នេហ៍ខ្ញុំ
-ក្រមុំតូចធំ
-នាំគ្នាទៅវត្ត
-ម្តាយអើយកុំឃាត់
-
-[Verse 1]
-Your lyrics here..."
-            rows="7" style="resize:vertical;line-height:1.8;font-size:13px;"></textarea>
-          <div class="lyrics-file-row">
-            <label for="lyrics-file-input" class="lyrics-upload-btn">
-              <i class="fas fa-folder-open"></i> Upload .txt / .lrc
-            </label>
-            <input type="file" id="lyrics-file-input" accept=".txt,.lrc,.text" style="display:none">
-            <span class="lyrics-or-label">or paste above</span>
-            <button type="button" class="lyrics-clear-btn"
-              onclick="document.getElementById('custom-lyrics-textarea').value=''">
-              <i class="fas fa-xmark"></i> Clear
-            </button>
-          </div>
-        </div>
-
-        <!-- ── Upgrade notice for FREE users ── -->
-        <div id="custom-lyrics-upgrade-notice" style="display:none" class="upgrade-notice-row">
-          <i class="fas fa-lock"></i>
-          Custom lyrics available on
-          <strong class="pro-text">PRO</strong> &amp; <strong class="max-text">MAX</strong> plans.
-        </div>
-
-        <!-- Custom Lyrics Toggle (for FREE users) -->
-        <div id="custom-lyrics-toggle-row" style="display:none;margin-bottom:8px;">
-          <button type="button" class="lyrics-toggle-btn" onclick="openCustomLyricsUpgrade()">
-            <i class="fas fa-lock" style="font-size:11px;opacity:.7"></i>
-            Custom Lyrics
-            <span class="pro-badge" style="font-size:10px;vertical-align:middle;margin-left:3px">PRO</span>
-          </button>
         </div>
 
         <!-- Generate Button -->
         <button class="btn-generate btn-green" id="songGenBtn" onclick="generateSong()">
           <i class="fas fa-wand-magic-sparkles"></i> Generate Song
         </button>
-
-        <!-- ── Song Style / Instrument ── -->
-        <div class="song-extra-section">
-          <div class="song-extra-row">
-            <div class="form-group" style="flex:1;min-width:0">
-              <label class="form-label" style="font-size:10px">Instrument</label>
-              <div class="chip-group chip-group-sm" id="songInstrumentGroup">
-                <button class="chip chip-sm active" onclick="selectChip(this,'songInstrumentGroup')">Auto</button>
-                <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Guitar</button>
-                <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Piano</button>
-                <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Violin</button>
-                <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Drum</button>
-                <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Bass</button>
-              </div>
-            </div>
-            <div class="form-group" style="flex:1;min-width:0">
-              <label class="form-label" style="font-size:10px">Tempo</label>
-              <div class="chip-group chip-group-sm" id="songTempoGroup">
-                <button class="chip chip-sm active" onclick="selectChip(this,'songTempoGroup')">Auto</button>
-                <button class="chip chip-sm" onclick="selectChip(this,'songTempoGroup')">Slow</button>
-                <button class="chip chip-sm" onclick="selectChip(this,'songTempoGroup')">Medium</button>
-                <button class="chip chip-sm" onclick="selectChip(this,'songTempoGroup')">Fast</button>
-              </div>
-            </div>
-          </div>
-          <div class="form-group" style="margin-top:6px">
-            <label class="form-label" style="font-size:10px">Mood</label>
-            <div class="chip-group chip-group-sm" id="songMoodGroup">
-              <button class="chip chip-sm active" onclick="selectChip(this,'songMoodGroup')">Auto</button>
-              <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Happy</button>
-              <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Romantic</button>
-              <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Energetic</button>
-              <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Melancholic</button>
-              <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Epic</button>
-            </div>
-          </div>
-        </div>
 
         <!-- Results -->
         <div class="results-wrap" id="songResults"></div>
