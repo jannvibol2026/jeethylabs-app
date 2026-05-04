@@ -622,6 +622,40 @@ app.get('/api/song/plan-info', auth, async (req, res) => {
   res.json({ plan: planKey, durationHint: planCfg.durationHint, customLyrics: planCfg.customLyrics });
 });
 
+
+// ════ Khmer Instrument Prompt Builder for Lyria ════
+const KHMER_INSTRUMENT_DESCRIPTIONS = {
+  'khloy':        'Khloy (Cambodian bamboo vertical flute): breathy airy melodic flute with gentle vibrato and warm mid-range pitch of Southeast Asian bamboo flutes.',
+  'roneat ek':    'Roneat Ek (Cambodian bamboo xylophone): bright crisp resonant xylophone tones with fast melodic runs and percussive mallet strike of Khmer classical music.',
+  'roneat thung': 'Roneat Thung (Cambodian low-pitched bamboo xylophone): deep mellow bass-range woody xylophone providing harmonic depth in Khmer ensemble music.',
+  'chapei':       'Chapei (Cambodian long-neck lute): deep resonant plucked string with distinctive buzz and warm bass undertone, earthy and raw.',
+  'tro':          'Tro (Cambodian spike fiddle): haunting lyrical bowed string sound similar to erhu but with deeper Cambodian timbre and expressive singing vibrato.',
+  'kse diev':     'Kse Diev (Cambodian monochord zither): singular droning plucked string with subtle buzz and ancient meditative resonance.',
+  'sadiev':       'Kse Diev (Cambodian monochord zither): singular droning plucked string with subtle buzz and ancient meditative resonance.',
+  'kong vong':    'Kong Vong Thom (Cambodian gong circle): deep warm sustained bronze gong tones arranged melodically with long resonant decay.',
+  'skor':         'Skor (Cambodian barrel drum): deep resonant hand drum rhythm with warm low-pitched attack and natural reverb, central to Cambodian percussion.',
+  'pin':          'Pin (Cambodian harp): ethereal flowing plucked harp with bright silvery tone and gentle glissandos, ancient and celestial.',
+};
+
+function buildInstrumentPrompt(instrument) {
+  if (!instrument) return [];
+  const lines = ['Featured instrument(s): ' + instrument + '.'];
+  const lower = instrument.toLowerCase();
+  const khmerDesc = [];
+  for (const [key, desc] of Object.entries(KHMER_INSTRUMENT_DESCRIPTIONS)) {
+    if (lower.includes(key)) khmerDesc.push(desc);
+  }
+  if (khmerDesc.length > 0) {
+    lines.push('');
+    lines.push('=== KHMER INSTRUMENT GUIDANCE FOR LYRIA ===');
+    lines.push('Feature these traditional Cambodian instruments prominently in the audio output:');
+    khmerDesc.forEach((d, i) => lines.push((i+1) + '. ' + d));
+    lines.push('Blend these instruments authentically into the arrangement. Music must sound genuinely Cambodian/Southeast Asian in timbre and texture.');
+    lines.push('============================================');
+  }
+  return lines;
+}
+
 app.post('/api/song', auth, async (req, res) => {
   try {
     const key     = geminiKey();
@@ -650,7 +684,7 @@ app.post('/api/song', auth, async (req, res) => {
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Structure: ${planCfg.structureHint}.`,
         `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
-        ...(instrument ? ['Featured instrument: '+instrument+'.'] : []),
+        ...buildInstrumentPrompt(instrument),
         ...(tempo      ? ['Tempo: '+tempo+'.']                    : []),
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
@@ -676,7 +710,7 @@ app.post('/api/song', auth, async (req, res) => {
         ``,
         `Language: auto-detect from theme (Khmer / English / mixed). Match the theme language exactly.`,
         `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
-        ...(instrument ? ['Featured instrument: '+instrument+'.'] : []),
+        ...buildInstrumentPrompt(instrument),
         ...(tempo      ? ['Tempo: '+tempo+'.']                    : []),
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
