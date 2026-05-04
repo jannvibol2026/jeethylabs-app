@@ -627,7 +627,7 @@ app.post('/api/song', auth, async (req, res) => {
     const key     = geminiKey();
     const planKey = await getUserPlan(req.user.id);
     const planCfg = PLAN_CONFIG[planKey];
-    const { prompt = '', style = 'Pop', voice = 'Female', customLyrics = '' } = req.body;
+    const { prompt = '', style = 'Pop', voice = 'Female', customLyrics = '', instrument = '', tempo = '', mood = '' } = req.body;
 
     if (!prompt && !customLyrics)
       return res.status(400).json({ error: 'Please provide a song description or custom lyrics.' });
@@ -655,6 +655,9 @@ app.post('/api/song', auth, async (req, res) => {
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Structure: ${planCfg.structureHint}.`,
         `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
+        ...(instrument ? ['Featured instrument: '+instrument+'.'] : []),
+        ...(tempo      ? ['Tempo: '+tempo+'.']                    : []),
+        ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
       ].join('\n');
     } else {
@@ -678,6 +681,9 @@ app.post('/api/song', auth, async (req, res) => {
         ``,
         `Language: auto-detect from theme (Khmer / English / mixed). Match the theme language exactly.`,
         `Audio: high-quality stereo, full band instrumentation, clear lead vocals, backing harmonies.`,
+        ...(instrument ? ['Featured instrument: '+instrument+'.'] : []),
+        ...(tempo      ? ['Tempo: '+tempo+'.']                    : []),
+        ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
         planKey === 'free'
           ? 'Keep the song SHORT - under 1 minute, compact structure only.'
