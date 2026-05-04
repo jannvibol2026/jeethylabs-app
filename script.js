@@ -978,27 +978,23 @@ function initSongPlanBadge() {
 function selectChipCustom(btn) {
   const group = document.getElementById('songStyleGroup');
   const panel = document.getElementById('custom-style-panel');
+  if (!group || !panel) return;
+
   const wasActive = btn.classList.contains('active');
 
-  // deactivate all chips in group
+  // Deactivate all chips in genre group
   group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
 
   if (!wasActive) {
+    // Activate Custom chip + show panel
     btn.classList.add('active');
-    if (panel) {
-      panel.style.display = 'block';
-      // animate in
-      panel.style.opacity = '0';
-      panel.style.transform = 'translateY(-6px)';
-      requestAnimationFrame(() => {
-        panel.style.transition = 'opacity .22s ease, transform .22s ease';
-        panel.style.opacity = '1';
-        panel.style.transform = 'translateY(0)';
-      });
-    }
+    panel.style.removeProperty('transition');
+    panel.style.removeProperty('opacity');
+    panel.style.removeProperty('transform');
+    panel.style.display = 'block';
   } else {
-    // clicking active Custom → deactivate, hide panel, re-activate Pop
-    if (panel) { panel.style.opacity='0'; setTimeout(()=>{ panel.style.display='none'; },200); }
+    // Deactivate → hide panel + re-activate Pop
+    panel.style.display = 'none';
     const firstChip = group.querySelector('.chip:not(.chip-custom)');
     if (firstChip) firstChip.classList.add('active');
   }
@@ -1129,7 +1125,7 @@ function selectChip(el, groupId) {
   // If selecting a non-custom chip in songStyleGroup, hide the custom panel
   if (groupId === 'songStyleGroup' && !el.classList.contains('chip-custom')) {
     const panel = document.getElementById('custom-style-panel');
-    if (panel) { panel.style.opacity='0'; panel.style.transform='translateY(-6px)'; setTimeout(()=>{ panel.style.display='none'; panel.style.opacity=''; panel.style.transform=''; panel.style.transition=''; },200); }
+    if (panel) panel.style.display = 'none';
   }
 }
 function formatTime(d) { return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
