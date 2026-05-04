@@ -580,7 +580,7 @@ app.post('/api/image', async (req, res) => {
    /api/song
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-const LYRIA_MODELS_FALLBACK = ['lyria-3-pro-preview','lyria-3-clip-preview'];
+const LYRIA_MODELS_FALLBACK = ['lyria-3-pro-preview'];
 const TTS_MODELS_FALLBACK   = ['gemini-2.5-flash-preview-tts','gemini-2.5-pro-preview-tts'];
 
 async function tryTts(key, text, voiceName) {
@@ -656,6 +656,9 @@ function buildInstrumentPrompt(instrument) {
     lines.push('- Preserve the authentic acoustic timbres of each Cambodian instrument.');
     lines.push('- The overall music texture must sound Southeast Asian and Cambodian.');
     lines.push('- Do NOT replace these with generic Western instrument equivalents.');
+    lines.push('- Start the song intro with one of these Khmer instruments clearly audible in the first 0:00-0:20.');
+    lines.push('- Bring another selected Khmer instrument forward in the chorus or bridge.');
+    lines.push('- Keep Khmer percussion or melody present throughout, not only as background texture.');
   }
   return lines;
 }
@@ -681,6 +684,7 @@ app.post('/api/song', auth, async (req, res) => {
     if (customLyrics && planCfg.customLyrics) {
       musicPrompt = [
         `[DURATION REQUIREMENT: Generate audio that is ${planCfg.durationHint}. This is a strict requirement.]`,
+        `[TIMING GUIDE: Use explicit structure timestamps so the total runtime lands inside the required duration window.]`,
         `Use EXACTLY the following lyrics - do not change any words:`,
         `---`,
         customLyrics.trim(),
@@ -692,10 +696,13 @@ app.post('/api/song', auth, async (req, res) => {
         ...(tempo      ? ['Tempo: '+tempo+'.']                    : []),
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
+        planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:15 Intro] [0:15-0:50 Verse 1] [0:50-1:15 Chorus] [1:15-1:45 Verse 2] [1:45-2:10 Chorus] [2:10-2:35 Bridge] [2:35-3:10 Final Chorus] [3:10-3:20 Outro]' : '',
+        planKey === 'max' ? '[TIMESTAMPS] [0:00-0:20 Intro] [0:20-0:55 Verse 1] [0:55-1:25 Chorus] [1:25-2:00 Verse 2] [2:00-2:30 Chorus] [2:30-3:00 Bridge] [3:00-3:35 Final Chorus] [3:35-4:10 Instrumental Outro] [4:10-4:25 Fade Out]' : '',
       ].join('\n');
     } else {
       musicPrompt = [
         `[DURATION REQUIREMENT: Generate audio that is ${planCfg.durationHint}. This is a strict requirement.]`,
+        `[TIMING GUIDE: Use explicit structure timestamps so the total runtime lands inside the required duration window.]`,
         `Theme/Story: ${prompt}`,
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Song structure: ${planCfg.structureHint}.`,
@@ -718,6 +725,8 @@ app.post('/api/song', auth, async (req, res) => {
         ...(tempo      ? ['Tempo: '+tempo+'.']                    : []),
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
+        planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:15 Intro] [0:15-0:50 Verse 1] [0:50-1:15 Chorus] [1:15-1:45 Verse 2] [1:45-2:10 Chorus] [2:10-2:35 Bridge] [2:35-3:10 Final Chorus] [3:10-3:20 Outro]' : '',
+        planKey === 'max' ? '[TIMESTAMPS] [0:00-0:20 Intro] [0:20-0:55 Verse 1] [0:55-1:25 Chorus] [1:25-2:00 Verse 2] [2:00-2:30 Chorus] [2:30-3:00 Bridge] [3:00-3:35 Final Chorus] [3:35-4:10 Instrumental Outro] [4:10-4:25 Fade Out]' : '',
         planKey === 'free'
           ? 'Keep the song SHORT - under 1 minute, compact structure only.'
           : 'Generate the FULL song from start to finish. Do not cut short.',
@@ -732,7 +741,7 @@ app.post('/api/song', auth, async (req, res) => {
           ...m.lyriaModels.filter(x => /pro/i.test(x.name)).map(x => x.name),
           ...m.lyriaModels.filter(x => !/pro/i.test(x.name)).map(x => x.name),
         ];
-        lyriaModels = [...new Set([...sorted, ...LYRIA_MODELS_FALLBACK])];
+        lyriaModels = [...new Set([...sorted.filter(x => /lyria-3-pro-preview/i.test(x)), ...LYRIA_MODELS_FALLBACK])];
       }
     } catch (me) { console.warn('[/api/song] model discovery failed:', me.message); }
 
