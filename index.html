@@ -596,57 +596,6 @@
   </div>
 </div>
 
-<script>
-// ════ Other Style Modal + Khmer Rhythm Dataset ════
-const KHMER_RHYTHM_DB = {
-  romvong:     {label:'រាំវង់ (Romvong)',      bpm:[90,110],  desc:'Romvong traditional Cambodian circular dance music, steady 4/4 groove, smooth flowing feel, suitable for slow circular partner dancing'},
-  romkbach:    {label:'រាំក្បាច់ (Romkbach)',  bpm:[80,100],  desc:'Romkbach Cambodian smooth elegant dance style, sparse kick pattern, relaxed snare, graceful flowing movement'},
-  saravan:     {label:'សារ៉ាវ៉ាន់ (Saravan)',  bpm:[95,115],  desc:'Saravan Cambodian folk dance, syncopated kick pattern, bouncy energetic groove stronger than Romvong, lively Khmer folk feel'},
-  kantreum:    {label:'កន្ទ្រឹម (Kantreum)',   bpm:[110,130], desc:'Kantreum fast traditional Cambodian dance, 16-step syncopated kick and snare, full 16th-note hi-hat grid, energetic bounce for fast leg dancing'},
-  madison:     {label:'ម៉ាឌីសុន (Madison)',    bpm:[100,120], desc:'Madison Cambodian-adapted structured dance, clean kick on beats 1 and 3, syncopated hi-hat, blends well with modern EDM and Pop'},
-  cha_cha_cha: {label:'ឆា ឆា ឆា (Cha Cha)',  bpm:[110,130], desc:'Cha Cha Cha latin-influenced Cambodian dance, syncopated kick with latin clave rhythmic pattern, lively and playful'},
-  taloong:     {label:'តាឡូង (Taloong)',       bpm:[120,140], desc:'Taloong fast driving Cambodian rhythm, kick on every 2 steps creating urgency, high energy traditional Khmer dance'},
-  slow:        {label:'ចង្វាក់យឺត (Slow)',     bpm:[60,80],   desc:'Khmer Slow Ballad, minimal kick on beat 1, classic snare on 2 and 4, sparse hi-hat, deeply emotional and romantic Cambodian feel'},
-};
-
-let _otherStyleValue = null;
-
-function openOtherStyleModal() {
-  document.getElementById('otherStyleBackdrop').style.display = 'block';
-  document.getElementById('otherStyleModal').style.display = 'block';
-  document.body.style.overflow = 'hidden';
-}
-function closeOtherStyleModal() {
-  document.getElementById('otherStyleBackdrop').style.display = 'none';
-  document.getElementById('otherStyleModal').style.display = 'none';
-  document.body.style.overflow = '';
-}
-function selectOtherStyle(el, value) {
-  document.querySelectorAll('#songStyleGroup .chip').forEach(c => c.classList.remove('active'));
-  document.querySelectorAll('.other-style-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  const otherBtn = document.getElementById('chipOtherStyle');
-  otherBtn.classList.add('active');
-  _otherStyleValue = value;
-  const label = el.textContent.trim();
-  const short = label.length > 12 ? label.substring(0,11)+'…' : label;
-  otherBtn.innerHTML = '<i class="fas fa-grid-2" style="font-size:11px"></i> ' + short;
-  closeOtherStyleModal();
-}
-function getSelectedSongStyle() {
-  const active = document.querySelector('#songStyleGroup .chip.active');
-  if (!active) return 'Pop';
-  if (active.id === 'chipOtherStyle') return _otherStyleValue || 'Pop';
-  if (active.id === 'chipCustomStyle') return 'Custom';
-  return active.textContent.trim();
-}
-function buildKhmerRhythmPrompt(key) {
-  const r = KHMER_RHYTHM_DB[key];
-  if (!r) return null;
-  const bpmMid = Math.round((r.bpm[0] + r.bpm[1]) / 2);
-  return r.desc + '. Tempo: ' + bpmMid + ' BPM (range ' + r.bpm[0] + '-' + r.bpm[1] + ' BPM). This is traditional Cambodian Khmer music — generate authentic Khmer rhythmic feel.';
-}
-</script>
 <script src="script.js"></script>
 <script src="song-plan.js"></script>
 </body>
