@@ -1012,11 +1012,21 @@ async function _generateSong() {
   if (!checkQuota()) return;
   const prompt = document.getElementById("songPrompt").value.trim();
   if (!prompt) return showToast("Please enter a song description", "error");
-  const style      = getActiveChip("songStyleGroup");
+  const rawStyle    = getActiveChip("songStyleGroup");
+  const isCustom    = rawStyle.trim().toLowerCase() === "custom";
+  const instrument  = getActiveChip("songInstrumentGroup") || "Auto";
+  const tempo       = getActiveChip("songTempoGroup")      || "Auto";
+  const mood        = getActiveChip("songMoodGroup")       || "Auto";
+  // Build style string: if Custom, combine instrument+tempo+mood; else use chip value
+  const style = isCustom
+    ? [
+        instrument !== "Auto" ? instrument + " music" : "",
+        tempo      !== "Auto" ? tempo + " tempo"      : "",
+        mood       !== "Auto" ? mood + " mood"        : "",
+      ].filter(Boolean).join(", ") || "Pop"
+    : rawStyle;
   const voice      = getActiveChip("songVoiceGroup").replace(/[^\w\s]/g, "").trim();
-  const instrument = getActiveChip("songInstrumentGroup") || "Auto";
-  const tempo      = getActiveChip("songTempoGroup")      || "Auto";
-  const mood       = getActiveChip("songMoodGroup")       || "Auto";
+  // instrument/tempo/mood read above with isCustom logic
   const customLyrics = null; // Custom lyrics removed — use prompt textarea
   const voiceHint = voice.toLowerCase().includes("female") ? "female vocalist" : "male vocalist";
   const btn       = document.getElementById("songGenBtn");
@@ -1116,6 +1126,11 @@ function getActiveChip(groupId) {
 function selectChip(el, groupId) {
   document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove("active"));
   el.classList.add("active");
+  // If selecting a non-custom chip in songStyleGroup, hide the custom panel
+  if (groupId === 'songStyleGroup' && !el.classList.contains('chip-custom')) {
+    const panel = document.getElementById('custom-style-panel');
+    if (panel) { panel.style.opacity='0'; panel.style.transform='translateY(-6px)'; setTimeout(()=>{ panel.style.display='none'; panel.style.opacity=''; panel.style.transform=''; panel.style.transition=''; },200); }
+  }
 }
 function formatTime(d) { return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
 function escapeHtml(t = "") {
