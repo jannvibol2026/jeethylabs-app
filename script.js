@@ -1273,7 +1273,7 @@ function selectOtherStyle(el, value) {
   // Update Other button label
   const label = el.textContent.trim();
   const short = label.length > 12 ? label.substring(0, 11) + '…' : label;
-  if (otherBtn) otherBtn.innerHTML = '<i class="fas fa-grid-2" style="font-size:11px"></i> ' + short;
+  if (otherBtn) otherBtn.innerHTML = '<i class="fas fa-th-large" style="font-size:11px"></i> ' + short;
   // Close modal
   closeOtherStyleModal();
   // Hide custom panel if open
