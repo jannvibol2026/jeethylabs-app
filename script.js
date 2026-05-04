@@ -1013,7 +1013,10 @@ async function _generateSong() {
 
   // When NOT Custom, reset instrument/tempo/mood to Auto so they don't bleed into the style
   if (!isCustom) {
-    ["songInstrumentGroup","songTempoGroup","songMoodGroup"].forEach(gid => {
+    document.querySelectorAll("[data-multi='instrument']").forEach(c => c.classList.remove("active"));
+    const _ai = document.querySelector("[data-multi='instrument']");
+    if (_ai) _ai.classList.add("active");
+    ["songTempoGroup","songMoodGroup"].forEach(gid => {
       const g = document.getElementById(gid);
       if (!g) return;
       g.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
@@ -1022,14 +1025,15 @@ async function _generateSong() {
     });
   }
 
-  const instrument  = isCustom ? (getActiveChip("songInstrumentGroup") || "Auto") : "Auto";
+  const instrumentArr = isCustom ? getMultiChips("instrument") : ["Auto"];
+  const instrument = instrumentArr.join(", ");
   const tempo       = isCustom ? (getActiveChip("songTempoGroup")      || "Auto") : "Auto";
   const mood        = isCustom ? (getActiveChip("songMoodGroup")       || "Auto") : "Auto";
 
   // Build style: if Custom → combine instrument+tempo+mood; else → use genre chip value
   const style = isCustom
     ? [
-        instrument !== "Auto" ? instrument + " music" : "",
+        (instrumentArr.length === 1 && instrumentArr[0] === 'Auto') ? '' : instrumentArr.join(' + ') + ' instrument',
         tempo      !== "Auto" ? tempo + " tempo"      : "",
         mood       !== "Auto" ? mood + " mood"        : "",
       ].filter(Boolean).join(", ") || "Pop"
@@ -1132,6 +1136,35 @@ function getActiveChip(groupId) {
   const el = document.querySelector(`#${groupId} .chip.active`);
   return el ? el.textContent.trim() : "";
 }
+// ════ Multi-select Chip (for Instrument) ════
+function toggleMultiChip(el, groupId) {
+  const isAuto = el.textContent.trim().startsWith("Auto");
+  // Collect ALL chip-multi buttons with data-multi matching this group
+  const allMulti = document.querySelectorAll(`[data-multi="${el.dataset.multi}"]`);
+
+  if (isAuto) {
+    // Auto clicked → clear all, activate only Auto
+    allMulti.forEach(c => c.classList.remove("active"));
+    el.classList.add("active");
+  } else {
+    // Non-auto clicked → deactivate Auto, toggle this chip
+    allMulti.forEach(c => { if (c.textContent.trim().startsWith("Auto")) c.classList.remove("active"); });
+    el.classList.toggle("active");
+    // If nothing selected → fall back to Auto
+    const anyActive = Array.from(allMulti).some(c => c.classList.contains("active") && !c.textContent.trim().startsWith("Auto"));
+    if (!anyActive) {
+      allMulti.forEach(c => { if (c.textContent.trim().startsWith("Auto")) c.classList.add("active"); });
+    }
+  }
+}
+
+// Helper: get all selected multi chips for a data-multi key (returns array of labels)
+function getMultiChips(multiKey) {
+  const chips = document.querySelectorAll(`[data-multi="${multiKey}"].active`);
+  const vals = Array.from(chips).map(c => c.textContent.trim()).filter(v => v !== "Auto");
+  return vals.length ? vals : ["Auto"];
+}
+
 function selectChip(el, groupId) {
   document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove("active"));
   el.classList.add("active");
@@ -1139,12 +1172,15 @@ function selectChip(el, groupId) {
   if (groupId === 'songStyleGroup' && !el.classList.contains('chip-custom')) {
     const panel = document.getElementById('custom-style-panel');
     if (panel) panel.style.display = 'none';
-    // Reset all custom sub-chips back to Auto immediately
-    ["songInstrumentGroup","songTempoGroup","songMoodGroup"].forEach(gid => {
+    // Reset custom sub-chips to Auto immediately (incl. multi-select instrument chips)
+    document.querySelectorAll("[data-multi='instrument']").forEach(c => c.classList.remove("active"));
+    const autoInstr = document.querySelector("[data-multi='instrument']");
+    if (autoInstr) autoInstr.classList.add("active");
+    ["songTempoGroup","songMoodGroup"].forEach(gid => {
       const g = document.getElementById(gid);
       if (!g) return;
       g.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
-      const autoChip = g.querySelector(".chip"); // first chip = Auto
+      const autoChip = g.querySelector(".chip");
       if (autoChip) autoChip.classList.add("active");
     });
   }
