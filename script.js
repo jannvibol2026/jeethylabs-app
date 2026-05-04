@@ -1137,24 +1137,47 @@ function getActiveChip(groupId) {
   return el ? el.textContent.trim() : "";
 }
 // ════ Multi-select Chip (for Instrument) ════
+const INSTRUMENT_MAX = 3; // max selectable instruments (excluding Auto)
+
 function toggleMultiChip(el, groupId) {
   const isAuto = el.textContent.trim().startsWith("Auto");
-  // Collect ALL chip-multi buttons with data-multi matching this group
   const allMulti = document.querySelectorAll(`[data-multi="${el.dataset.multi}"]`);
 
   if (isAuto) {
-    // Auto clicked → clear all, activate only Auto
+    // Auto → clear all, activate only Auto
     allMulti.forEach(c => c.classList.remove("active"));
     el.classList.add("active");
-  } else {
-    // Non-auto clicked → deactivate Auto, toggle this chip
-    allMulti.forEach(c => { if (c.textContent.trim().startsWith("Auto")) c.classList.remove("active"); });
-    el.classList.toggle("active");
-    // If nothing selected → fall back to Auto
-    const anyActive = Array.from(allMulti).some(c => c.classList.contains("active") && !c.textContent.trim().startsWith("Auto"));
-    if (!anyActive) {
+    return;
+  }
+
+  // Deactivate Auto
+  allMulti.forEach(c => { if (c.textContent.trim().startsWith("Auto")) c.classList.remove("active"); });
+
+  const currentActive = Array.from(allMulti).filter(c =>
+    c.classList.contains("active") && !c.textContent.trim().startsWith("Auto")
+  );
+
+  if (el.classList.contains("active")) {
+    // Deselect this chip
+    el.classList.remove("active");
+    const stillActive = Array.from(allMulti).filter(c =>
+      c.classList.contains("active") && !c.textContent.trim().startsWith("Auto")
+    );
+    // If nothing left → fall back to Auto
+    if (!stillActive.length) {
       allMulti.forEach(c => { if (c.textContent.trim().startsWith("Auto")) c.classList.add("active"); });
     }
+  } else {
+    // Select — enforce max limit
+    if (currentActive.length >= INSTRUMENT_MAX) {
+      // Show shake + toast warning
+      el.style.animation = "none";
+      el.offsetHeight; // reflow
+      el.style.animation = "chipShake .35s ease";
+      showToast(`Max ${INSTRUMENT_MAX} instruments allowed`, "error");
+      return;
+    }
+    el.classList.add("active");
   }
 }
 
