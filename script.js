@@ -365,6 +365,7 @@ function onLoginSuccess(user, runPending) {
   if (user.plan && PLAN_LIMITS[user.plan]) {
     userPlan = user.plan;
     renderPlanBadge();
+    initCustomLyricsPanel();
   }
   updateNavAvatar(user);
   removeAuthGate();
@@ -376,6 +377,14 @@ function onLoginSuccess(user, runPending) {
     if (action === "song")  setTimeout(() => _generateSong(),  100);
   }
 }
+
+// Call on page ready if user already logged in
+(function() {
+  const orig = window.onload || function(){};
+  window.addEventListener("DOMContentLoaded", function() {
+    setTimeout(initCustomLyricsPanel, 500);
+  });
+})();
 
 // ======================= LOGOUT =======================
 async function doLogout() {
@@ -947,6 +956,62 @@ function openFullscreen(src, ratio) {
 }
 
 // =================== SONG GENERATE ===================
+// ════ Custom Lyrics Panel Logic ════════════════════════════
+function initCustomLyricsPanel() {
+  // Wire lyrics file input
+  const lfi = document.getElementById("lyrics-file-input");
+  if (lfi && !lfi._wired) { lfi.addEventListener("change", handleLyricsFileUpload); lfi._wired = true; }
+
+  const isPro = userPlan === "pro" || userPlan === "max";
+  const panel    = document.getElementById("custom-lyrics-panel");
+  const notice   = document.getElementById("custom-lyrics-upgrade-notice");
+  const toggleRow = document.getElementById("custom-lyrics-toggle-row");
+
+  if (isPro) {
+    if (panel)    panel.style.display    = "block";
+    if (notice)   notice.style.display  = "none";
+    if (toggleRow) toggleRow.style.display = "none";
+  } else {
+    if (panel)    panel.style.display    = "none";
+    if (notice)   notice.style.display  = "none";
+    if (toggleRow) toggleRow.style.display = "block";
+  }
+
+  // Init song plan badge
+  const badge = document.getElementById("song-plan-badge");
+  const hint  = document.getElementById("song-duration-hint");
+  if (badge) {
+    const labels = { free:"FREE", pro:"PRO", max:"MAX" };
+    const colors = { free:"#9ca3af", pro:"#7c3aed", max:"#f59e0b" };
+    badge.textContent   = labels[userPlan] || "FREE";
+    badge.style.color   = colors[userPlan] || "#9ca3af";
+    badge.style.borderColor = (colors[userPlan] || "#9ca3af") + "55";
+    badge.style.display = "inline-block";
+  }
+  if (hint) {
+    const hints = { free:"~30s song", pro:"~45s song + custom lyrics", max:"~60s song + custom lyrics" };
+    hint.textContent = hints[userPlan] || "~30s song";
+  }
+}
+
+function openCustomLyricsUpgrade() {
+  showUpgradeModal();
+  showToast("Custom lyrics available on PRO & MAX plans", "error");
+}
+
+function handleLyricsFileUpload(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const ta = document.getElementById("custom-lyrics-textarea");
+    if (ta) { ta.value = ev.target.result; ta.focus(); }
+    showToast("Lyrics loaded from file ✓", "success");
+  };
+  reader.onerror = () => showToast("Failed to read file", "error");
+  reader.readAsText(file, "UTF-8");
+}
+
 function generateSong() {
   if (!currentUser) { openAuthModal("song"); return; }
   _generateSong();
@@ -955,8 +1020,15 @@ async function _generateSong() {
   if (!checkQuota()) return;
   const prompt = document.getElementById("songPrompt").value.trim();
   if (!prompt) return showToast("Please enter a song description", "error");
-  const style     = getActiveChip("songStyleGroup");
-  const voice     = getActiveChip("songVoiceGroup").replace(/[^\w\s]/g, "").trim();
+  const style      = getActiveChip("songStyleGroup");
+  const voice      = getActiveChip("songVoiceGroup").replace(/[^\w\s]/g, "").trim();
+  const instrument = getActiveChip("songInstrumentGroup") || "Auto";
+  const tempo      = getActiveChip("songTempoGroup")      || "Auto";
+  const mood       = getActiveChip("songMoodGroup")       || "Auto";
+  const customLyrics = (() => {
+    const ta = document.getElementById("custom-lyrics-textarea");
+    return ta && ta.value.trim() ? ta.value.trim() : null;
+  })();
   const voiceHint = voice.toLowerCase().includes("female") ? "female vocalist" : "male vocalist";
   const btn       = document.getElementById("songGenBtn");
   const resultsEl = document.getElementById("songResults");
@@ -972,7 +1044,13 @@ async function _generateSong() {
     const res = await fetch("/api/song", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, style, voice })
+      body: JSON.stringify({
+        prompt, style, voice,
+        ...(instrument !== "Auto" ? { instrument } : {}),
+        ...(tempo      !== "Auto" ? { tempo }      : {}),
+        ...(mood       !== "Auto" ? { mood }        : {}),
+        ...(customLyrics          ? { customLyrics } : {})
+      })
     });
     clearTimeout(retryHintTimer);
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`); }
