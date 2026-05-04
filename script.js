@@ -1010,6 +1010,8 @@ async function _generateSong() {
   if (!prompt) return showToast("Please enter a song description", "error");
   const rawStyle    = getActiveChip("songStyleGroup");
   const isCustom    = rawStyle.trim().toLowerCase() === "custom";
+  // Khmer rhythm: if a Khmer style key is selected, build descriptive prompt
+  const _khmerRhythmPrompt = (typeof buildKhmerRhythmPrompt === 'function') ? buildKhmerRhythmPrompt(rawStyle) : null;
 
   // When NOT Custom, reset instrument/tempo/mood to Auto so they don't bleed into the style
   if (!isCustom) {
@@ -1037,7 +1039,7 @@ async function _generateSong() {
         tempo      !== "Auto" ? tempo + " tempo"      : "",
         mood       !== "Auto" ? mood + " mood"        : "",
       ].filter(Boolean).join(", ") || "Pop"
-    : rawStyle;
+    : (_khmerRhythmPrompt || rawStyle);
   const voice      = getActiveChip("songVoiceGroup").replace(/[^\w\s]/g, "").trim();
   // instrument/tempo/mood read above with isCustom logic
   const customLyrics = null; // Custom lyrics removed — use prompt textarea
@@ -1134,7 +1136,12 @@ async function _generateSong() {
 // ===================== UTILITIES =====================
 function getActiveChip(groupId) {
   const el = document.querySelector(`#${groupId} .chip.active`);
-  return el ? el.textContent.trim() : "";
+  if (!el) return "";
+  // If "Other" genre chip is active, return the stored _otherStyleValue
+  if (el.id === 'chipOtherStyle') {
+    return (typeof _otherStyleValue !== 'undefined' && _otherStyleValue) ? _otherStyleValue : 'Pop';
+  }
+  return el.textContent.trim();
 }
 // ════ Multi-select Chip (for Instrument) ════
 const INSTRUMENT_MAX = 3; // max selectable instruments (excluding Auto)
@@ -1192,7 +1199,7 @@ function selectChip(el, groupId) {
   document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove("active"));
   el.classList.add("active");
   // If selecting a non-custom genre chip → hide panel + reset instrument/tempo/mood to Auto
-  if (groupId === 'songStyleGroup' && !el.classList.contains('chip-custom')) {
+  if (groupId === 'songStyleGroup' && !el.classList.contains('chip-custom') && !el.classList.contains('chip-other')) {
     const panel = document.getElementById('custom-style-panel');
     if (panel) panel.style.display = 'none';
     // Reset custom sub-chips to Auto immediately (incl. multi-select instrument chips)
@@ -1219,4 +1226,63 @@ function showToast(msg, type = "info") {
   t.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:${type === "error" ? "#ef4444" : "#10b981"};color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:99999;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;animation:msgIn 0.3s ease;`;
   t.textContent = msg; document.body.appendChild(t);
   setTimeout(() => t.remove(), 2500);
+}
+
+
+// ════ Khmer Music Rhythm Dataset v1 — JeeThy Labs ════
+const KHMER_RHYTHM_DB = {
+  romvong:     {label:'រាំវង់ (Romvong)',      bpm:[90,110],  desc:'Romvong traditional Cambodian circular dance music, steady 4/4 groove at 90-110 BPM, smooth flowing feel, suitable for slow circular partner dancing'},
+  romkbach:    {label:'រាំក្បាច់ (Romkbach)',  bpm:[80,100],  desc:'Romkbach Cambodian smooth elegant dance style at 80-100 BPM, sparse kick pattern, relaxed snare, graceful flowing movement'},
+  saravan:     {label:'សារ៉ាវ៉ាន់ (Saravan)',  bpm:[95,115],  desc:'Saravan Cambodian folk dance at 95-115 BPM, syncopated kick pattern, bouncy energetic groove stronger than Romvong, lively Khmer folk feel'},
+  kantreum:    {label:'កន្ទ្រឹម (Kantreum)',   bpm:[110,130], desc:'Kantreum fast traditional Cambodian dance at 110-130 BPM, 16-step syncopated kick and snare, full 16th-note hi-hat grid, energetic bounce for fast leg dancing'},
+  madison:     {label:'ម៉ាឌីសុន (Madison)',    bpm:[100,120], desc:'Madison Cambodian-adapted structured dance at 100-120 BPM, clean kick pattern, syncopated hi-hat, blends well with modern EDM and Pop production'},
+  cha_cha_cha: {label:'ឆា ឆា ឆា (Cha Cha)',  bpm:[110,130], desc:'Cha Cha Cha latin-influenced Cambodian dance at 110-130 BPM, syncopated kick with latin clave rhythmic pattern, lively and playful'},
+  taloong:     {label:'តាឡូង (Taloong)',       bpm:[120,140], desc:'Taloong fast driving Cambodian rhythm at 120-140 BPM, kick on every 2 steps creating urgency, high energy traditional Khmer dance'},
+  slow:        {label:'ចង្វាក់យឺត (Slow)',     bpm:[60,80],   desc:'Khmer Slow Ballad at 60-80 BPM, minimal kick on beat 1, classic snare on 2 and 4, sparse hi-hat, deeply emotional and romantic Cambodian feel'},
+};
+
+// Stored value for "Other" chip selection
+let _otherStyleValue = null;
+
+function openOtherStyleModal() {
+  const bd = document.getElementById('otherStyleBackdrop');
+  const md = document.getElementById('otherStyleModal');
+  if (bd) bd.style.display = 'block';
+  if (md) md.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+function closeOtherStyleModal() {
+  const bd = document.getElementById('otherStyleBackdrop');
+  const md = document.getElementById('otherStyleModal');
+  if (bd) bd.style.display = 'none';
+  if (md) md.style.display = 'none';
+  document.body.style.overflow = '';
+}
+function selectOtherStyle(el, value) {
+  // Deactivate all main genre chips
+  document.querySelectorAll('#songStyleGroup .chip').forEach(c => c.classList.remove('active'));
+  // Deactivate all other-style chips in modal
+  document.querySelectorAll('.other-style-chip').forEach(c => c.classList.remove('active'));
+  // Activate selected chip
+  el.classList.add('active');
+  // Activate the Other button
+  const otherBtn = document.getElementById('chipOtherStyle');
+  if (otherBtn) otherBtn.classList.add('active');
+  // Store value
+  _otherStyleValue = value;
+  // Update Other button label
+  const label = el.textContent.trim();
+  const short = label.length > 12 ? label.substring(0, 11) + '…' : label;
+  if (otherBtn) otherBtn.innerHTML = '<i class="fas fa-grid-2" style="font-size:11px"></i> ' + short;
+  // Close modal
+  closeOtherStyleModal();
+  // Hide custom panel if open
+  const panel = document.getElementById('custom-style-panel');
+  if (panel) panel.style.display = 'none';
+}
+function buildKhmerRhythmPrompt(key) {
+  const r = KHMER_RHYTHM_DB[key ? key.toLowerCase().replace(/[^a-z_]/g,'') : ''];
+  if (!r) return null;
+  const bpmMid = Math.round((r.bpm[0] + r.bpm[1]) / 2);
+  return r.desc + '. Target tempo: ' + bpmMid + ' BPM (range ' + r.bpm[0] + '-' + r.bpm[1] + ' BPM). This is traditional Cambodian Khmer music — generate authentic Khmer rhythmic feel and sound.';
 }
