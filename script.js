@@ -1010,10 +1010,23 @@ async function _generateSong() {
   if (!prompt) return showToast("Please enter a song description", "error");
   const rawStyle    = getActiveChip("songStyleGroup");
   const isCustom    = rawStyle.trim().toLowerCase() === "custom";
-  const instrument  = getActiveChip("songInstrumentGroup") || "Auto";
-  const tempo       = getActiveChip("songTempoGroup")      || "Auto";
-  const mood        = getActiveChip("songMoodGroup")       || "Auto";
-  // Build style string: if Custom, combine instrument+tempo+mood; else use chip value
+
+  // When NOT Custom, reset instrument/tempo/mood to Auto so they don't bleed into the style
+  if (!isCustom) {
+    ["songInstrumentGroup","songTempoGroup","songMoodGroup"].forEach(gid => {
+      const g = document.getElementById(gid);
+      if (!g) return;
+      g.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+      const autoChip = g.querySelector(".chip");
+      if (autoChip) autoChip.classList.add("active");
+    });
+  }
+
+  const instrument  = isCustom ? (getActiveChip("songInstrumentGroup") || "Auto") : "Auto";
+  const tempo       = isCustom ? (getActiveChip("songTempoGroup")      || "Auto") : "Auto";
+  const mood        = isCustom ? (getActiveChip("songMoodGroup")       || "Auto") : "Auto";
+
+  // Build style: if Custom → combine instrument+tempo+mood; else → use genre chip value
   const style = isCustom
     ? [
         instrument !== "Auto" ? instrument + " music" : "",
