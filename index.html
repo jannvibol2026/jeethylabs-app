@@ -194,15 +194,37 @@
           <div id="custom-style-panel" class="custom-style-panel" style="display:none;">
             <div class="custom-style-grid">
               <div class="form-group">
-                <label class="form-label" style="font-size:10px"><i class="fas fa-guitar" style="margin-right:4px;opacity:.7"></i>Instrument</label>
-                <div class="chip-group chip-group-sm" id="songInstrumentGroup">
-                  <button class="chip chip-sm active" onclick="selectChip(this,'songInstrumentGroup')">Auto</button>
-                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Guitar</button>
-                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Piano</button>
-                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Violin</button>
-                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Drum</button>
-                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Bass</button>
-                  <button class="chip chip-sm" onclick="selectChip(this,'songInstrumentGroup')">Flute</button>
+                <label class="form-label" style="font-size:10px;display:flex;align-items:center;gap:6px;">
+                  <i class="fas fa-guitar" style="opacity:.7"></i>Instrument
+                  <span style="font-size:9px;color:#a855f7;opacity:.8;">(multi-select)</span>
+                </label>
+                <!-- Khmer section -->
+                <div style="font-size:9px;color:#a78bfa;letter-spacing:.5px;margin-bottom:4px;text-transform:uppercase;opacity:.8;">🇰🇭 Khmer</div>
+                <div class="chip-group chip-group-sm" id="songInstrumentGroup" style="margin-bottom:6px;">
+                  <button class="chip chip-sm chip-multi active" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Auto</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">ខ្លុយ (Khloy)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">រនាតឯក (Roneat Ek)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">ចាប៉ី (Chapei)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">ទ្រ (Tro)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">សាដៀវ (Sadiev)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">គងធំ (Kong Thom)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">ស្គរ (Skor)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">រនាតធំ (Roneat Thom)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">ពិណ (Pin)</button>
+                </div>
+                <!-- Western section -->
+                <div style="font-size:9px;color:#60a5fa;letter-spacing:.5px;margin-bottom:4px;text-transform:uppercase;opacity:.8;">🌍 Western</div>
+                <div class="chip-group chip-group-sm">
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Guitar</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Piano</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Violin</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Drum</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Bass</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Flute</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Saxophone</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Cello</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Trumpet</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Synthesizer</button>
                 </div>
               </div>
               <div class="form-group">
