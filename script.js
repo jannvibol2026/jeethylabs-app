@@ -1135,10 +1135,18 @@ function getActiveChip(groupId) {
 function selectChip(el, groupId) {
   document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove("active"));
   el.classList.add("active");
-  // If selecting a non-custom chip in songStyleGroup, hide the custom panel
+  // If selecting a non-custom genre chip → hide panel + reset instrument/tempo/mood to Auto
   if (groupId === 'songStyleGroup' && !el.classList.contains('chip-custom')) {
     const panel = document.getElementById('custom-style-panel');
     if (panel) panel.style.display = 'none';
+    // Reset all custom sub-chips back to Auto immediately
+    ["songInstrumentGroup","songTempoGroup","songMoodGroup"].forEach(gid => {
+      const g = document.getElementById(gid);
+      if (!g) return;
+      g.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+      const autoChip = g.querySelector(".chip"); // first chip = Auto
+      if (autoChip) autoChip.classList.add("active");
+    });
   }
 }
 function formatTime(d) { return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
