@@ -632,12 +632,7 @@ app.post('/api/song', auth, async (req, res) => {
     if (!prompt && !customLyrics)
       return res.status(400).json({ error: 'Please provide a song description or custom lyrics.' });
 
-    if (customLyrics && !planCfg.customLyrics)
-      return res.status(403).json({
-        error: `Custom lyrics require PRO or MAX plan. Your current plan is ${planKey.toUpperCase()}.`,
-        upgradeRequired: true,
-      });
-
+    // customLyrics via prompt textarea — no plan gate needed
     const isFemale  = voice.toLowerCase().includes('female') || !voice.toLowerCase().includes('male');
     const voiceHint = isFemale ? 'female vocalist' : 'male vocalist';
     const ttsVoice  = isFemale ? 'Aoede' : 'Charon';
