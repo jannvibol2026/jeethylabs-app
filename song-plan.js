@@ -3,9 +3,14 @@
     * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  */
 
 function _getSongToken() {
-  const t = localStorage.getItem("jl_token");
-  if (t) return t;
-  return null;
+  try {
+    return localStorage.getItem("jl_token")
+        || sessionStorage.getItem("jl_token")
+        || window._jlToken
+        || null;
+  } catch(e) {
+    return window._jlToken || null;
+  }
 }
 
 function _isUserLoggedIn() {
@@ -119,6 +124,14 @@ function generateSong() {
    _generateSong  " main song generation with full lyrics UI
  " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " "  */
 async function _generateSong() {
+  // ── Auth gate: must be signed in ──
+  const _tok = _getSongToken();
+  if (!_tok) {
+    if (typeof showToast === 'function') showToast('Please sign in to generate a song.', 'error');
+    if (typeof openLoginModal === 'function') openLoginModal();
+    return;
+  }
+
   if (typeof checkQuota === "function" && !checkQuota()) return;
 
   const prompt = (document.getElementById("songPrompt")?.value || "").trim();
@@ -195,12 +208,12 @@ async function _generateSong() {
           background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};
           color:${isLyria ? "#a855f7" : "#10b981"};
           border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">
-          ${isLyria ? "  Lyria" : " "  TTS"}</span>` : "";
+         ${isLyria ? "🎵 Lyria" : "🔊 TTS"}</span>` : "";
     header.innerHTML = `
       <i class="fas fa-music"></i> ${escHtml(songTitle || style + " Song")}
       ${sourceBadge}
       <span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">
-        ${escHtml(style)}  - ${escHtml(voiceHint)}
+        ${escHtml(style)} · ${escHtml(voiceHint)}
       </span>`;
     card.appendChild(header);
 
