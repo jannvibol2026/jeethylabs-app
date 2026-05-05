@@ -24,21 +24,21 @@ const PORT           = process.env.PORT           || 8080;
 /* - Plan config - */
 const PLAN_CONFIG = {
   free: {
-    durationHint:    'under 1 minute (30-55 seconds)',
+    durationHint:    'under 1 minute (45-58 seconds maximum). CRITICAL: song MUST end before 1 minute. Keep it very short and compact.',
     durationSeconds: 55,
-    structureHint:   'Intro -> Verse -> Chorus -> Outro (short/compact version)',
+    structureHint:   'Intro (5s) -> Verse (20s) -> Chorus (20s) -> Outro (10s) — total must be under 60 seconds',
     customLyrics:    false,
   },
   pro: {
-    durationHint:    'between 2 minutes 10 seconds and 3 minutes 20 seconds (target around 2 minutes 45 seconds)',
-    durationSeconds: 165,
-    structureHint:   'Intro -> Verse 1 -> Pre-Chorus -> Chorus -> Verse 2 -> Pre-Chorus -> Chorus -> Bridge -> Final Chorus -> Outro',
+    durationHint:    'between 3 minutes 10 seconds and 3 minutes 45 seconds (target: 3 minutes 30 seconds). CRITICAL: audio MUST be at least 3:10 and no longer than 3:45.',
+    durationSeconds: 210,
+    structureHint:   'Intro (15s) -> Verse 1 (35s) -> Pre-Chorus (15s) -> Chorus (30s) -> Verse 2 (35s) -> Pre-Chorus (15s) -> Chorus (30s) -> Bridge (20s) -> Final Chorus (30s) -> Outro (15s) — total: ~3:30',
     customLyrics:    true,
   },
   max: {
-    durationHint:    'between 4 minutes 30 seconds and 5 minutes 30 seconds (target: 5 minutes). CRITICAL: The audio MUST be at least 4 minutes 30 seconds. Do NOT fade out or end before 4:30.',
+    durationHint:    'between 4 minutes 20 seconds and 5 minutes 20 seconds (target: 5 minutes). CRITICAL: audio MUST be at least 4:20 and no longer than 5:20.',
     durationSeconds: 300,
-    structureHint:   'Intro (20s) -> Verse 1 (40s) -> Pre-Chorus (20s) -> Chorus (35s) -> Verse 2 (40s) -> Pre-Chorus (20s) -> Chorus (35s) -> Bridge (30s) -> Final Chorus (40s) -> Extended Instrumental Outro (40s) -> Fade Out (20s)',
+    structureHint:   'Intro (20s) -> Verse 1 (40s) -> Pre-Chorus (20s) -> Chorus (35s) -> Verse 2 (40s) -> Pre-Chorus (20s) -> Chorus (35s) -> Bridge (30s) -> Final Chorus (40s) -> Extended Instrumental Outro (40s) -> Fade Out (20s) — total: ~5:00',
     customLyrics:    true,
   },
 };
@@ -734,7 +734,7 @@ app.post('/api/song', auth, async (req, res) => {
       musicPrompt = [
         `[DURATION REQUIREMENT: Generate audio that is ${planCfg.durationHint}. This is a strict requirement.]`,
         `[TIMING GUIDE: Use explicit structure timestamps so the total runtime lands inside the required duration window.]`,
-        planKey === 'max' ? `[ENFORCEMENT: Generate AT LEAST 270 seconds of audio. Add extra instrumental sections, solos, or harmonies if needed to reach the minimum duration. Never end before 4:30.]` : '',
+        planKey === 'max' ? `[ENFORCEMENT: Generate between 4 minutes 20 seconds and 5 minutes 20 seconds of audio. Target 5:00. Add extra instrumental sections, solos, or harmonies if needed. Never end before 4:20. Never exceed 5:20.]` : '',
         `Use EXACTLY the following lyrics - do not change any words:`,
         `---`,
         customLyrics.trim(),
@@ -746,8 +746,8 @@ app.post('/api/song', auth, async (req, res) => {
         ...(tempo      ? ['Tempo: '+tempo+'.']                    : []),
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
-        planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:15 Intro] [0:15-0:50 Verse 1] [0:50-1:15 Chorus] [1:15-1:45 Verse 2] [1:45-2:10 Chorus] [2:10-2:35 Bridge] [2:35-3:10 Final Chorus] [3:10-3:20 Outro]' : '',
-        planKey === 'max' ? '[TIMESTAMPS — TOTAL MUST REACH AT LEAST 4:30] [0:00-0:20 Intro] [0:20-1:00 Verse 1] [1:00-1:20 Pre-Chorus] [1:20-1:55 Chorus] [1:55-2:35 Verse 2] [2:35-2:55 Pre-Chorus] [2:55-3:30 Chorus] [3:30-4:00 Bridge] [4:00-4:40 Final Chorus] [4:40-5:20 Instrumental Outro] [5:20-5:30 Fade Out] — MINIMUM 4:30 REQUIRED' : '',
+        planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:15 Intro] [0:15-0:50 Verse 1] [0:50-1:05 Pre-Chorus] [1:05-1:35 Chorus] [1:35-2:10 Verse 2] [2:10-2:25 Pre-Chorus] [2:25-2:55 Chorus] [2:55-3:15 Bridge] [3:15-3:35 Final Chorus] [3:35-3:45 Outro]' : '',
+        planKey === 'max' ? '[TIMESTAMPS — TARGET 4:20-5:20, aim 5:00] [0:00-0:20 Intro] [0:20-1:00 Verse 1] [1:00-1:20 Pre-Chorus] [1:20-1:55 Chorus] [1:55-2:35 Verse 2] [2:35-2:55 Pre-Chorus] [2:55-3:30 Chorus] [3:30-4:00 Bridge] [4:00-4:40 Final Chorus] [4:40-5:20 Instrumental Outro] [5:20-5:30 Fade Out] — MINIMUM 4:30 REQUIRED' : '',
       ].join('\n');
     } else {
       musicPrompt = [
@@ -775,10 +775,10 @@ app.post('/api/song', auth, async (req, res) => {
         ...(tempo      ? ['Tempo: '+tempo+'.']                    : []),
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
-        planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:15 Intro] [0:15-0:50 Verse 1] [0:50-1:15 Chorus] [1:15-1:45 Verse 2] [1:45-2:10 Chorus] [2:10-2:35 Bridge] [2:35-3:10 Final Chorus] [3:10-3:20 Outro]' : '',
-        planKey === 'max' ? '[TIMESTAMPS — TOTAL MUST REACH AT LEAST 4:30] [0:00-0:20 Intro] [0:20-1:00 Verse 1] [1:00-1:20 Pre-Chorus] [1:20-1:55 Chorus] [1:55-2:35 Verse 2] [2:35-2:55 Pre-Chorus] [2:55-3:30 Chorus] [3:30-4:00 Bridge] [4:00-4:40 Final Chorus] [4:40-5:20 Instrumental Outro] [5:20-5:30 Fade Out] — MINIMUM 4:30 REQUIRED' : '',
+        planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:15 Intro] [0:15-0:50 Verse 1] [0:50-1:05 Pre-Chorus] [1:05-1:35 Chorus] [1:35-2:10 Verse 2] [2:10-2:25 Pre-Chorus] [2:25-2:55 Chorus] [2:55-3:15 Bridge] [3:15-3:35 Final Chorus] [3:35-3:45 Outro]' : '',
+        planKey === 'max' ? '[TIMESTAMPS — TARGET 4:20-5:20, aim 5:00] [0:00-0:20 Intro] [0:20-1:00 Verse 1] [1:00-1:20 Pre-Chorus] [1:20-1:55 Chorus] [1:55-2:35 Verse 2] [2:35-2:55 Pre-Chorus] [2:55-3:30 Chorus] [3:30-4:00 Bridge] [4:00-4:40 Final Chorus] [4:40-5:20 Instrumental Outro] [5:20-5:30 Fade Out] — MINIMUM 4:30 REQUIRED' : '',
         planKey === 'free'
-          ? 'Keep the song SHORT - under 1 minute, compact structure only.'
+          ? 'CRITICAL: Keep the song VERY SHORT — strictly under 60 seconds. Maximum 58 seconds. Compact structure: Verse + Chorus only. Stop and fade before 1 minute.'
           : 'Generate the FULL song from start to finish. Do not cut short.',
       ].join('\n');
     }
