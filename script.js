@@ -131,6 +131,7 @@ async function checkExistingSession() {
     if (stored) {
       authToken = stored;
       window._jlToken = stored;
+      window.authToken = stored;
       const r2 = await fetch("/api/me", {
         credentials: "include",
         headers: { "Authorization": "Bearer " + stored }
@@ -288,7 +289,7 @@ async function submitOtp() {
     const data = await res.json();
     if (res.ok) {
       _otpPending = null;
-      if (data.token) { authToken = data.token; localStorage.setItem("jl_token", data.token); window._jlToken = data.token; }
+      if (data.token) { authToken = data.token; localStorage.setItem("jl_token", data.token); window._jlToken = data.token; window.authToken = data.token; }
       showAuthMsg("Welcome, " + data.user.name + "! Account created!", "success");
       setTimeout(() => onLoginSuccess(data.user, true), 900);
     } else { showAuthMsg(data.error || "Invalid or expired code.", "error"); }
@@ -350,7 +351,7 @@ async function submitLogin(e) {
     });
     const data = await res.json();
     if (res.ok) {
-      if (data.token) { authToken = data.token; localStorage.setItem("jl_token", data.token); window._jlToken = data.token; }
+      if (data.token) { authToken = data.token; localStorage.setItem("jl_token", data.token); window._jlToken = data.token; window.authToken = data.token; }
       showAuthMsg("Welcome back, " + data.user.name + "!", "success");
       setTimeout(() => onLoginSuccess(data.user, true), 800);
     } else { showAuthMsg(data.error || "Invalid email or password.", "error"); }
@@ -393,6 +394,7 @@ async function doLogout() {
   authToken   = null;
   localStorage.removeItem("jl_token");
   window._jlToken = null;
+  window.authToken = null;
   userPlan    = "free";
   requestCount = 0;
   chatHistory  = [];
