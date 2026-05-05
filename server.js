@@ -694,21 +694,62 @@ function buildInstrumentPrompt(instrument) {
 
 
 /* ── WAV audio concatenation for MAX plan dual-segment songs ── */
-function concatWavBuffers(buf1, buf2) {
+function concatWavBuffers(buf1, buf2, maxSeconds) {
   try {
     const b1 = Buffer.from(buf1, 'base64');
     const b2 = Buffer.from(buf2, 'base64');
     const hdr    = b1.slice(0, 44);
     const pcm1   = b1.slice(44);
     const pcm2   = b2.length > 44 ? b2.slice(44) : b2;
-    const pcmAll = Buffer.concat([pcm1, pcm2]);
-    const out    = Buffer.concat([hdr, pcmAll]);
+    let   pcmAll = Buffer.concat([pcm1, pcm2]);
+
+    /* ── Trim to maxSeconds if provided ── */
+    if (maxSeconds && maxSeconds > 0) {
+      // Read sample rate + bit depth + channels from WAV header
+      const sampleRate  = hdr.readUInt32LE(24); // bytes 24-27
+      const numChannels = hdr.readUInt16LE(22); // bytes 22-23
+      const bitsPerSamp = hdr.readUInt16LE(34); // bytes 34-35
+      const bytesPerSec = sampleRate * numChannels * (bitsPerSamp / 8);
+      const maxBytes    = Math.floor(bytesPerSec * maxSeconds);
+      if (pcmAll.length > maxBytes) {
+        console.log('[concatWav] trimming from ' + (pcmAll.length/bytesPerSec).toFixed(1) + 's to ' + maxSeconds + 's');
+        pcmAll = pcmAll.slice(0, maxBytes);
+      }
+    }
+
+    const out = Buffer.concat([hdr, pcmAll]);
     out.writeUInt32LE(pcmAll.length,      40);
     out.writeUInt32LE(pcmAll.length + 36,  4);
     return out.toString('base64');
   } catch (e) {
     console.warn('[concatWav]', e.message);
     return buf1;
+  }
+}
+
+/* Trim a single WAV buffer to maxSeconds */
+function trimWavBuffer(buf64, maxSeconds) {
+  try {
+    const buf = Buffer.from(buf64, 'base64');
+    if (buf.length <= 44) return buf64;
+    const hdr         = buf.slice(0, 44);
+    let   pcm         = buf.slice(44);
+    const sampleRate  = hdr.readUInt32LE(24);
+    const numChannels = hdr.readUInt16LE(22);
+    const bitsPerSamp = hdr.readUInt16LE(34);
+    const bytesPerSec = sampleRate * numChannels * (bitsPerSamp / 8);
+    const maxBytes    = Math.floor(bytesPerSec * maxSeconds);
+    if (pcm.length > maxBytes) {
+      console.log('[trimWav] trimming from ' + (pcm.length/bytesPerSec).toFixed(1) + 's to ' + maxSeconds + 's');
+      pcm = pcm.slice(0, maxBytes);
+    }
+    const out = Buffer.concat([hdr, pcm]);
+    out.writeUInt32LE(pcm.length,      40);
+    out.writeUInt32LE(pcm.length + 36,  4);
+    return out.toString('base64');
+  } catch (e) {
+    console.warn('[trimWav]', e.message);
+    return buf64;
   }
 }
 
@@ -842,15 +883,25 @@ app.post('/api/song', auth, async (req, res) => {
             console.warn('[/api/song] MAX seg2 failed (using seg1 only):', _e2.message);
           }
 
-          audioResult = _seg2
-            ? { data: concatWavBuffers(_seg1.audio.data, _seg2.audio.data), mimeType: _seg1.audio.mimeType || 'audio/wav' }
-            : _seg1.audio;
+          /* MAX plan: trim to 5:20 max (320 seconds) */
+          const _MAX_SECONDS = 320;
+          if (_seg2) {
+            const _combined = concatWavBuffers(_seg1.audio.data, _seg2.audio.data, _MAX_SECONDS);
+            audioResult = { data: _combined, mimeType: _seg1.audio.mimeType || 'audio/wav' };
+          } else {
+            /* Only seg1: still trim to limit */
+            audioResult = { data: trimWavBuffer(_seg1.audio.data, _MAX_SECONDS), mimeType: _seg1.audio.mimeType || 'audio/wav' };
+          }
 
         } else {
           /* FREE / PRO: single call */
           const _res = await _lyriaCall(model, musicPrompt);
           lyricsText  = _res.txt;
-          audioResult = _res.audio;
+          /* PRO plan: trim to 3:45 max (225 seconds) */
+          const _proTrimSec = planKey === 'pro' ? 225 : (planKey === 'free' ? 60 : null);
+          audioResult = _proTrimSec
+            ? { data: trimWavBuffer(_res.audio.data, _proTrimSec), mimeType: _res.audio.mimeType || 'audio/wav' }
+            : _res.audio;
         }
 
         usedModel = model;
