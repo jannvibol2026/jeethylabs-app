@@ -1,5 +1,6 @@
 'use strict';
 const express    = require('express');
+const cookieParser = require('cookie-parser');
 const session    = require('express-session');
 const { Pool }   = require('pg');
 const bcrypt     = require('bcryptjs');
@@ -47,6 +48,7 @@ app.use(cors({ origin: true, credentials: true }));
 
 /* - STRIPE WEBHOOK: raw body MUST come BEFORE express.json() - */
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 
 /* - SESSION - */
@@ -143,7 +145,10 @@ async function sendEmail(to, subject, html) {
 /* - AUTH MIDDLEWARE - */
 function auth(req, res, next) {
   const hdr   = req.headers.authorization || '';
-  const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : (req.session?.token) || null;
+  const token = hdr.startsWith('Bearer ') ? hdr.slice(7)
+              : (req.session?.token)
+              || (req.cookies?.jl_token)
+              || null;
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
   try { req.user = jwt.verify(token, JWT_SECRET); next(); }
   catch { res.status(401).json({ error: 'Invalid or expired token' }); }
@@ -237,6 +242,12 @@ app.post('/api/verify-otp', async (req, res) => {
     const u     = rows[0];
     const token = jwt.sign({ id: u.id, email: u.email }, JWT_SECRET, { expiresIn: '30d' });
     req.session.token = token;
+    res.cookie('jl_token', token, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
     res.json({
       success: true,
       token,
@@ -284,6 +295,12 @@ app.post('/api/login', async (req, res) => {
     );
     const token = jwt.sign({ id: u.id, email: u.email }, JWT_SECRET, { expiresIn: '30d' });
     req.session.token = token;
+    res.cookie('jl_token', token, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
     res.json({
       success: true,
       token,
