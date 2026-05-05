@@ -728,30 +728,53 @@ function concatWavBuffers(buf1, buf2, maxSeconds) {
 }
 
 /* Trim a single WAV buffer to maxSeconds */
-function trimWavBuffer(buf64, maxSeconds) {
+/* Trim audio buffer (WAV or raw L16 PCM) to maxSeconds.
+   Lyria returns audio/L16;rate=24000 = raw 16-bit PCM, no WAV header.
+   We detect format by checking for RIFF magic bytes. */
+function trimAudioBuffer(buf64, maxSeconds, mimeType) {
   try {
-    const buf = Buffer.from(buf64, 'base64');
-    if (buf.length <= 44) return buf64;
-    const hdr         = buf.slice(0, 44);
-    let   pcm         = buf.slice(44);
-    const sampleRate  = hdr.readUInt32LE(24);
-    const numChannels = hdr.readUInt16LE(22);
-    const bitsPerSamp = hdr.readUInt16LE(34);
-    const bytesPerSec = sampleRate * numChannels * (bitsPerSamp / 8);
-    const maxBytes    = Math.floor(bytesPerSec * maxSeconds);
-    if (pcm.length > maxBytes) {
-      console.log('[trimWav] trimming from ' + (pcm.length/bytesPerSec).toFixed(1) + 's to ' + maxSeconds + 's');
-      pcm = pcm.slice(0, maxBytes);
+    const buf  = Buffer.from(buf64, 'base64');
+    const mime = (mimeType || '').toLowerCase();
+
+    /* ── WAV format: has "RIFF" magic at bytes 0-3 ── */
+    if (buf.length > 44 && buf.slice(0,4).toString('ascii') === 'RIFF') {
+      const hdr         = buf.slice(0, 44);
+      let   pcm         = buf.slice(44);
+      const sampleRate  = hdr.readUInt32LE(24);
+      const numChannels = hdr.readUInt16LE(22);
+      const bitsPerSamp = hdr.readUInt16LE(34);
+      const bytesPerSec = sampleRate * numChannels * (bitsPerSamp / 8);
+      const maxBytes    = Math.floor(bytesPerSec * maxSeconds);
+      if (pcm.length > maxBytes) {
+        console.log('[trimAudio/WAV] ' + (pcm.length/bytesPerSec).toFixed(1) + 's → ' + maxSeconds + 's');
+        pcm = pcm.slice(0, maxBytes);
+        const out = Buffer.concat([hdr, pcm]);
+        out.writeUInt32LE(pcm.length,      40);
+        out.writeUInt32LE(pcm.length + 36,  4);
+        return out.toString('base64');
+      }
+      return buf64;
     }
-    const out = Buffer.concat([hdr, pcm]);
-    out.writeUInt32LE(pcm.length,      40);
-    out.writeUInt32LE(pcm.length + 36,  4);
-    return out.toString('base64');
+
+    /* ── Raw L16 PCM (Lyria default): no header ── */
+    /* Extract sample rate from mimeType e.g. "audio/l16;rate=24000" */
+    const rateMatch  = mime.match(/rate=(\d+)/);
+    const sampleRate = rateMatch ? parseInt(rateMatch[1]) : 24000; /* Lyria default: 24000 */
+    const numChannels = mime.includes('channels=2') ? 2 : 1;       /* Lyria default: mono */
+    const bytesPerSec = sampleRate * numChannels * 2;               /* 16-bit = 2 bytes/sample */
+    const maxBytes    = Math.floor(bytesPerSec * maxSeconds);
+    if (buf.length > maxBytes) {
+      console.log('[trimAudio/L16] ' + (buf.length/bytesPerSec).toFixed(1) + 's → ' + maxSeconds + 's (rate:' + sampleRate + ')');
+      return buf.slice(0, maxBytes).toString('base64');
+    }
+    return buf64;
   } catch (e) {
-    console.warn('[trimWav]', e.message);
+    console.warn('[trimAudio]', e.message);
     return buf64;
   }
 }
+/* Alias for backwards compat */
+const trimWavBuffer = (b, s) => trimAudioBuffer(b, s, 'audio/wav');
 
 app.post('/api/song', auth, async (req, res) => {
   try {
@@ -883,24 +906,26 @@ app.post('/api/song', auth, async (req, res) => {
             console.warn('[/api/song] MAX seg2 failed (using seg1 only):', _e2.message);
           }
 
-          /* MAX plan: trim to 5:20 max (320 seconds) */
+          /* MAX plan: concat then trim to 5:20 max (320 seconds) */
           const _MAX_SECONDS = 320;
+          const _mime1 = _seg1.audio.mimeType || 'audio/l16;rate=24000';
           if (_seg2) {
-            const _combined = concatWavBuffers(_seg1.audio.data, _seg2.audio.data, _MAX_SECONDS);
-            audioResult = { data: _combined, mimeType: _seg1.audio.mimeType || 'audio/wav' };
+            const _combined = concatWavBuffers(_seg1.audio.data, _seg2.audio.data, null);
+            const _trimmed  = trimAudioBuffer(_combined, _MAX_SECONDS, _mime1);
+            audioResult = { data: _trimmed, mimeType: _mime1 };
           } else {
-            /* Only seg1: still trim to limit */
-            audioResult = { data: trimWavBuffer(_seg1.audio.data, _MAX_SECONDS), mimeType: _seg1.audio.mimeType || 'audio/wav' };
+            audioResult = { data: trimAudioBuffer(_seg1.audio.data, _MAX_SECONDS, _mime1), mimeType: _mime1 };
           }
 
         } else {
           /* FREE / PRO: single call */
           const _res = await _lyriaCall(model, musicPrompt);
           lyricsText  = _res.txt;
-          /* PRO plan: trim to 3:45 max (225 seconds) */
+          /* Trim by plan: PRO→3:45 (225s), FREE→60s */
+          const _planMime   = _res.audio.mimeType || 'audio/l16;rate=24000';
           const _proTrimSec = planKey === 'pro' ? 225 : (planKey === 'free' ? 60 : null);
           audioResult = _proTrimSec
-            ? { data: trimWavBuffer(_res.audio.data, _proTrimSec), mimeType: _res.audio.mimeType || 'audio/wav' }
+            ? { data: trimAudioBuffer(_res.audio.data, _proTrimSec, _planMime), mimeType: _planMime }
             : _res.audio;
         }
 
