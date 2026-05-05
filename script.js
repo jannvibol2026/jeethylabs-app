@@ -969,7 +969,7 @@ function initSongPlanBadge() {
     badge.style.display = "inline-block";
   }
   if (hint) {
-    const hints = { free:"~30s", pro:"~45s", max:"~60s" };
+    const hints = { free:"~60s", pro:"~1 min - 3 min", max:"~3 min - 5 minutes (full song)" };
     hint.textContent = hints[userPlan] || "~30s";
   }
 }
@@ -1080,7 +1080,7 @@ async function _generateSong() {
     const sourceBadge = audioSource
       ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "🎵 Lyria" : "🔊 TTS"}</span>`
       : "";
-    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} · ${escapeHtml(voiceHint)}</span>`;
+    header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} - ${escapeHtml(voiceHint)}</span>`;
     card.appendChild(header);
 
     if (audioB64) {
@@ -1092,26 +1092,36 @@ async function _generateSong() {
       audioEl.controls = true; audioEl.preload = "auto";
       audioEl.style.cssText = "width:100%;padding:10px 14px 0;accent-color:var(--green);";
       audioEl.src = audioBlobUrl;
-      card.appendChild(audioEl);
 
       // ── Waveform beat effect ──
       const waveWrap = document.createElement('div');
-      waveWrap.style.cssText = 'display:flex;align-items:flex-end;gap:3px;height:32px;padding:6px 14px 2px;';
-      for (let b = 0; b < 22; b++) {
-        const bar = document.createElement('div');
-        bar.style.cssText = 'width:3px;border-radius:3px;background:var(--green);opacity:0.8;height:4px;transition:height 0.08s ease;';
-        waveWrap.appendChild(bar);
+      waveWrap.style.cssText = 'display:flex;align-items:flex-end;gap:3px;height:32px;padding:6px 14px 4px;';
+      for (let wb = 0; wb < 22; wb++) {
+        const wbar = document.createElement('div');
+        wbar.style.cssText = 'width:3px;border-radius:3px;background:#22c55e;height:4px;transition:height 0.08s ease;';
+        waveWrap.appendChild(wbar);
       }
+      let _waveRaf = null;
+      function _startWave() {
+        const brs = waveWrap.children;
+        function tick() {
+          for (let wi = 0; wi < brs.length; wi++) {
+            brs[wi].style.height = (3 + Math.random() * 24) + 'px';
+          }
+          _waveRaf = requestAnimationFrame(tick);
+        }
+        tick();
+      }
+      function _stopWave() {
+        if (_waveRaf) { cancelAnimationFrame(_waveRaf); _waveRaf = null; }
+        const brs = waveWrap.children;
+        for (let wi = 0; wi < brs.length; wi++) brs[wi].style.height = '4px';
+      }
+      audioEl.addEventListener('play',  _startWave);
+      audioEl.addEventListener('pause', _stopWave);
+      audioEl.addEventListener('ended', _stopWave);
+      card.appendChild(audioEl);
       card.appendChild(waveWrap);
-      const waveBars = waveWrap.querySelectorAll('div');
-      let _waveFrame;
-      function _animateWave() {
-        waveBars.forEach(b => { b.style.height = (3 + Math.random() * 24) + 'px'; });
-        _waveFrame = requestAnimationFrame(_animateWave);
-      }
-      audioEl.addEventListener('play',  () => { _animateWave(); });
-      audioEl.addEventListener('pause', () => { cancelAnimationFrame(_waveFrame); waveBars.forEach(b => b.style.height = '4px'); });
-      audioEl.addEventListener('ended', () => { cancelAnimationFrame(_waveFrame); waveBars.forEach(b => b.style.height = '4px'); });
       const a = document.createElement("a"); a.className = "btn-download";
       const ext = (audioMime || "audio/wav").split("/")[1] || "wav";
       a.href = audioBlobUrl; a.download = `jeethy-song-${Date.now()}.${ext}`;
