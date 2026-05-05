@@ -265,7 +265,7 @@ async function submitSignup(e) {
       of.style.display = "flex";
       document.getElementById("authOtpInput").value = "";
       startResendTimer(60);
-      showAuthMsg("Code verified!‚ Email.", "success");
+      showAuthMsg("Code verified! Email confirmed.", "success");
     } else { showAuthMsg(data.error || "Failed to send code.", "error"); }
   } catch (ex) { showAuthMsg("Network error. Check connection.", "error"); }
   btn.disabled = false;
@@ -969,7 +969,7 @@ function initSongPlanBadge() {
     badge.style.display = "inline-block";
   }
   if (hint) {
-    const hints = { free:"~60s", pro:"~1 min - 3 min", max:"~3 min - 5 minutes (full song)" };
+    const hints = { free:"~<1 min", pro:"~>1 min - <3 min", max:"~>3 min - <5 min (full song)" };
     hint.textContent = hints[userPlan] || "~30s";
   }
 }
