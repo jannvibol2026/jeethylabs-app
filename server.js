@@ -692,6 +692,26 @@ function buildInstrumentPrompt(instrument) {
   return lines;
 }
 
+
+/* ── WAV audio concatenation for MAX plan dual-segment songs ── */
+function concatWavBuffers(buf1, buf2) {
+  try {
+    const b1 = Buffer.from(buf1, 'base64');
+    const b2 = Buffer.from(buf2, 'base64');
+    const hdr    = b1.slice(0, 44);
+    const pcm1   = b1.slice(44);
+    const pcm2   = b2.length > 44 ? b2.slice(44) : b2;
+    const pcmAll = Buffer.concat([pcm1, pcm2]);
+    const out    = Buffer.concat([hdr, pcmAll]);
+    out.writeUInt32LE(pcmAll.length,      40);
+    out.writeUInt32LE(pcmAll.length + 36,  4);
+    return out.toString('base64');
+  } catch (e) {
+    console.warn('[concatWav]', e.message);
+    return buf1;
+  }
+}
+
 app.post('/api/song', auth, async (req, res) => {
   try {
     const key     = geminiKey();
@@ -777,37 +797,67 @@ app.post('/api/song', auth, async (req, res) => {
 
     let audioResult = null, lyricsText = '', usedModel = '';
 
+    /* helper: single Lyria call */
+    async function _lyriaCall(mdl, prompt) {
+      const _r = await fetch(`${GEMINI}/${mdl}:generateContent?key=${key}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ['AUDIO', 'TEXT'], temperature: 1.0 },
+        }),
+      });
+      const _d = await safeJson(_r, 'Lyria ' + mdl);
+      if (!_r.ok) throw new Error(_d.error?.message || ('HTTP ' + _r.status));
+      let _txt = '', _audio = null;
+      for (const _c of (_d.candidates || []))
+        for (const _p of (_c.content?.parts || [])) {
+          if (_p.text)              _txt   = _p.text;
+          if (_p.inlineData?.data)  _audio = _p.inlineData;
+        }
+      if (!_audio) throw new Error('No audio (' + (_d.candidates?.[0]?.finishReason || 'UNKNOWN') + ')');
+      return { txt: _txt, audio: _audio };
+    }
+
     for (const model of lyriaModels) {
       try {
-        console.log(`[/api/song] trying Lyria: ${model}`);
-        const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: musicPrompt }] }],
-            generationConfig: {
-              responseModalities: ['AUDIO', 'TEXT'],
-              temperature: 1.0,
-            },
-          }),
-        });
-        const d = await safeJson(r, `/api/song Lyria ${model}`);
-        if (!r.ok) throw new Error(d.error?.message || `HTTP ${r.status}`);
+        console.log('[/api/song] trying Lyria: ' + model + ' plan:' + planKey);
 
-        for (const c of (d.candidates || []))
-          for (const p of (c.content?.parts || [])) {
-            if (p.text)             lyricsText  = p.text;
-            if (p.inlineData?.data) audioResult = p.inlineData;
+        if (planKey === 'max') {
+          /* MAX plan: 2 segments concatenated => 4-5 min total */
+          const _p1 = musicPrompt + '\n[SEGMENT 1 of 2: Generate Intro through Verse 2 and second Chorus. ' +
+            'Target duration: 2 minutes 30 seconds. Do NOT add outro or fade out - the song will continue in segment 2.]';
+          const _p2 = musicPrompt + '\n[SEGMENT 2 of 2: Generate Bridge through Final Chorus and Extended Instrumental Outro. ' +
+            'Target duration: 2 minutes 00 seconds. End with a natural fade out - this is the final segment.]';
+
+          const _seg1 = await _lyriaCall(model, _p1);
+          lyricsText = _seg1.txt;
+          console.log('[/api/song] MAX seg1 ok');
+
+          let _seg2 = null;
+          try {
+            _seg2 = await _lyriaCall(model, _p2);
+            if (_seg2.txt) lyricsText += '\n' + _seg2.txt;
+            console.log('[/api/song] MAX seg2 ok');
+          } catch (_e2) {
+            console.warn('[/api/song] MAX seg2 failed (using seg1 only):', _e2.message);
           }
 
-        if (!audioResult) {
-          const reason = d.candidates?.[0]?.finishReason || 'UNKNOWN';
-          throw new Error(`Lyria returned no audio (finishReason: ${reason})`);
+          audioResult = _seg2
+            ? { data: concatWavBuffers(_seg1.audio.data, _seg2.audio.data), mimeType: _seg1.audio.mimeType || 'audio/wav' }
+            : _seg1.audio;
+
+        } else {
+          /* FREE / PRO: single call */
+          const _res = await _lyriaCall(model, musicPrompt);
+          lyricsText  = _res.txt;
+          audioResult = _res.audio;
         }
+
         usedModel = model;
-        console.log(`[/api/song] Lyria ok: ${model}`);
+        console.log('[/api/song] Lyria done: ' + model);
         break;
       } catch (err) {
-        console.warn(`[/api/song] Lyria ${model} failed:`, err.message);
+        console.warn('[/api/song] Lyria ' + model + ' failed:', err.message);
         audioResult = null;
       }
     }
