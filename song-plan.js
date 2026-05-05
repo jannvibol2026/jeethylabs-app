@@ -7,9 +7,10 @@ function _getSongToken() {
     return localStorage.getItem("jl_token")
         || sessionStorage.getItem("jl_token")
         || window._jlToken
+        || window.authToken
         || null;
   } catch(e) {
-    return window._jlToken || null;
+    return window._jlToken || window.authToken || null;
   }
 }
 
@@ -110,7 +111,7 @@ function _bindLyricsFileUpload() {
 }
 
 /*  " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " 
-   generateSong  " entry point from Generate Song button
+   generateSong -  entry point from Generate Song button
  " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " "  */
 function generateSong() {
   if (!window.currentUser) {
@@ -121,7 +122,7 @@ function generateSong() {
 }
 
 /*  " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " 
-   _generateSong  " main song generation with full lyrics UI
+   _generateSong -  main song generation with full lyrics UI
  " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " "  */
 async function _generateSong() {
   // ── Auth gate: must be signed in ──
@@ -170,9 +171,20 @@ async function _generateSong() {
   }, 20000);
 
   try {
-    const token   = _getSongToken();
-    const headers = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = "Bearer " + token;
+    const token = _getSongToken()
+                || localStorage.getItem("jl_token")
+                || window._jlToken
+                || window.authToken
+                || null;
+    if (!token) {
+      if (typeof showToast === 'function') showToast('Please sign in to generate a song.', 'error');
+      if (typeof openLoginModal === 'function') openLoginModal();
+      return;
+    }
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    };
 
     const res = await fetch("/api/song", {
       method: "POST",
@@ -232,7 +244,7 @@ async function _generateSong() {
       audioEl.src = blobUrl;
       card.appendChild(audioEl);
 
-      /* Always download as .mp3  " mpeg/mp3 are same codec, mp3 opens everywhere */
+      /* Always download as .mp3 -  mpeg/mp3 are same codec, mp3 opens everywhere */
       const ext = "mp3";
       const a   = document.createElement("a");
       a.className = "btn-download";
@@ -245,7 +257,7 @@ async function _generateSong() {
       notice.style.cssText = "display:flex;flex-direction:column;gap:8px;padding:10px 14px;"
         + "font-size:12px;color:var(--text2);background:rgba(74,222,128,.06);"
         + "border-bottom:1px solid var(--border);";
-      const msg = ttsMessage || "Audio generation temporarily unavailable  " lyrics ready below. Try again shortly.";
+      const msg = ttsMessage || "Audio generation temporarily unavailable - lyrics ready below. Try again shortly.";
       notice.innerHTML = `
         <div style="display:flex;align-items:flex-start;gap:8px;">
           <i class="fas fa-circle-info" style="color:var(--green);flex-shrink:0;margin-top:2px"></i>
@@ -316,7 +328,7 @@ async function _generateSong() {
       lyricsWrap.appendChild(lyricsEditor);
       card.appendChild(lyricsWrap);
 
-      /* Regenerate footer  " shown when in edit mode */
+      /* Regenerate footer -  shown when in edit mode */
       const regenFooter = document.createElement("div");
       regenFooter.className = "sp-regen-footer";
       regenFooter.style.cssText = "display:none;padding:8px 14px 14px;";
@@ -335,7 +347,7 @@ async function _generateSong() {
         const customTA = document.getElementById("custom-lyrics-textarea");
         if (customTA) {
           customTA.value = editedLyrics;
-          customTA.dataset.autoFilled = "0"; /* user edited  " don't override next time */
+          customTA.dataset.autoFilled = "0"; /* user edited -  don't override next time */
         } else {
           /* fallback: store globally */
           window._spRegenLyrics = editedLyrics;
@@ -377,7 +389,7 @@ async function _generateSong() {
       <div class="error-card">
         <i class="fas fa-circle-exclamation"></i>
         ${escHtml(err.message)}
-        ${isOverload ? "<br/><small style='opacity:.7'>High demand  " please wait a moment and retry.</small>" : ""}
+        ${isOverload ? "<br/><small style='opacity:.7'>High demand - please wait a moment and retry.</small>" : ""}
         <br/><button onclick="_generateSong()"
           style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;
           background:var(--green,#10b981);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
@@ -390,7 +402,7 @@ async function _generateSong() {
 }
 
 /*  " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " 
-   toggleLyricsEdit  " Edit / Done button handler
+   toggleLyricsEdit -  Edit / Done button handler
  " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " "  */
 function toggleLyricsEdit(btn) {
   const wrap    = btn.closest(".song-result-card") || document;
