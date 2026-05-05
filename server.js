@@ -10,7 +10,7 @@ const path       = require('path');
 
 const app = express();
 
-/* â”€â”€ ENV â”€â”€ */
+/* - ENV - */
 const DATABASE_URL   = process.env.DATABASE_URL;
 const JWT_SECRET     = process.env.JWT_SECRET     || 'jeethylabs_secret_2026';
 const SESSION_SECRET = process.env.SESSION_SECRET || JWT_SECRET;
@@ -20,7 +20,7 @@ const FROM_EMAIL     = process.env.FROM_EMAIL     || SMTP_USER;
 const GEMINI_KEY     = process.env.GEMINI_API_KEY || '';
 const PORT           = process.env.PORT           || 8080;
 
-/* â”€â”€ Plan config â”€â”€ */
+/* - Plan config - */
 const PLAN_CONFIG = {
   free: {
     durationHint:    'under 1 minute (30-55 seconds)',
@@ -42,14 +42,14 @@ const PLAN_CONFIG = {
   },
 };
 
-/* â”€â”€ CORS â”€â”€ */
+/* - CORS - */
 app.use(cors({ origin: true, credentials: true }));
 
-/* â”€â”€ STRIPE WEBHOOK: raw body MUST come BEFORE express.json() â”€â”€ */
+/* - STRIPE WEBHOOK: raw body MUST come BEFORE express.json() - */
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
 
-/* â”€â”€ SESSION â”€â”€ */
+/* - SESSION - */
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
@@ -62,13 +62,25 @@ app.use(session({
   },
 }));
 
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+    }
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+    }
+    if (filePath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css; charset=UTF-8');
+    }
+  }
+}));
 
 console.log('=== JeeThy Labs Starting ===');
 console.log('GEMINI_KEY:', GEMINI_KEY ? 'SET OK' : 'MISSING');
 console.log('STRIPE_KEY:', process.env.STRIPE_SECRET_KEY ? 'SET OK' : 'NOT SET (Stripe disabled)');
 
-/* â”€â”€ SMTP â”€â”€ */
+/* - SMTP - */
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com', port: 587, secure: false,
   auth: { user: SMTP_USER, pass: SMTP_PASS },
@@ -77,7 +89,7 @@ transporter.verify(err => err
   ? console.error('SMTP Error:', err.message)
   : console.log('Brevo SMTP Ready'));
 
-/* â”€â”€ DB â”€â”€ */
+/* - DB - */
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 pool.connect()
   .then(c => { console.log('DB Connected'); c.release(); initDb(); })
@@ -118,7 +130,7 @@ async function initDb() {
   console.log('DB schema ready');
 }
 
-/* â”€â”€ HELPERS â”€â”€ */
+/* - HELPERS - */
 const otpStore = {};
 const genOTP   = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -128,7 +140,7 @@ async function sendEmail(to, subject, html) {
   return info;
 }
 
-/* â”€â”€ AUTH MIDDLEWARE â”€â”€ */
+/* - AUTH MIDDLEWARE - */
 function auth(req, res, next) {
   const hdr   = req.headers.authorization || '';
   const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : (req.session?.token) || null;
@@ -137,7 +149,7 @@ function auth(req, res, next) {
   catch { res.status(401).json({ error: 'Invalid or expired token' }); }
 }
 
-/* â”€â”€ Plan resolver â”€â”€ */
+/* - Plan resolver - */
 async function getUserPlan(userId) {
   try {
     const { rows } = await pool.query('SELECT plan, plan_expires_at FROM users WHERE id=$1', [userId]);
@@ -152,9 +164,9 @@ async function getUserPlan(userId) {
   } catch { return 'free'; }
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* -
    AUTH ROUTES
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   - */
 
 app.get('/api/health', (req, res) => res.json({
   status:  'ok',
@@ -189,14 +201,14 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/* -
    FIX #1: /api/verify-otp
    Root cause: passing `now` (Date object) as $4 caused
    PostgreSQL to see inconsistent types across multiple
    uses of the same parameter.
    Fix: use NOW() server-side for all timestamp columns,
         and pass each value as a separate typed parameter.
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+   - */
 app.post('/api/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
   const rec = otpStore[email];
@@ -209,7 +221,7 @@ app.post('/api/verify-otp', async (req, res) => {
   try {
     const hash     = await bcrypt.hash(rawPw, 10);
     const userName = req.body.name || rec.name || 'User';
-    /* FIX: use NOW() for all timestamps â€” no JS Date passed as parameter */
+    /* FIX: use NOW() for all timestamps - no JS Date passed as parameter */
     const { rows } = await pool.query(
       `INSERT INTO users (name, email, password_hash, plan, status, email_verified,
                           avatar_url, country, created_at, last_active, updated_at)
@@ -243,22 +255,22 @@ app.post('/api/verify-otp', async (req, res) => {
   }
 });
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/* -
    FIX #2: /api/login
    Root cause: `new Date()` passed as $1 then reused as $2
    (different column types TIMESTAMPTZ vs id INTEGER) caused
    "inconsistent types deduced for parameter $1".
    Fix: split into two separate typed parameters $1=timestamp
-        and $2=integer, which is what the query already does â€”
+        and $2=integer, which is what the query already does -
         but also wrap in try/catch properly.
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+   - */
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
   try {
     const { rows } = await pool.query(
       'SELECT id, name, email, password_hash, plan, avatar_url, created_at FROM users WHERE email = $1',
-      [email]                    /* $1 = TEXT â€” no type ambiguity */
+      [email]                    /* $1 = TEXT - no type ambiguity */
     );
     if (!rows.length) return res.status(401).json({ error: 'Email not found.' });
     const u = rows[0];
@@ -268,7 +280,7 @@ app.post('/api/login', async (req, res) => {
     /* FIX: use NOW() server-side; pass user id as its own parameter */
     await pool.query(
       'UPDATE users SET last_active = NOW(), updated_at = NOW() WHERE id = $1',
-      [u.id]                     /* $1 = INTEGER only â€” no ambiguity */
+      [u.id]                     /* $1 = INTEGER only - no ambiguity */
     );
     const token = jwt.sign({ id: u.id, email: u.email }, JWT_SECRET, { expiresIn: '30d' });
     req.session.token = token;
@@ -387,9 +399,9 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* -
    GEMINI PROXY ROUTES
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   - */
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -471,7 +483,7 @@ app.post('/api/chat', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* â”€â”€ Retry helper â”€â”€ */
+/* - Retry helper - */
 async function withRetry(fn, { maxAttempts=3, baseDelayMs=1000, label='op' }={}) {
   let lastErr;
   for (let i=1; i<=maxAttempts; i++) {
@@ -488,7 +500,7 @@ async function withRetry(fn, { maxAttempts=3, baseDelayMs=1000, label='op' }={})
   throw lastErr;
 }
 
-/* â”€â”€ safeJson â”€â”€ */
+/* - safeJson - */
 async function safeJson(response, label) {
   const ct = response.headers.get('content-type') || '';
   if (!ct.includes('application/json')) {
@@ -498,7 +510,7 @@ async function safeJson(response, label) {
   return response.json();
 }
 
-/* â”€â”€ cleanLyricsText â”€â”€ */
+/* - cleanLyricsText - */
 function cleanLyricsText(raw) {
   if (!raw) return '';
   return raw
@@ -510,9 +522,9 @@ function cleanLyricsText(raw) {
     .trim();
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* -
    /api/image
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   - */
 app.post('/api/image', async (req, res) => {
   try {
     const key = geminiKey();
@@ -576,9 +588,9 @@ app.post('/api/image', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* -
    /api/song
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   - */
 
 const LYRIA_MODELS_FALLBACK = ['lyria-3-pro-preview'];
 const TTS_MODELS_FALLBACK   = ['gemini-2.5-flash-preview-tts','gemini-2.5-pro-preview-tts'];
@@ -845,9 +857,9 @@ app.post('/api/song', auth, async (req, res) => {
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* -
    STRIPE PAYMENT ROUTES
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   - */
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -931,9 +943,9 @@ app.post('/api/stripe/webhook', async (req, res) => {
   res.json({ received: true });
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* -
    SUBSCRIBE / CHECKOUT ROUTES
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   - */
 
 app.post('/api/subscribe', auth, async (req, res) => {
   try {
@@ -942,7 +954,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
     if (!['free','pro','max'].includes(planKey))
       return res.status(400).json({ error: 'Invalid plan. Choose: free, pro, max' });
 
-    /* â”€â”€ Downgrade to free â”€â”€ */
+    /* - Downgrade to free - */
     if (planKey === 'free') {
       await pool.query(
         `UPDATE users SET plan='free', plan_expires_at=NULL, pending_plan=NULL, updated_at=NOW() WHERE id=$1`,
@@ -954,7 +966,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
       return res.json({ success: true, plan: 'free', user: rows[0] || null });
     }
 
-    /* â”€â”€ Upgrade: try Stripe first â”€â”€ */
+    /* - Upgrade: try Stripe first - */
     const stripe = getStripe();
     if (stripe && STRIPE_PRICES[planKey]?.startsWith('price_')) {
       try {
@@ -976,7 +988,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
       }
     }
 
-    /* â”€â”€ Manual / test mode â”€â”€ */
+    /* - Manual / test mode - */
     console.log(`[subscribe] MANUAL mode: user ${req.user.id} -> ${planKey}`);
     const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await pool.query(
@@ -1037,7 +1049,10 @@ app.get('/api/plan', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* â”€â”€ SPA fallback â”€â”€ */
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+/* - SPA fallback - */
+app.get('*', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.listen(PORT, () => console.log(`JeeThy Labs -> port ${PORT}`));
