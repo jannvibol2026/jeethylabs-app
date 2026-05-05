@@ -36,9 +36,9 @@ const PLAN_CONFIG = {
     customLyrics:    true,
   },
   max: {
-    durationHint:    'between 3 minutes 35 seconds and 4 minutes 25 seconds (target around 4 minutes)',
-    durationSeconds: 240,
-    structureHint:   'Intro -> Verse 1 -> Pre-Chorus -> Chorus -> Verse 2 -> Pre-Chorus -> Chorus -> Bridge -> Final Chorus -> Extended Outro with instrumental fade-out',
+    durationHint:    'between 4 minutes 30 seconds and 5 minutes 30 seconds (target: 5 minutes). CRITICAL: The audio MUST be at least 4 minutes 30 seconds. Do NOT fade out or end before 4:30.',
+    durationSeconds: 300,
+    structureHint:   'Intro (20s) -> Verse 1 (40s) -> Pre-Chorus (20s) -> Chorus (35s) -> Verse 2 (40s) -> Pre-Chorus (20s) -> Chorus (35s) -> Bridge (30s) -> Final Chorus (40s) -> Extended Instrumental Outro (40s) -> Fade Out (20s)',
     customLyrics:    true,
   },
 };
@@ -714,6 +714,7 @@ app.post('/api/song', auth, async (req, res) => {
       musicPrompt = [
         `[DURATION REQUIREMENT: Generate audio that is ${planCfg.durationHint}. This is a strict requirement.]`,
         `[TIMING GUIDE: Use explicit structure timestamps so the total runtime lands inside the required duration window.]`,
+        planKey === 'max' ? `[ENFORCEMENT: Generate AT LEAST 270 seconds of audio. Add extra instrumental sections, solos, or harmonies if needed to reach the minimum duration. Never end before 4:30.]` : '',
         `Use EXACTLY the following lyrics - do not change any words:`,
         `---`,
         customLyrics.trim(),
@@ -726,7 +727,7 @@ app.post('/api/song', auth, async (req, res) => {
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
         planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:15 Intro] [0:15-0:50 Verse 1] [0:50-1:15 Chorus] [1:15-1:45 Verse 2] [1:45-2:10 Chorus] [2:10-2:35 Bridge] [2:35-3:10 Final Chorus] [3:10-3:20 Outro]' : '',
-        planKey === 'max' ? '[TIMESTAMPS] [0:00-0:20 Intro] [0:20-0:55 Verse 1] [0:55-1:25 Chorus] [1:25-2:00 Verse 2] [2:00-2:30 Chorus] [2:30-3:00 Bridge] [3:00-3:35 Final Chorus] [3:35-4:10 Instrumental Outro] [4:10-4:25 Fade Out]' : '',
+        planKey === 'max' ? '[TIMESTAMPS — TOTAL MUST REACH AT LEAST 4:30] [0:00-0:20 Intro] [0:20-1:00 Verse 1] [1:00-1:20 Pre-Chorus] [1:20-1:55 Chorus] [1:55-2:35 Verse 2] [2:35-2:55 Pre-Chorus] [2:55-3:30 Chorus] [3:30-4:00 Bridge] [4:00-4:40 Final Chorus] [4:40-5:20 Instrumental Outro] [5:20-5:30 Fade Out] — MINIMUM 4:30 REQUIRED' : '',
       ].join('\n');
     } else {
       musicPrompt = [
@@ -755,7 +756,7 @@ app.post('/api/song', auth, async (req, res) => {
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
         planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:15 Intro] [0:15-0:50 Verse 1] [0:50-1:15 Chorus] [1:15-1:45 Verse 2] [1:45-2:10 Chorus] [2:10-2:35 Bridge] [2:35-3:10 Final Chorus] [3:10-3:20 Outro]' : '',
-        planKey === 'max' ? '[TIMESTAMPS] [0:00-0:20 Intro] [0:20-0:55 Verse 1] [0:55-1:25 Chorus] [1:25-2:00 Verse 2] [2:00-2:30 Chorus] [2:30-3:00 Bridge] [3:00-3:35 Final Chorus] [3:35-4:10 Instrumental Outro] [4:10-4:25 Fade Out]' : '',
+        planKey === 'max' ? '[TIMESTAMPS — TOTAL MUST REACH AT LEAST 4:30] [0:00-0:20 Intro] [0:20-1:00 Verse 1] [1:00-1:20 Pre-Chorus] [1:20-1:55 Chorus] [1:55-2:35 Verse 2] [2:35-2:55 Pre-Chorus] [2:55-3:30 Chorus] [3:30-4:00 Bridge] [4:00-4:40 Final Chorus] [4:40-5:20 Instrumental Outro] [5:20-5:30 Fade Out] — MINIMUM 4:30 REQUIRED' : '',
         planKey === 'free'
           ? 'Keep the song SHORT - under 1 minute, compact structure only.'
           : 'Generate the FULL song from start to finish. Do not cut short.',
