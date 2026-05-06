@@ -572,7 +572,7 @@ app.post('/api/image', async (req, res) => {
   try {
     const key = geminiKey();
     // ✅ Replace with
-    const { prompt, style='', aspectRatio='1:1', referenceImageBase64, referenceImageMime, negativePrompt='' } = req.body;
+    const { prompt, style='', aspectRatio='1:1', referenceImageBase64, referenceImageMime, extraRefImages=[] } = req.body;
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
     // Map and validate aspect ratio
@@ -592,7 +592,6 @@ const fullPrompt = negativePrompt
   ? `${_basePrompt}. Avoid the following: ${negativePrompt}`
   : _basePrompt;
 
-    // With:
     let IMAGE_MODELS = ['imagen-3.0-generate-002', 'imagen-3.0-generate-001', 'gemini-2.0-flash-preview-image-generation', 'gemini-2.0-flash'];
     try {
       const m = classifyModels(await fetchAvailableModels(key));
@@ -615,6 +614,7 @@ const fullPrompt = negativePrompt
               contents: [{
                 parts: [
                   ...(referenceImageBase64 ? [{ inlineData: { mimeType: referenceImageMime || 'image/jpeg', data: referenceImageBase64 } }] : []),
+                  ...(extraRefImages.length > 0 ? extraRefImages.map(r => ({ inlineData: { mimeType: r.mime || 'image/jpeg', data: r.base64 } })) : []),
                   { text: referenceImageBase64
                       ? 'Using the uploaded image as a visual reference (keep the same person/face/body), ' + fullPrompt
                       : fullPrompt }
