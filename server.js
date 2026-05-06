@@ -24,22 +24,48 @@ const PORT           = process.env.PORT           || 8080;
 /* - Plan config - */
 const PLAN_CONFIG = {
   free: {
-    durationHint:    'under 1 minute (target: 50-58 seconds). CRITICAL: must end before 60 seconds.',
+    durationHint:    'under 1 minute (target: ~55 seconds). CRITICAL: must end before 60 seconds.',
     durationSeconds: 55,
-    structureHint:   'Short Instrumental Intro (8s) -> Verse (20s) -> Chorus (18s) -> Short Outro (9s) — total: ~55 seconds',
+    structureHint:   'Short Instrumental Intro (8s) -> Verse (20s) -> Chorus (18s) -> Short Outro (9s) — total: ~55s',
     customLyrics:    false,
+    chatMsgDay:      20,
+    imgDay:          5,
+    songDay:         3,
+    imgResolution:   '720x720',
+    audioQuality:    'standard',
   },
   pro: {
     durationHint:    'between 2 minutes 50 seconds and 3 minutes 05 seconds (target: 3 minutes). CRITICAL: must be at least 2:50.',
     durationSeconds: 180,
-    structureHint:   'Instrumental Intro (20s) -> Verse 1 (30s) -> Pre-Chorus (10s) -> Chorus (25s) -> Instrumental Break (20s) -> Verse 2 (25s) -> Chorus (25s) -> Final Chorus (20s) -> Instrumental Outro (15s) — total: ~2:50-3:05',
+    structureHint:   'Instrumental Intro (20s) -> Verse 1 (30s) -> Pre-Chorus (10s) -> Chorus (25s) -> Break (20s) -> Verse 2 (25s) -> Chorus (25s) -> Final Chorus (20s) -> Outro (15s) — total: ~2:50-3:05',
     customLyrics:    true,
+    chatMsgDay:      100,
+    imgDay:          25,
+    songDay:         15,
+    imgResolution:   '1024x1024',
+    audioQuality:    'high',
+  },
+  proplus: {
+    durationHint:    'between 3 minutes and 3 minutes 25 seconds (target: 3:15). CRITICAL: must be at least 3:00.',
+    durationSeconds: 200,
+    structureHint:   'Extended Intro (25s) -> Verse 1 (30s) -> Pre-Chorus (12s) -> Chorus (25s) -> Break (22s) -> Verse 2 (28s) -> Pre-Chorus (12s) -> Chorus (25s) -> Bridge (15s) -> Final Chorus (25s) -> Outro (25s) — total: ~3:00-3:25',
+    customLyrics:    true,
+    chatMsgDay:      -1,
+    imgDay:          150,
+    songDay:         100,
+    imgResolution:   '2048x2048',
+    audioQuality:    'best',
   },
   max: {
-    durationHint:    'between 3 minutes 10 seconds and 3 minutes 45 seconds (target: 3 minutes 30 seconds). CRITICAL: must be at least 3:10.',
-    durationSeconds: 210,
-    structureHint:   'Extended Instrumental Intro (30s) -> Verse 1 (30s) -> Pre-Chorus (12s) -> Chorus (25s) -> Instrumental Break (25s) -> Verse 2 (28s) -> Pre-Chorus (12s) -> Chorus (25s) -> Bridge (18s) -> Final Chorus (25s) -> Extended Instrumental Outro (35s) — total: ~3:25-3:45',
+    durationHint:    'between 4 minutes 25 seconds and 5 minutes 25 seconds (target: ~5 min full song). CRITICAL: must be at least 4:00.',
+    durationSeconds: 300,
+    structureHint:   'Extended Intro (35s) -> Verse 1 (35s) -> Pre-Chorus (15s) -> Chorus (30s) -> Break (30s) -> Verse 2 (30s) -> Pre-Chorus (15s) -> Chorus (30s) -> Bridge (20s) -> Solo (25s) -> Final Chorus (30s) -> Extended Outro (40s) — total: ~4:25-5:25',
     customLyrics:    true,
+    chatMsgDay:      -1,
+    imgDay:          -1,
+    songDay:         -1,
+    imgResolution:   '3840x2160',
+    audioQuality:    'best_lyria_pro',
   },
 };
 
@@ -165,7 +191,7 @@ async function getUserPlan(userId) {
       await pool.query(`UPDATE users SET plan='free', plan_expires_at=NULL, updated_at=NOW() WHERE id=$1`, [userId]);
       return 'free';
     }
-    return PLAN_CONFIG[raw] ? raw : 'free';
+    return (PLAN_CONFIG[raw] || raw === 'proplus') ? raw : 'free';
   } catch { return 'free'; }
 }
 
