@@ -14,7 +14,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 /* NAV */
 .app-nav{position:fixed;top:0;left:0;right:0;height:var(--nav);display:flex;align-items:center;padding:0 14px;gap:10px;background:rgba(10,10,15,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);z-index:500}
 .nav-home{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:13px;text-decoration:none;flex-shrink:0;-webkit-tap-highlight-color:transparent}
-.nav-brand{flex:1;display:flex;align-items:center;gap:6px;font-size:16px;font-weight:800;white-space:nowrap}
+.nav-brand{flex:1;display:flex;align-items:center;gap:6px;font-size:16px;font-weight:800;white-space:nowrap;background:none!important}
 .brand-jee{color:#fff}.brand-labs{color:var(--primary)}.brand-tag{font-size:9px;font-weight:700;padding:2px 7px;background:rgba(168,85,247,.15);color:var(--primary);border:1px solid rgba(168,85,247,.3);border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
 .nav-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .plan-badge-btn{padding:3px 10px;border-radius:20px;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.35);color:var(--primary);text-transform:uppercase;letter-spacing:.4px;-webkit-tap-highlight-color:transparent}
@@ -738,3 +738,20 @@ audio{
 
 /* Multi-select limit hint */
 .chip-multi-limit{font-size:9px;color:#f87171;margin-left:4px;opacity:.85;}
+
+/* ── Plan Modal Mobile Swipe ── */
+.plan-cards-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.plan-cards-scroll-wrap .plan-cards-row{min-width:max-content}
+@media(max-width:640px){
+  .modal-wide-3{max-width:calc(100vw - 24px)!important}
+  .plan-cards-scroll-wrap{scroll-snap-type:x mandatory;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+  .plan-cards-scroll-wrap .plan-cards-row{display:flex!important;flex-direction:row!important;gap:10px!important;min-width:unset}
+  .plan-card{flex:0 0 75vw!important;scroll-snap-align:start!important;min-width:230px!important}
+  .modal-box{max-height:90vh!important;display:flex!important;flex-direction:column!important}
+  .modal-body{overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;flex:1!important;min-height:0}
+  .modal-header{flex-shrink:0!important}
+}
+/* ── Chat input paperclip ── */
+.chat-input-box{display:flex;align-items:flex-end;gap:0}
+#chatFileUploadBtn{display:none}
+#chatFileUploadBtn.visible{display:flex!important}
