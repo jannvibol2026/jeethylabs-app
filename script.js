@@ -100,7 +100,7 @@ function initPlanFeatures() {
   // ── IMAGE: aspect ratio - lock 9:16 and 16:9 for free
   const ratioChips = document.querySelectorAll("#imgRatioGroup .chip");
   ratioChips.forEach(chip => {
-    const val = chip.textContent.trim();
+    const val = chip.firstChild?.textContent?.trim() || chip.textContent.trim().replace(/PRO.*$/,'').trim();
     if (P.aspectRatios[0] === "1:1" && P.aspectRatios.length === 1 && val !== "1:1") {
       chip.classList.add("pro-locked");
       chip.onclick = () => { showUpgradeModal(); showToast("Portrait/Landscape ratios require Pro plan", "error"); };
@@ -116,7 +116,7 @@ function initPlanFeatures() {
   // ── IMAGE: batch qty - lock 4 for free
   const qtyChips = document.querySelectorAll("#imgQtyGroup .chip");
   qtyChips.forEach(chip => {
-    const val = parseInt(chip.textContent.trim());
+    const val = parseInt(chip.firstChild?.textContent?.trim() || chip.textContent.trim());
     if (val > P.batchGenerate) {
       chip.classList.add("pro-locked");
       chip.onclick = () => { showUpgradeModal(); showToast("Batch " + val + " requires Pro+ plan", "error"); };
@@ -127,10 +127,37 @@ function initPlanFeatures() {
 
 
 
+  // ── IMAGE: quality - 3 levels: Standard(720/free), HD-1280(pro), 2K-2048(pro+/max)
+  const qualChips = document.querySelectorAll("#imgQualityGroup .chip");
+  qualChips.forEach(chip => {
+    const q = parseInt(chip.dataset.quality || "720");
+    if (q <= 720) {
+      chip.classList.remove("pro-locked");
+      chip.onclick = () => selectChip(chip, "imgQualityGroup");
+    } else if (q <= 1280) {
+      if (P.downloadHD) {
+        chip.classList.remove("pro-locked");
+        chip.onclick = () => selectChip(chip, "imgQualityGroup");
+      } else {
+        chip.classList.add("pro-locked");
+        chip.onclick = () => { showUpgradeModal(); showToast("HD 1280p requires Pro plan", "error"); };
+      }
+    } else {
+      const is2K = userPlan === "proplus" || userPlan === "max";
+      if (is2K) {
+        chip.classList.remove("pro-locked");
+        chip.onclick = () => selectChip(chip, "imgQualityGroup");
+      } else {
+        chip.classList.add("pro-locked");
+        chip.onclick = () => { showUpgradeModal(); showToast("2K quality requires Pro+ plan", "error"); };
+      }
+    }
+  });
+
   // ── SONG: choir/duet lock
   const voiceChips = document.querySelectorAll("#songVoiceGroup .chip");
   voiceChips.forEach(chip => {
-    const val = chip.textContent.replace(/[^a-zA-Z]/g,"").trim().toLowerCase();
+    const val = (chip.dataset.voice || chip.firstChild?.textContent?.replace(/[^a-zA-Z]/g,"").trim() || chip.textContent.replace(/[^a-zA-Z]/g,"").trim()).toLowerCase();
     const allowed = P.vocalStyles.map(v => v.toLowerCase());
     if (!allowed.includes(val)) {
       chip.classList.add("pro-locked");
