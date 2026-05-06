@@ -225,13 +225,7 @@
             <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Other</button>
           </div>
         </div>
-        <!-- Negative Prompt (Pro+) -->
-        <div class="form-group" id="negativePromptWrap" style="display:none;">
-          <label class="form-label">Negative Prompt <span class="pro-badge" style="font-size:10px;vertical-align:middle">PRO</span></label>
-          <textarea id="imgNegativePrompt" class="form-textarea"
-            placeholder="Things to avoid: blurry, ugly, watermark..." rows="2"></textarea>
-        </div>
-        <div class="form-group">
+        <!-- Negative Prompt (Pro+) --><div class="form-group">
           <label class="form-label">Aspect Ratio</label>
           <div class="chip-group" id="imgRatioGroup">
             <button class="chip active" onclick="selectChip(this,'imgRatioGroup')">1:1</button>
@@ -258,18 +252,20 @@
         </div>
         <!-- ── Reference Image Upload ── -->
         <div class="form-group" id="refImgSection">
-          <label class="form-label">Reference Image <span style="font-size:10px;color:var(--text2);font-weight:400">(optional)</span> <span class="pro-badge" style="font-size:10px;vertical-align:middle">PRO</span></label>
+          <label class="form-label" style="display:flex;align-items:center;gap:6px;">
+            Reference Image
+            <span style="font-size:10px;color:var(--text2);font-weight:400">(optional)</span>
+            <span class="pro-badge" style="font-size:10px;vertical-align:middle">PRO</span>
+            <span id="refImgCountLabel" style="font-size:10px;color:var(--text2);margin-left:auto"></span>
+          </label>
           <div id="refImgDropZone" onclick="openRefImgUpload()"
             style="border:2px dashed var(--border);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:rgba(255,255,255,.03)">
             <div id="refImgPlaceholder">
               <i class="fas fa-image" style="font-size:22px;color:var(--text2);margin-bottom:6px;display:block"></i>
               <span style="font-size:12px;color:var(--text2)">Tap to upload reference image</span><br>
-              <span style="font-size:11px;color:var(--text2);opacity:.6">Face, body, style reference</span>
+              <span id="refImgHint" style="font-size:11px;color:var(--text2);opacity:.6">Pro: 1 image &nbsp;|&nbsp; Pro+/Max: up to 4 images</span>
             </div>
-            <div id="refImgPreview" style="display:none;position:relative">
-              <img id="refImgThumb" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px" alt="reference"/>
-              <button onclick="clearRefImg(event)" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:24px;height:24px;color:#fff;font-size:13px;cursor:pointer;line-height:1">×</button>
-            </div>
+            <div id="refImgPreview" style="display:none;flex-wrap:wrap;gap:4px;justify-content:flex-start;padding:4px 0"></div>
           </div>
           <input type="file" id="refImgInput"
   accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
@@ -751,7 +747,7 @@
 <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="taloong"     onclick="selectOtherStyle(this,'taloong')">តាឡូង</button>
 <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="slow"        onclick="selectOtherStyle(this,'slow')">រាំស៊្លូ</button>
 <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="chapey"      onclick="selectOtherStyle(this,'chapey')">ចាប៉ី</button>
-<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="lbokkatob"   onclick="selectOtherStyle(this,'lbokkatob')">ផ្សេងៗ</button>
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="lbokkatob"   onclick="selectOtherStyle(this,'lbokkatob')">អាយ៉ៃ</button>
 </div>
 </div>
 </div>
