@@ -157,6 +157,37 @@
             </div>
           </div>
         </div>
+        <!-- Chat toolbar: file upload, export, force khmer, system prompt -->
+        <div id="chatToolbar" style="display:flex;gap:8px;padding:6px 12px 0;flex-wrap:wrap;align-items:center;">
+          <button id="chatFileUploadBtn" title="Upload image/doc" onclick="openChatFileUpload()"
+            style="display:none;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text2);font-size:13px;cursor:pointer;align-items:center;gap:5px;">
+            <i class="fas fa-paperclip"></i>
+          </button>
+          <button id="chatExportBtn" title="Export chat" onclick="exportChat()"
+            style="display:none;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text2);font-size:12px;cursor:pointer;align-items:center;gap:5px;">
+            <i class="fas fa-file-export"></i> Export
+          </button>
+          <button id="chatForceKhmerBtn" title="Force Khmer response" onclick="toggleForceKhmer(this)"
+            style="display:none;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text2);font-size:12px;cursor:pointer;align-items:center;gap:5px;">
+            <span style="font-size:14px;">🇰🇭</span> ភាសាខ្មែរ
+          </button>
+        </div>
+        <!-- System prompt (Pro+ only) -->
+        <div id="chatSystemPromptWrap" style="display:none;padding:4px 12px;">
+          <textarea id="chatSystemPrompt" placeholder="System prompt (e.g. You are a helpful Khmer assistant...)"
+            rows="2" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text1);font-size:12px;resize:vertical;box-sizing:border-box;"></textarea>
+        </div>
+        <!-- File preview -->
+        <div id="chatFilePreview" style="display:none;padding:4px 12px 0;">
+          <div style="background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.3);border-radius:8px;padding:6px 10px;font-size:12px;color:#a855f7;display:flex;align-items:center;gap:8px;">
+            <i class="fas fa-file"></i>
+            <span id="chatFilePreviewName">file.jpg</span>
+            <button onclick="clearChatFile()" style="margin-left:auto;background:none;border:none;color:#a855f7;cursor:pointer;font-size:14px;">×</button>
+          </div>
+        </div>
+        <input type="file" id="chatFileInput" accept="image/*,.pdf,.txt,.doc,.docx"
+          style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"
+          onchange="handleChatFileUpload(event)"/>
         <div class="chat-input-wrap">
           <div class="chat-input-box">
             <textarea id="chatInput" class="chat-textarea" placeholder="Type your message..."
@@ -193,6 +224,12 @@
             <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Anime</button>
             <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Other</button>
           </div>
+        </div>
+        <!-- Negative Prompt (Pro+) -->
+        <div class="form-group" id="negativePromptWrap" style="display:none;">
+          <label class="form-label">Negative Prompt <span class="pro-badge" style="font-size:10px;vertical-align:middle">PRO</span></label>
+          <textarea id="imgNegativePrompt" class="form-textarea"
+            placeholder="Things to avoid: blurry, ugly, watermark..." rows="2"></textarea>
         </div>
         <div class="form-group">
           <label class="form-label">Aspect Ratio</label>
@@ -354,8 +391,11 @@
             <button class="chip" onclick="selectChip(this,'songVoiceGroup')">
               <i class="fas fa-mars"></i> Male
             </button>
-            <button class="chip" onclick="selectChip(this,'songVoiceGroup')">
+            <button class="chip pro-locked" data-voice="duet" onclick="selectChip(this,'songVoiceGroup')">
               <i class="fas fa-venus-mars"></i> Duet
+            </button>
+            <button class="chip pro-locked" data-voice="choir" onclick="selectChip(this,'songVoiceGroup')">
+              <i class="fas fa-users"></i> Choir
             </button>
           </div>
         </div>
@@ -711,9 +751,13 @@
 <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="taloong"     onclick="selectOtherStyle(this,'taloong')">តាឡូង</button>
 <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="slow"        onclick="selectOtherStyle(this,'slow')">រាំស៊្លូ</button>
 <button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="chapey"      onclick="selectOtherStyle(this,'chapey')">ចាប៉ី</button>
-<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="lbokkatob"   onclick="selectOtherStyle(this,'lbokkatob')">អាយ៉ៃ</button>
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="lbokkatob"   onclick="selectOtherStyle(this,'lbokkatob')">ផ្សេងៗ</button>
 </div>
 </div>
 </div>
 </body>
-</html>
+</html>      <div class="pp-section">
+        <div class="pp-section-title"><i class="fas fa-star"></i> PLAN FEATURES</div>
+        <div id="ppPlanFeatures" style="display:flex;flex-direction:column;gap:4px;padding:2px 0 4px;"></div>
+      </div>
+      
