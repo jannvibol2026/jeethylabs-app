@@ -24,21 +24,21 @@ const PORT           = process.env.PORT           || 8080;
 /* - Plan config - */
 const PLAN_CONFIG = {
   free: {
-    durationHint:    'under 1 minute (45-58 seconds maximum). CRITICAL: song MUST end before 1 minute. Keep it very short and compact.',
+    durationHint:    'under 1 minute (target: 50-58 seconds). CRITICAL: must end before 60 seconds.',
     durationSeconds: 55,
-    structureHint:   'Intro (5s) -> Verse (20s) -> Chorus (20s) -> Outro (10s) — total must be under 60 seconds',
+    structureHint:   'Short Instrumental Intro (8s) -> Verse (20s) -> Chorus (18s) -> Short Outro (9s) — total: ~55 seconds',
     customLyrics:    false,
   },
   pro: {
-    durationHint:    'between 3 minutes 10 seconds and 3 minutes 45 seconds (target: 3 minutes 30 seconds). CRITICAL: audio MUST be at least 3:10 and no longer than 3:45.',
-    durationSeconds: 210,
-    structureHint:   'Intro (15s) -> Verse 1 (35s) -> Pre-Chorus (15s) -> Chorus (30s) -> Verse 2 (35s) -> Pre-Chorus (15s) -> Chorus (30s) -> Bridge (20s) -> Final Chorus (30s) -> Outro (15s) — total: ~3:30',
+    durationHint:    'between 2 minutes 50 seconds and 3 minutes 05 seconds (target: 3 minutes). CRITICAL: must be at least 2:50.',
+    durationSeconds: 180,
+    structureHint:   'Instrumental Intro (20s) -> Verse 1 (30s) -> Pre-Chorus (10s) -> Chorus (25s) -> Instrumental Break (20s) -> Verse 2 (25s) -> Chorus (25s) -> Final Chorus (20s) -> Instrumental Outro (15s) — total: ~2:50-3:05',
     customLyrics:    true,
   },
   max: {
-    durationHint:    'between 4 minutes 20 seconds and 5 minutes 20 seconds (target: 5 minutes). CRITICAL: audio MUST be at least 4:20 and no longer than 5:20.',
-    durationSeconds: 300,
-    structureHint:   'Intro (20s) -> Verse 1 (40s) -> Pre-Chorus (20s) -> Chorus (35s) -> Verse 2 (40s) -> Pre-Chorus (20s) -> Chorus (35s) -> Bridge (30s) -> Final Chorus (40s) -> Extended Instrumental Outro (40s) -> Fade Out (20s) — total: ~5:00',
+    durationHint:    'between 3 minutes 10 seconds and 3 minutes 45 seconds (target: 3 minutes 30 seconds). CRITICAL: must be at least 3:10.',
+    durationSeconds: 210,
+    structureHint:   'Extended Instrumental Intro (30s) -> Verse 1 (30s) -> Pre-Chorus (12s) -> Chorus (25s) -> Instrumental Break (25s) -> Verse 2 (28s) -> Pre-Chorus (12s) -> Chorus (25s) -> Bridge (18s) -> Final Chorus (25s) -> Extended Instrumental Outro (35s) — total: ~3:25-3:45',
     customLyrics:    true,
   },
 };
@@ -798,7 +798,7 @@ app.post('/api/song', auth, async (req, res) => {
       musicPrompt = [
         `[DURATION REQUIREMENT: Generate audio that is ${planCfg.durationHint}. This is a strict requirement.]`,
         `[TIMING GUIDE: Use explicit structure timestamps so the total runtime lands inside the required duration window.]`,
-        planKey === 'max' ? `[ENFORCEMENT: Generate between 4 minutes 20 seconds and 5 minutes 20 seconds of audio. Target 5:00. Add extra instrumental sections, solos, or harmonies if needed. Never end before 4:20. Never exceed 5:20.]` : '',
+        planKey === 'max' ? `[ENFORCEMENT: Generate between 3 minutes 10 seconds and 3 minutes 45 seconds. Target 3:30. Use extended instrumental intro, instrumental break in the middle, and extended instrumental outro to fill time. CRITICAL: Instrumental sections must be rich and melodic, not silence.]` : '',
         `Use EXACTLY the following lyrics - do not change any words:`,
         `---`,
         customLyrics.trim(),
@@ -810,8 +810,8 @@ app.post('/api/song', auth, async (req, res) => {
         ...(tempo      ? ['Tempo: '+tempo+'.']                    : []),
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
-        planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:15 Intro] [0:15-0:50 Verse 1] [0:50-1:05 Pre-Chorus] [1:05-1:35 Chorus] [1:35-2:10 Verse 2] [2:10-2:25 Pre-Chorus] [2:25-2:55 Chorus] [2:55-3:15 Bridge] [3:15-3:35 Final Chorus] [3:35-3:45 Outro]' : '',
-        planKey === 'max' ? '[TIMESTAMPS — TARGET 4:20-5:20, aim 5:00] [0:00-0:20 Intro] [0:20-1:00 Verse 1] [1:00-1:20 Pre-Chorus] [1:20-1:55 Chorus] [1:55-2:35 Verse 2] [2:35-2:55 Pre-Chorus] [2:55-3:30 Chorus] [3:30-4:00 Bridge] [4:00-4:40 Final Chorus] [4:40-5:20 Instrumental Outro] [5:20-5:30 Fade Out] — MINIMUM 4:30 REQUIRED' : '',
+        planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:20 Instrumental Intro] [0:20-0:50 Verse 1] [0:50-1:00 Pre-Chorus] [1:00-1:25 Chorus] [1:25-1:45 Instrumental Break] [1:45-2:10 Verse 2] [2:10-2:35 Chorus] [2:35-2:55 Final Chorus] [2:55-3:05 Instrumental Outro]' : '',
+        planKey === 'max' ? '[TIMESTAMPS] [0:00-0:30 Extended Instrumental Intro] [0:30-1:00 Verse 1] [1:00-1:12 Pre-Chorus] [1:12-1:37 Chorus] [1:37-2:02 Instrumental Break] [2:02-2:30 Verse 2] [2:30-2:42 Pre-Chorus] [2:42-3:07 Chorus] [3:07-3:25 Bridge+Final Chorus] [3:25-4:00 Extended Instrumental Outro]' : '',
       ].join('\n');
     } else {
       musicPrompt = [
@@ -839,10 +839,10 @@ app.post('/api/song', auth, async (req, res) => {
         ...(tempo      ? ['Tempo: '+tempo+'.']                    : []),
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
-        planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:15 Intro] [0:15-0:50 Verse 1] [0:50-1:05 Pre-Chorus] [1:05-1:35 Chorus] [1:35-2:10 Verse 2] [2:10-2:25 Pre-Chorus] [2:25-2:55 Chorus] [2:55-3:15 Bridge] [3:15-3:35 Final Chorus] [3:35-3:45 Outro]' : '',
-        planKey === 'max' ? '[TIMESTAMPS — TARGET 4:20-5:20, aim 5:00] [0:00-0:20 Intro] [0:20-1:00 Verse 1] [1:00-1:20 Pre-Chorus] [1:20-1:55 Chorus] [1:55-2:35 Verse 2] [2:35-2:55 Pre-Chorus] [2:55-3:30 Chorus] [3:30-4:00 Bridge] [4:00-4:40 Final Chorus] [4:40-5:20 Instrumental Outro] [5:20-5:30 Fade Out] — MINIMUM 4:30 REQUIRED' : '',
+        planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:20 Instrumental Intro] [0:20-0:50 Verse 1] [0:50-1:00 Pre-Chorus] [1:00-1:25 Chorus] [1:25-1:45 Instrumental Break] [1:45-2:10 Verse 2] [2:10-2:35 Chorus] [2:35-2:55 Final Chorus] [2:55-3:05 Instrumental Outro]' : '',
+        planKey === 'max' ? '[TIMESTAMPS] [0:00-0:30 Extended Instrumental Intro] [0:30-1:00 Verse 1] [1:00-1:12 Pre-Chorus] [1:12-1:37 Chorus] [1:37-2:02 Instrumental Break] [2:02-2:30 Verse 2] [2:30-2:42 Pre-Chorus] [2:42-3:07 Chorus] [3:07-3:25 Bridge+Final Chorus] [3:25-4:00 Extended Instrumental Outro]' : '',
         planKey === 'free'
-          ? 'CRITICAL: Keep the song VERY SHORT — strictly under 60 seconds. Maximum 58 seconds. Compact structure: Verse + Chorus only. Stop and fade before 1 minute.'
+          ? '[TIMESTAMPS] [0:00-0:08 Short Instrumental Intro] [0:08-0:28 Verse] [0:28-0:46 Chorus] [0:46-0:55 Outro] — MUST end before 60 seconds'
           : 'Generate the FULL song from start to finish. Do not cut short.',
       ].join('\n');
     }
@@ -886,48 +886,15 @@ app.post('/api/song', auth, async (req, res) => {
       try {
         console.log('[/api/song] trying Lyria: ' + model + ' plan:' + planKey);
 
-        if (planKey === 'max') {
-          /* MAX plan: 2 segments concatenated => 4-5 min total */
-          const _p1 = musicPrompt + '\n[SEGMENT 1 of 2: Generate Intro through Verse 2 and second Chorus. ' +
-            'Target duration: 2 minutes 30 seconds. Do NOT add outro or fade out - the song will continue in segment 2.]';
-          const _p2 = musicPrompt + '\n[SEGMENT 2 of 2: Generate Bridge through Final Chorus and Extended Instrumental Outro. ' +
-            'Target duration: 2 minutes 00 seconds. End with a natural fade out - this is the final segment.]';
+        /* Single Lyria call for all plans — MAX uses extended instrumental structure via prompt */
+          const _res_single = await _lyriaCall(model, musicPrompt);
+          lyricsText  = _res_single.txt;
+          /* Apply hard trim per plan */
+          const _planMime2   = _res_single.audio.mimeType || 'audio/l16;rate=24000';
+          const _planTrimSec = planKey === 'free' ? 60 : planKey === 'pro' ? 185 : 225;
+          audioResult = { data: trimAudioBuffer(_res_single.audio.data, _planTrimSec, _planMime2), mimeType: _planMime2 };
 
-          const _seg1 = await _lyriaCall(model, _p1);
-          lyricsText = _seg1.txt;
-          console.log('[/api/song] MAX seg1 ok');
-
-          let _seg2 = null;
-          try {
-            _seg2 = await _lyriaCall(model, _p2);
-            if (_seg2.txt) lyricsText += '\n' + _seg2.txt;
-            console.log('[/api/song] MAX seg2 ok');
-          } catch (_e2) {
-            console.warn('[/api/song] MAX seg2 failed (using seg1 only):', _e2.message);
-          }
-
-          /* MAX plan: concat then trim to 5:20 max (320 seconds) */
-          const _MAX_SECONDS = 320;
-          const _mime1 = _seg1.audio.mimeType || 'audio/l16;rate=24000';
-          if (_seg2) {
-            const _combined = concatWavBuffers(_seg1.audio.data, _seg2.audio.data, null);
-            const _trimmed  = trimAudioBuffer(_combined, _MAX_SECONDS, _mime1);
-            audioResult = { data: _trimmed, mimeType: _mime1 };
-          } else {
-            audioResult = { data: trimAudioBuffer(_seg1.audio.data, _MAX_SECONDS, _mime1), mimeType: _mime1 };
-          }
-
-        } else {
-          /* FREE / PRO: single call */
-          const _res = await _lyriaCall(model, musicPrompt);
-          lyricsText  = _res.txt;
-          /* Trim by plan: PRO→3:45 (225s), FREE→60s */
-          const _planMime   = _res.audio.mimeType || 'audio/l16;rate=24000';
-          const _proTrimSec = planKey === 'pro' ? 225 : (planKey === 'free' ? 60 : null);
-          audioResult = _proTrimSec
-            ? { data: trimAudioBuffer(_res.audio.data, _proTrimSec, _planMime), mimeType: _planMime }
-            : _res.audio;
-        }
+        
 
         usedModel = model;
         console.log('[/api/song] Lyria done: ' + model);
