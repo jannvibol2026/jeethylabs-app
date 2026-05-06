@@ -7,9 +7,10 @@ let GEMINI_TTS_MODELS    = [];
 
 // ==================== PLAN LIMITS ====================
 const PLAN_LIMITS = {
-  free: { requests: 10,  label: "Free", color: "#a78bfa" },
-  pro:  { requests: 100, label: "Pro",  color: "#06b6d4" },
-  max:  { requests: 500, label: "Max",  color: "#fbbf24" }
+  free:    { requests: 20,   label: "Free",  color: "#9ca3af", price: "$0",        chatMsg: 20,  imgDay: 5,   songDay: 3   },
+  pro:     { requests: 100,  label: "Pro",   color: "#06b6d4", price: "$5.99/mo",  chatMsg: 100, imgDay: 25,  songDay: 15  },
+  proplus: { requests: 999,  label: "Pro+",  color: "#a855f7", price: "$24.99/mo", chatMsg: -1,  imgDay: 150, songDay: 100 },
+  max:     { requests: 9999, label: "Max",   color: "#fbbf24", price: "TBA",       chatMsg: -1,  imgDay: -1,  songDay: -1, comingSoon: true }
 };
 
 // ======================= STATE =======================
@@ -167,6 +168,8 @@ function renderPlanBadge() {
   badge.textContent       = plan.label;
   badge.style.color       = plan.color;
   badge.style.borderColor = plan.color + "66";
+  if (plan.comingSoon) badge.title = "Coming Soon";
+  else badge.title = "";
 }
 
 // ===================== PANEL NAV =====================
@@ -364,7 +367,7 @@ async function submitLogin(e) {
 function onLoginSuccess(user, runPending) {
   currentUser = user;
   window.currentUser = user;
-  if (user.plan && PLAN_LIMITS[user.plan]) {
+  if (user.plan && (PLAN_LIMITS[user.plan] || user.plan === "proplus")) {
     userPlan = user.plan;
     renderPlanBadge();
     initSongPlanBadge();
@@ -473,7 +476,7 @@ function syncProfileSheet() {
     const badge = document.getElementById("ppPlanBadge");
     if (badge) badge.innerHTML = `<i class="fas fa-star"></i> ${info.label} Plan`;
     const ub = document.getElementById("ppUpgradeBanner");
-    if (ub) ub.style.display = (plan === "pro" || plan === "max") ? "none" : "flex";
+    if (ub) ub.style.display = (plan === "pro" || plan === "proplus" || plan === "max") ? "none" : "flex";
   }
   const uc = document.getElementById("ppUsageCount");
   if (uc) uc.textContent = used + " / " + limit;
@@ -521,7 +524,7 @@ function closePlanModal() {
 function selectPlan(plan) {
   document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === plan));
   const ps = document.getElementById("proSettingsInModal");
-  if (ps) ps.style.display = (plan === "pro" || plan === "max") ? "block" : "none";
+  if (ps) ps.style.display = (plan === "pro" || plan === "proplus" || plan === "max") ? "block" : "none";
 }
 
 // ================ confirmPlan (FIXED) ================
@@ -557,7 +560,8 @@ async function confirmPlan() {
     updateNavAvatar(currentUser);
     syncProfileSheet();
     closePlanModal();
-    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! 🎉", "success");
+    const activatedLabel = PLAN_LIMITS[userPlan]?.label || userPlan;
+showToast(activatedLabel + " plan activated! 🎉", "success");
   } catch (err) {
     showToast(err.message || "Network error.", "error");
   } finally {
@@ -568,7 +572,7 @@ async function confirmPlan() {
 // ====================== SETTINGS ======================
 // ✅ NEW
 function openSettings() {
-  if (userPlan !== "pro" && userPlan !== "max") { showToast("Settings available on Pro and Max plans", "error"); openPlanModal(); return; }
+  if (userPlan === "free") { showToast("Settings available on Pro, Pro+ and Max plans", "error"); openPlanModal(); return; }
   const m = document.getElementById("settingsModal"); if (!m) return;
   m.classList.add("open");
   document.getElementById("customKeyInput").value    = proCustomKey;
@@ -604,7 +608,7 @@ function showUpgradeModal()  { const m = document.getElementById("upgradeModal")
 function closeUpgradeModal() { const m = document.getElementById("upgradeModal"); if (m) m.classList.remove("open"); }
 function upgradeNow()        { closeUpgradeModal(); if (userPlan === "free") openPlanModal(); }
 function requirePro(btn, groupId) {
-  if (userPlan === "pro" || userPlan === "max") selectChip(btn, groupId);
+  if (userPlan === "pro" || userPlan === "proplus" || userPlan === "max") selectChip(btn, groupId);
   else { showUpgradeModal(); showToast("HD is available on Pro plan only", "error"); }
 }
 
@@ -710,7 +714,7 @@ function formatMarkdown(text) {
 // =================== IMAGE GENERATE ===================
 // ── Reference Image Upload ──────────────────────────────────
 function openRefImgUpload() {
-  if (userPlan !== "pro" && userPlan !== "max") {
+  if (userPlan !== "pro" && userPlan !== "proplus" && userPlan !== "max") {
     showUpgradeModal();
     showToast("Reference image upload is available on Pro & Max plans only", "error");
     return;
@@ -965,13 +969,24 @@ function initSongPlanBadge() {
   const badge = document.getElementById("song-plan-badge");
   const hint  = document.getElementById("song-duration-hint");
   if (badge) {
-    const labels = { free:"FREE", pro:"PRO", max:"MAX" };
-    const colors = { free:"#9ca3af", pro:"#7c3aed", max:"#f59e0b" };
-    badge.textContent = labels[userPlan] || "FREE";
-    badge.style.color = colors[userPlan] || "#9ca3af";
+    const labels = { free:"FREE", pro:"PRO", proplus:"PRO+", max:"MAX" };
+    const colors = { free:"#9ca3af", pro:"#06b6d4", proplus:"#a855f7", max:"#fbbf24" };
+    badge.textContent      = labels[userPlan] || "FREE";
+    badge.style.color      = colors[userPlan] || "#9ca3af";
     badge.style.borderColor = (colors[userPlan] || "#9ca3af") + "55";
-    badge.style.display = "inline-block";
+    badge.style.display    = "inline-block";
   }
+  if (hint) {
+    const hints = {
+      free:    "~55s",
+      pro:     "~2:50–3:05",
+      proplus: "~3:00–3:25",
+      max:     "~4:25–5:25 (full song)"
+    };
+    hint.textContent = hints[userPlan] || "~55s";
+  }
+}
+
   if (hint) {
     const hints = { free:"~<1 min", pro:"~1 min - 3 min", max:"~3 min - 5 min (full song)" };
     hint.textContent = hints[userPlan] || "~30s";
