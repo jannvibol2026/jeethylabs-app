@@ -144,14 +144,16 @@ async function checkExistingSession() {
 }
 
 function getActiveApiKey() {
- // ✅ NEW
-if ((userPlan === "pro" || userPlan === "max") && useOwnKey && proCustomKey) return proCustomKey;
+  if ((userPlan === "pro" || userPlan === "proplus" || userPlan === "max") && useOwnKey && proCustomKey) return proCustomKey;
   return ownerApiKey;
 }
 
 function checkQuota() {
-  const limit = PLAN_LIMITS[userPlan]?.requests ?? 10;
+  if (!currentUser) { openAuthModal(null); return false; }
+  const limit = PLAN_LIMITS[userPlan]?.requests ?? 20;
+  if (limit < 0 || limit >= 9999) return true; // unlimited (Pro+/Max)
   if (requestCount >= limit) { showUpgradeModal(); return false; }
+  requestCount++;
   return true;
 }
 function incrementRequest() { requestCount++; }
@@ -560,8 +562,7 @@ async function confirmPlan() {
     updateNavAvatar(currentUser);
     syncProfileSheet();
     closePlanModal();
-    const activatedLabel = PLAN_LIMITS[userPlan]?.label || userPlan;
-showToast(activatedLabel + " plan activated! 🎉", "success");
+    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! 🎉", "success");
   } catch (err) {
     showToast(err.message || "Network error.", "error");
   } finally {
@@ -984,12 +985,6 @@ function initSongPlanBadge() {
       max:     "~4:25–5:25 (full song)"
     };
     hint.textContent = hints[userPlan] || "~55s";
-  }
-}
-
-  if (hint) {
-    const hints = { free:"~<1 min", pro:"~1 min - 3 min", max:"~3 min - 5 min (full song)" };
-    hint.textContent = hints[userPlan] || "~30s";
   }
 }
 
