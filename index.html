@@ -158,10 +158,7 @@
         </div>
         <!-- Chat toolbar: file upload, export, force khmer, system prompt -->
         <div id="chatToolbar" style="display:flex;gap:8px;padding:6px 12px 0;flex-wrap:wrap;align-items:center;">
-          <button id="chatFileUploadBtn" title="Upload image/doc" onclick="openChatFileUpload()"
-            style="display:none;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text2);font-size:13px;cursor:pointer;align-items:center;gap:5px;">
-            <i class="fas fa-paperclip"></i>
-          </button>
+
           <button id="chatExportBtn" title="Export chat" onclick="exportChat()"
             style="display:none;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text2);font-size:12px;cursor:pointer;align-items:center;gap:5px;">
             <i class="fas fa-file-export"></i> Export
@@ -189,6 +186,10 @@
           onchange="handleChatFileUpload(event)"/>
         <div class="chat-input-wrap">
           <div class="chat-input-box">
+            <button id="chatFileUploadBtn" title="Attach file" onclick="openChatFileUpload()"
+              style="display:none;flex-shrink:0;background:none;border:none;width:38px;min-height:38px;align-items:center;justify-content:center;color:var(--text2);font-size:18px;cursor:pointer;padding:0;margin-left:4px;">
+              <i class="fas fa-paperclip"></i>
+            </button>
             <textarea id="chatInput" class="chat-textarea" placeholder="Type your message..."
               rows="1" oninput="autoResize(this)" onkeydown="handleChatKey(event)"></textarea>
             <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">
@@ -236,8 +237,9 @@
           <div class="form-group half">
             <label class="form-label">Quality</label>
             <div class="chip-group" id="imgQualityGroup">
-              <button class="chip active" onclick="selectChip(this,'imgQualityGroup')">Standard</button>
-              <button class="chip pro-locked" onclick="requirePro(this,'imgQualityGroup')">HD <span class="pro-badge">PRO</span></button>
+              <button class="chip active" data-quality="720" onclick="selectChip(this,'imgQualityGroup')">Standard</button>
+              <button class="chip pro-locked" data-quality="1280" onclick="selectChip(this,'imgQualityGroup')">HD <span class="pro-badge">PRO</span></button>
+              <button class="chip pro-locked" data-quality="2048" onclick="selectChip(this,'imgQualityGroup')">2K <span class="pro-badge" style="background:linear-gradient(90deg,#a855f7,#7c3aed)">PRO+</span></button>
             </div>
           </div>
           <div class="form-group half">
@@ -387,10 +389,10 @@
               <i class="fas fa-mars"></i> Male
             </button>
             <button class="chip pro-locked" data-voice="duet" onclick="selectChip(this,'songVoiceGroup')">
-              <i class="fas fa-venus-mars"></i> Duet
+              <i class="fas fa-venus-mars"></i> Duet <span class="pro-badge" style="background:linear-gradient(90deg,#a855f7,#7c3aed);font-size:9px">PRO+</span>
             </button>
             <button class="chip pro-locked" data-voice="choir" onclick="selectChip(this,'songVoiceGroup')">
-              <i class="fas fa-users"></i> Choir
+              <i class="fas fa-users"></i> Choir <span class="pro-badge" style="background:linear-gradient(90deg,#a855f7,#7c3aed);font-size:9px">PRO+</span>
             </button>
           </div>
         </div>
@@ -517,7 +519,7 @@
     </div>
     <div class="modal-body">
       <p class="modal-desc">All AI tools are powered by JeeThy Labs.</p>
-      <div class="plan-cards-row">
+      <div class="plan-cards-scroll-wrap"><div class="plan-cards-row">
         <!-- FREE -->
         <div class="plan-card selected" data-plan="free" onclick="selectPlan('free')">
           <div class="plan-card-header"><span class="plan-name">Free</span><span class="plan-price">$0</span></div>
@@ -569,7 +571,7 @@
           </ul>
           <div class="plan-check"><i class="fas fa-circle-check"></i></div>
         </div>
-      </div>
+      </div></div>
       <div id="proSettingsInModal" style="display:none">
         <a href="https://aistudio.google.com/app/apikey" target="_blank" class="modal-link">Get a free Google AI key &rarr;</a>
       </div>
