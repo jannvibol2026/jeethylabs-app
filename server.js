@@ -824,7 +824,8 @@ app.post('/api/song', auth, async (req, res) => {
       musicPrompt = [
         `[DURATION REQUIREMENT: Generate audio that is ${planCfg.durationHint}. This is a strict requirement.]`,
         `[TIMING GUIDE: Use explicit structure timestamps so the total runtime lands inside the required duration window.]`,
-        planKey === 'max' ? `[ENFORCEMENT: Generate between 3 minutes 10 seconds and 3 minutes 45 seconds. Target 3:30. Use extended instrumental intro, instrumental break in the middle, and extended instrumental outro to fill time. CRITICAL: Instrumental sections must be rich and melodic, not silence.]` : '',
+        (planKey === 'proplus') ? `[ENFORCEMENT: Generate between 3 minutes and 3 minutes 25 seconds. Target 3:15. Use extended structure with bridge section.]` :
+        planKey === 'max' ? `[ENFORCEMENT: Generate between 4 minutes 25 seconds and 5 minutes 25 seconds. Target 5:00. Use full song structure with solo section and extended outro.]` : '',
         `Use EXACTLY the following lyrics - do not change any words:`,
         `---`,
         customLyrics.trim(),
@@ -837,7 +838,8 @@ app.post('/api/song', auth, async (req, res) => {
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
         planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:20 Instrumental Intro] [0:20-0:50 Verse 1] [0:50-1:00 Pre-Chorus] [1:00-1:25 Chorus] [1:25-1:45 Instrumental Break] [1:45-2:10 Verse 2] [2:10-2:35 Chorus] [2:35-2:55 Final Chorus] [2:55-3:05 Instrumental Outro]' : '',
-        planKey === 'max' ? '[TIMESTAMPS] [0:00-0:30 Extended Instrumental Intro] [0:30-1:00 Verse 1] [1:00-1:12 Pre-Chorus] [1:12-1:37 Chorus] [1:37-2:02 Instrumental Break] [2:02-2:30 Verse 2] [2:30-2:42 Pre-Chorus] [2:42-3:07 Chorus] [3:07-3:25 Bridge+Final Chorus] [3:25-4:00 Extended Instrumental Outro]' : '',
+        planKey === 'proplus' ? '[TIMESTAMPS] [0:00-0:25 Extended Intro] [0:25-0:55 Verse 1] [0:55-1:07 Pre-Chorus] [1:07-1:32 Chorus] [1:32-1:54 Break] [1:54-2:22 Verse 2] [2:22-2:34 Pre-Chorus] [2:34-2:59 Chorus] [2:59-3:14 Bridge] [3:14-3:39 Final Chorus+Outro]' : '',
+        planKey === 'max' ? '[TIMESTAMPS] [0:00-0:35 Extended Intro] [0:35-1:10 Verse 1] [1:10-1:25 Pre-Chorus] [1:25-1:55 Chorus] [1:55-2:25 Break] [2:25-2:55 Verse 2] [2:55-3:10 Pre-Chorus] [3:10-3:40 Chorus] [3:40-4:00 Bridge] [4:00-4:25 Solo] [4:25-4:55 Final Chorus] [4:55-5:25 Extended Outro]' : '',
       ].join('\n');
     } else {
       musicPrompt = [
@@ -866,7 +868,8 @@ app.post('/api/song', auth, async (req, res) => {
         ...(mood       ? ['Mood/Feel: '+mood+'.']                 : []),
         `Target duration: ${planCfg.durationHint}.`,
         planKey === 'pro' ? '[TIMESTAMPS] [0:00-0:20 Instrumental Intro] [0:20-0:50 Verse 1] [0:50-1:00 Pre-Chorus] [1:00-1:25 Chorus] [1:25-1:45 Instrumental Break] [1:45-2:10 Verse 2] [2:10-2:35 Chorus] [2:35-2:55 Final Chorus] [2:55-3:05 Instrumental Outro]' : '',
-        planKey === 'max' ? '[TIMESTAMPS] [0:00-0:30 Extended Instrumental Intro] [0:30-1:00 Verse 1] [1:00-1:12 Pre-Chorus] [1:12-1:37 Chorus] [1:37-2:02 Instrumental Break] [2:02-2:30 Verse 2] [2:30-2:42 Pre-Chorus] [2:42-3:07 Chorus] [3:07-3:25 Bridge+Final Chorus] [3:25-4:00 Extended Instrumental Outro]' : '',
+        planKey === 'proplus' ? '[TIMESTAMPS] [0:00-0:25 Extended Intro] [0:25-0:55 Verse 1] [0:55-1:07 Pre-Chorus] [1:07-1:32 Chorus] [1:32-1:54 Break] [1:54-2:22 Verse 2] [2:22-2:34 Pre-Chorus] [2:34-2:59 Chorus] [2:59-3:14 Bridge] [3:14-3:39 Final Chorus+Outro]' : '',
+        planKey === 'max' ? '[TIMESTAMPS] [0:00-0:35 Extended Intro] [0:35-1:10 Verse 1] [1:10-1:25 Pre-Chorus] [1:25-1:55 Chorus] [1:55-2:25 Break] [2:25-2:55 Verse 2] [2:55-3:10 Pre-Chorus] [3:10-3:40 Chorus] [3:40-4:00 Bridge] [4:00-4:25 Solo] [4:25-4:55 Final Chorus] [4:55-5:25 Extended Outro]' : '',
         planKey === 'free'
           ? '[TIMESTAMPS] [0:00-0:08 Short Instrumental Intro] [0:08-0:28 Verse] [0:28-0:46 Chorus] [0:46-0:55 Outro] — MUST end before 60 seconds'
           : 'Generate the FULL song from start to finish. Do not cut short.',
@@ -917,7 +920,7 @@ app.post('/api/song', auth, async (req, res) => {
           lyricsText  = _res_single.txt;
           /* Apply hard trim per plan */
           const _planMime2   = _res_single.audio.mimeType || 'audio/l16;rate=24000';
-          const _planTrimSec = planKey === 'free' ? 60 : planKey === 'pro' ? 185 : 225;
+          const _planTrimSec = planKey === 'free' ? 60 : planKey === 'pro' ? 185 : planKey === 'proplus' ? 210 : 315;
           audioResult = { data: trimAudioBuffer(_res_single.audio.data, _planTrimSec, _planMime2), mimeType: _planMime2 };
 
         
@@ -1007,8 +1010,9 @@ function getStripe() {
 const APP_URL = process.env.APP_URL || 'https://app.jeethylabs.site';
 
 const STRIPE_PRICES = {
-  pro: process.env.STRIPE_PRICE_PRO || '',
-  max: process.env.STRIPE_PRICE_MAX || '',
+  pro:     process.env.STRIPE_PRICE_PRO     || '',
+  proplus: process.env.STRIPE_PRICE_PROPLUS || '',
+  max:     process.env.STRIPE_PRICE_MAX     || '',
 };
 
 app.get('/api/stripe/plans', (req, res) => {
@@ -1017,8 +1021,9 @@ app.get('/api/stripe/plans', (req, res) => {
     configured: !!key,
     testMode:   key.startsWith('sk_test'),
     plans: {
-      pro: { name: 'PRO', price: '$9.99/mo',  priceId: STRIPE_PRICES.pro || 'NOT_SET' },
-      max: { name: 'MAX', price: '$19.99/mo', priceId: STRIPE_PRICES.max || 'NOT_SET' },
+      pro:     { name: 'PRO',  price: '$5.99/mo',  priceId: STRIPE_PRICES.pro     || 'NOT_SET' },
+      proplus: { name: 'PRO+', price: '$24.99/mo', priceId: STRIPE_PRICES.proplus || 'NOT_SET' },
+      max:     { name: 'MAX',  price: 'TBA',        priceId: STRIPE_PRICES.max     || 'NOT_SET' },
     },
   });
 });
@@ -1088,7 +1093,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
   try {
     const { plan } = req.body;
     const planKey  = (plan || '').toLowerCase();
-    if (!['free','pro','max'].includes(planKey))
+    if (!['free','pro','proplus','max'].includes(planKey))
       return res.status(400).json({ error: 'Invalid plan. Choose: free, pro, max' });
 
     /* - Downgrade to free - */
