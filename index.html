@@ -95,6 +95,12 @@
   .modal-section-label { font-size: 12px; margin-bottom: 12px; }
 }
 </style>
+
+<style>
+.plan-card.plan-proplus { border-color: rgba(168,85,247,.4); }
+.plan-card.plan-proplus.selected { border-color: #a855f7; box-shadow: 0 0 0 2px rgba(168,85,247,.3); }
+.plan-card.plan-proplus .plan-check { color: #a855f7; }
+</style>
 </head>
 <body>
 
@@ -477,34 +483,54 @@
     <div class="modal-body">
       <p class="modal-desc">All AI tools are powered by JeeThy Labs.</p>
       <div class="plan-cards-row">
+        <!-- FREE -->
         <div class="plan-card selected" data-plan="free" onclick="selectPlan('free')">
           <div class="plan-card-header"><span class="plan-name">Free</span><span class="plan-price">$0</span></div>
           <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 10 requests / session</li>
-            <li><i class="fas fa-check"></i> All 3 AI tools</li>
+            <li><i class="fas fa-check"></i> 20 chat msg/day</li>
+            <li><i class="fas fa-check"></i> 5 images/day</li>
+            <li><i class="fas fa-check"></i> 3 songs/day (~55s)</li>
+            <li><i class="fas fa-xmark muted"></i> No watermark removal</li>
             <li><i class="fas fa-xmark muted"></i> Custom API key</li>
           </ul>
           <div class="plan-check"><i class="fas fa-circle-check"></i></div>
         </div>
+        <!-- PRO -->
         <div class="plan-card plan-pro" data-plan="pro" onclick="selectPlan('pro')">
           <div class="plan-card-badge">Popular</div>
-          <div class="plan-card-header"><span class="plan-name">Pro</span><span class="plan-price">$9.99<span class="plan-period">/mo</span></span></div>
+          <div class="plan-card-header"><span class="plan-name">Pro</span><span class="plan-price">$5.99<span class="plan-period">/mo</span></span></div>
           <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 100 requests / session</li>
-            <li><i class="fas fa-check"></i> All 3 AI tools</li>
-            <li><i class="fas fa-check"></i> Add your own API key</li>
+            <li><i class="fas fa-check"></i> 100 chat msg/day</li>
+            <li><i class="fas fa-check"></i> 25 images/day (1024px)</li>
+            <li><i class="fas fa-check"></i> 15 songs/day (~3 min)</li>
+            <li><i class="fas fa-check"></i> No watermark</li>
+            <li><i class="fas fa-check"></i> Custom lyrics</li>
           </ul>
           <div class="plan-check"><i class="fas fa-circle-check"></i></div>
         </div>
-        <div class="plan-card plan-max" data-plan="max" onclick="selectPlan('max')">
-          <div class="plan-card-badge plan-card-badge-max">MAX</div>
-          <div class="plan-card-header"><span class="plan-name">Max</span><span class="plan-price">$19.99<span class="plan-period">/mo</span></span></div>
+        <!-- PRO+ -->
+        <div class="plan-card plan-proplus" data-plan="proplus" onclick="selectPlan('proplus')">
+          <div class="plan-card-badge" style="background:linear-gradient(90deg,#a855f7,#7c3aed)">Pro+</div>
+          <div class="plan-card-header"><span class="plan-name">Pro+</span><span class="plan-price">$24.99<span class="plan-period">/mo</span></span></div>
           <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 500 requests / session</li>
-            <li><i class="fas fa-check"></i> All 3 AI tools</li>
-            <li><i class="fas fa-check"></i> Add your own API key</li>
+            <li><i class="fas fa-check"></i> Unlimited chat</li>
+            <li><i class="fas fa-check"></i> 150 images/day (2048px)</li>
+            <li><i class="fas fa-check"></i> 100 songs/day (~3:15)</li>
+            <li><i class="fas fa-check"></i> All genres + Khmer Premium</li>
+            <li><i class="fas fa-check"></i> Export PDF/TXT chat</li>
+          </ul>
+          <div class="plan-check"><i class="fas fa-circle-check"></i></div>
+        </div>
+        <!-- MAX (Coming Soon) -->
+        <div class="plan-card plan-max" data-plan="max" style="opacity:.6;pointer-events:none;cursor:default;">
+          <div class="plan-card-badge plan-card-badge-max">🔜 Soon</div>
+          <div class="plan-card-header"><span class="plan-name">Max</span><span class="plan-price" style="font-size:13px;letter-spacing:.5px">TBA</span></div>
+          <ul class="plan-features">
+            <li><i class="fas fa-check"></i> Unlimited everything</li>
+            <li><i class="fas fa-check"></i> 4K images (3840×2160)</li>
+            <li><i class="fas fa-check"></i> Songs ~4:25–5:25</li>
+            <li><i class="fas fa-check"></i> Lyria Pro audio quality</li>
             <li><i class="fas fa-check"></i> Priority generation</li>
-            <li><i class="fas fa-check"></i> Longer songs (4 min)</li>
           </ul>
           <div class="plan-check"><i class="fas fa-circle-check"></i></div>
         </div>
@@ -561,7 +587,7 @@
         <div class="upgrade-icon"><i class="fas fa-crown"></i></div>
         <div class="upgrade-text">
           <strong>Upgrade to Pro</strong>
-          <span>100 requests/session &middot; $9.99/mo</span>
+          <span>100 chat msg/day &middot; $5.99/mo</span>
         </div>
       </div>
       <button class="btn-generate btn-purple" onclick="upgradeNow()" style="margin-top:16px">
