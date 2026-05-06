@@ -26,14 +26,16 @@ async function _detectPlan() {
   const user = window.currentUser;
   if (user && user.plan) {
     const plan = user.plan.toLowerCase();
-    if (plan === "max") return { plan: "max", durationHint: "3 - 4 minutes (full song)", customLyrics: true };
-    if (plan === "pro") return { plan: "pro", durationHint: "2 - 3 minutes",             customLyrics: true };
-    return { plan: "free", durationHint: "under 1 minute", customLyrics: false };
+    if (plan === "max")     return { plan: "max",     durationHint: "4:25–5:25 (full song)", customLyrics: true };
+    if (plan === "proplus") return { plan: "proplus", durationHint: "3:00–3:25",              customLyrics: true };
+    if (plan === "pro")     return { plan: "pro",     durationHint: "2:50–3:05",              customLyrics: true };
+    return { plan: "free", durationHint: "~55s", customLyrics: false };
   }
   if (window.userPlan) {
     const plan = window.userPlan.toLowerCase();
-    if (plan === "max") return { plan: "max", durationHint: "3 - 4 minutes (full song)", customLyrics: true };
-    if (plan === "pro") return { plan: "pro", durationHint: "2 - 3 minutes",             customLyrics: true };
+    if (plan === "max")     return { plan: "max",     durationHint: "4:25–5:25 (full song)", customLyrics: true };
+    if (plan === "proplus") return { plan: "proplus", durationHint: "3:00–3:25",              customLyrics: true };
+    if (plan === "pro")     return { plan: "pro",     durationHint: "2:50–3:05",              customLyrics: true };
   }
   const token = _getSongToken();
   if (token) {
@@ -53,10 +55,11 @@ async function _detectPlan() {
     const el = document.querySelector(sel);
     if (!el) continue;
     const txt = el.textContent.trim().toLowerCase();
-    if (txt.includes("max")) return { plan: "max", durationHint: "3 - 4 minutes (full song)", customLyrics: true };
-    if (txt.includes("pro")) return { plan: "pro", durationHint: "2 - 3 minutes",             customLyrics: true };
+    if (txt.includes("max"))                              return { plan: "max",     durationHint: "4:25–5:25 (full song)", customLyrics: true };
+    if (txt.includes("pro+") || txt.includes("proplus")) return { plan: "proplus", durationHint: "3:00–3:25",              customLyrics: true };
+    if (txt.includes("pro"))                             return { plan: "pro",     durationHint: "2:50–3:05",              customLyrics: true };
   }
-  return { plan: "free", durationHint: "under 1 minute", customLyrics: false };
+  return { plan: "free", durationHint: "~55s", customLyrics: false };
 }
 
 async function initSongSection() {
@@ -67,11 +70,11 @@ async function initSongSection() {
 function _renderSongPlanUI(planInfo) {
   const plan   = (planInfo.plan || "free").toLowerCase();
   window._spCurrentPlan = plan; /* store for lyrics auto-fill */
-  const colors = { free: "#6b7280", pro: "#7c3aed", max: "#d97706" };
+  const colors = { free: "#9ca3af", pro: "#06b6d4", proplus: "#a855f7", max: "#fbbf24" };
 
   const badge = document.getElementById("song-plan-badge");
   if (badge) {
-    badge.textContent      = plan.toUpperCase();
+    badge.textContent      = plan === "proplus" ? "PRO+" : plan.toUpperCase();
     badge.style.background = colors[plan] || "#6b7280";
     badge.style.display    = "inline-block";
   }
