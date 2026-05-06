@@ -10,7 +10,7 @@ const PLAN_LIMITS = {
   free: {
     requests: 20, label: "Free", color: "#9ca3af", price: "$0",
     chatMsg: 20, imgDay: 5, songDay: 3,
-    chatModel: "gemini-2.0-flash",
+    chatModel: "gemini-2.5-flash",
     contextMemory: "session", fileUpload: false, chatHistory: 0,
     exportChat: false, customSystemPrompt: false, forceKhmer: false,
     imgResolution: "720x720", aspectRatios: ["1:1"], stylePresets: 3,
@@ -634,9 +634,9 @@ function syncProfileSheet() {
     const imgLbl   = P2.imgDay  < 0 ? "∞" : P2.imgDay;
     const songLbl  = P2.songDay < 0 ? "∞" : P2.songDay;
     planFeatEl.innerHTML = `
-      <div class="pp-feat-row"><i class="fas fa-comments"></i> Chat: <b>\${chatLbl}/day</b></div>
-      <div class="pp-feat-row"><i class="fas fa-palette"></i> Images: <b>\${imgLbl}/day</b></div>
-      <div class="pp-feat-row"><i class="fas fa-music"></i> Songs: <b>\${songLbl}/day</b></div>
+      <div class="pp-feat-row"><i class="fas fa-comments"></i> Chat: <b>${chatLbl}/day</b></div>
+      <div class="pp-feat-row"><i class="fas fa-palette"></i> Images: <b>${imgLbl}/day</b></div>
+      <div class="pp-feat-row"><i class="fas fa-music"></i> Songs: <b>${songLbl}/day</b></div>
     `;
   }
 }
