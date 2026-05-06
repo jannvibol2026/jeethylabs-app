@@ -14,7 +14,7 @@ const PLAN_LIMITS = {
     contextMemory: "session", fileUpload: false, chatHistory: 0,
     exportChat: false, customSystemPrompt: false, forceKhmer: false,
     imgResolution: "720x720", aspectRatios: ["1:1"], stylePresets: 3,
-    negativePrompt: false, refImages: 0, batchGenerate: 1, downloadHD: false,
+    refImages: 0, batchGenerate: 1, downloadHD: false,
     imgHistory: 0, imgWatermark: true,
     songDuration: 55, customLyrics: false, vocalStyles: ["female","male"],
     allGenres: false, moodControl: false, instrumental: false, khmerStyle: false,
@@ -28,7 +28,7 @@ const PLAN_LIMITS = {
     contextMemory: "session", fileUpload: "images", chatHistory: 10,
     exportChat: false, customSystemPrompt: false, forceKhmer: false,
     imgResolution: "1024x1024", aspectRatios: ["1:1","9:16","16:9"], stylePresets: 10,
-    negativePrompt: true, refImages: 1, batchGenerate: 2, downloadHD: true,
+    refImages: 1, batchGenerate: 2, downloadHD: true,
     imgHistory: 10, imgWatermark: false,
     songDuration: 185, customLyrics: true, vocalStyles: ["female","male"],
     allGenres: false, moodControl: true, instrumental: true, khmerStyle: true,
@@ -42,7 +42,7 @@ const PLAN_LIMITS = {
     contextMemory: "persistent", fileUpload: "images+docs", chatHistory: -1,
     exportChat: true, customSystemPrompt: true, forceKhmer: true,
     imgResolution: "2048x2048", aspectRatios: ["1:1","9:16","16:9","all"], stylePresets: -1,
-    negativePrompt: true, refImages: -1, batchGenerate: 4, downloadHD: true,
+    refImages: -1, batchGenerate: 4, downloadHD: true,
     imgHistory: 50, imgWatermark: false,
     songDuration: 200, customLyrics: true, vocalStyles: ["female","male","duet","choir"],
     allGenres: true, moodControl: true, instrumental: true, khmerStyle: "premium",
@@ -56,7 +56,7 @@ const PLAN_LIMITS = {
     contextMemory: "persistent", fileUpload: "images+docs", chatHistory: -1,
     exportChat: true, customSystemPrompt: true, forceKhmer: true,
     imgResolution: "3840x2160", aspectRatios: ["1:1","9:16","16:9","all"], stylePresets: -1,
-    negativePrompt: true, refImages: -1, batchGenerate: 4, downloadHD: true,
+    refImages: -1, batchGenerate: 4, downloadHD: true,
     imgHistory: -1, imgWatermark: false,
     songDuration: 300, customLyrics: true, vocalStyles: ["female","male","duet","choir"],
     allGenres: true, moodControl: true, instrumental: true, khmerStyle: "premium",
@@ -125,9 +125,7 @@ function initPlanFeatures() {
     }
   });
 
-  // ── IMAGE: negative prompt section
-  const negWrap = document.getElementById("negativePromptWrap");
-  if (negWrap) negWrap.style.display = P.negativePrompt ? "block" : "none";
+
 
   // ── SONG: choir/duet lock
   const voiceChips = document.querySelectorAll("#songVoiceGroup .chip");
@@ -157,8 +155,7 @@ let userPlan      = "free";
 let proCustomKey  = "";
 let useOwnKey     = false;
 let _ownKeyOn     = false;
-let _refImgBase64 = null;
-let _refImgMime   = null;
+let _refImgs = []; // [{base64, mime, dataUrl}] - multi ref images
 let ownerApiKey   = "";
 let requestCount  = 0;
 let chatHistory   = [];
@@ -948,7 +945,12 @@ function formatMarkdown(text) {
 function openRefImgUpload() {
   if (userPlan !== "pro" && userPlan !== "proplus" && userPlan !== "max") {
     showUpgradeModal();
-    showToast("Reference image upload is available on Pro & Max plans only", "error");
+    showToast("Reference image requires Pro plan", "error");
+    return;
+  }
+  const maxRef = (userPlan === "proplus" || userPlan === "max") ? 4 : 1;
+  if (_refImgs.length >= maxRef) {
+    showToast(userPlan === "pro" ? "Pro plan supports 1 reference image" : "Max " + maxRef + " reference images", "error");
     return;
   }
   const inp = document.getElementById("refImgInput");
@@ -967,30 +969,49 @@ function handleRefImgUpload(e) {
   }
   const reader = new FileReader();
   reader.onload = ev => {
-    const dataUrl   = ev.target.result;
-    _refImgBase64   = dataUrl.split(',')[1];
-    _refImgMime     = file.type || 'image/jpeg';
-    document.getElementById('refImgThumb').src                  = dataUrl;
-    document.getElementById('refImgPlaceholder').style.display  = 'none';
-    document.getElementById('refImgPreview').style.display      = 'block';
-    document.getElementById('refImgDropZone').style.borderColor = 'var(--cyan,#06b6d4)';
-    document.getElementById('refImgDropZone').style.background  = 'rgba(6,182,212,.06)';
+    const dataUrl = ev.target.result;
+    _refImgs.push({ base64: dataUrl.split(',')[1], mime: file.type || 'image/jpeg', dataUrl });
+    renderRefImgPreviews();
   };
-  reader.onerror = () => showToast("Failed to read image. Try another file.", "error");
+  reader.onerror = () => showToast("Failed to read image.", "error");
   reader.readAsDataURL(file);
 }
-function clearRefImg(e) {
-  if (e) e.stopPropagation();
-  _refImgBase64 = null;
-  _refImgMime   = null;
-  const inp = document.getElementById('refImgInput');
-  if (inp) inp.value = '';
+
+function renderRefImgPreviews() {
   const ph  = document.getElementById('refImgPlaceholder');
   const pv  = document.getElementById('refImgPreview');
   const dz  = document.getElementById('refImgDropZone');
-  if (ph) ph.style.display = 'block';
-  if (pv) pv.style.display = 'none';
-  if (dz) { dz.style.borderColor = 'var(--border)'; dz.style.background = 'rgba(255,255,255,.03)'; }
+  if (!pv) return;
+  if (_refImgs.length === 0) {
+    if (ph) ph.style.display = 'block';
+    pv.style.display = 'none';
+    if (dz) { dz.style.borderColor = 'var(--border)'; dz.style.background = 'rgba(255,255,255,.03)'; }
+    return;
+  }
+  if (ph) ph.style.display = 'none';
+  pv.style.display = 'block';
+  if (dz) { dz.style.borderColor = 'var(--cyan,#06b6d4)'; dz.style.background = 'rgba(6,182,212,.06)'; }
+  pv.innerHTML = _refImgs.map((img, i) => `
+    <div style="position:relative;display:inline-block;margin:4px;">
+      <img src="${img.dataUrl}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--cyan,#06b6d4)" alt="ref ${i+1}"/>
+      <button onclick="removeRefImg(event,${i})" style="position:absolute;top:-6px;right:-6px;background:#ef4444;border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:11px;cursor:pointer;line-height:1;font-weight:700;">×</button>
+    </div>
+  `).join('') + (((userPlan === 'proplus' || userPlan === 'max') && _refImgs.length < 4) || (userPlan === 'pro' && _refImgs.length < 1) ? `
+    <div onclick="openRefImgUpload()" style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border:2px dashed var(--border);border-radius:8px;cursor:pointer;vertical-align:top;margin:4px;color:var(--text2);font-size:22px;">+</div>
+  ` : '');
+}
+
+function removeRefImg(e, idx) {
+  if (e) e.stopPropagation();
+  _refImgs.splice(idx, 1);
+  renderRefImgPreviews();
+}
+function clearRefImg(e) {
+  if (e) e.stopPropagation();
+  _refImgs = [];
+  const inp = document.getElementById('refImgInput');
+  if (inp) inp.value = '';
+  renderRefImgPreviews();
 }
 
 function generateImage() {
@@ -1006,8 +1027,9 @@ async function _generateImage() {
   const style  = getActiveChip("imgStyleGroup");
   const ratio  = getActiveChip("imgRatioGroup");
   const qty       = parseInt(getActiveChip("imgQtyGroup")) || 1;
-  const refBase64 = _refImgBase64 || null;
-  const refMime   = _refImgMime   || null;
+  const refBase64 = _refImgs.length > 0 ? _refImgs[0].base64 : null;
+  const refMime   = _refImgs.length > 0 ? _refImgs[0].mime   : null;
+  const extraRefs = _refImgs.slice(1); // additional ref images for Pro+/Max
 
   // Inject ratio hint into prompt so AI generates composition matching the ratio
   const RATIO_HINTS = {
@@ -1025,16 +1047,13 @@ async function _generateImage() {
   resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI...</div></div>`;
 
   async function fetchOne() {
-    const negPrompt = (PLAN_LIMITS[userPlan]?.negativePrompt)
-      ? (document.getElementById("imgNegativePrompt")?.value || "").trim() : "";
-
     const r = await fetch("/api/image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt: fullPrompt, aspectRatio: ratio, style,
-        ...(negPrompt ? { negativePrompt: negPrompt } : {}),
-        ...(refBase64 ? { referenceImageBase64: refBase64, referenceImageMime: refMime } : {})
+        ...(refBase64 ? { referenceImageBase64: refBase64, referenceImageMime: refMime } : {}),
+        ...(extraRefs.length > 0 ? { extraRefImages: extraRefs.map(r => ({ base64: r.base64, mime: r.mime })) } : {})
       })
     });
     const d = await r.json();
