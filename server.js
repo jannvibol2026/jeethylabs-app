@@ -584,11 +584,9 @@ app.post('/api/image', async (req, res) => {
       mappedRatio === '9:16' ? ', portrait orientation, vertical composition, tall image' :
       mappedRatio === '16:9' ? ', landscape orientation, wide composition, horizontal image' : '';
 
-    // ✅ Replace with
-// ✅ REPLACE WITH
     const fullPrompt = style && style.toLowerCase() !== 'none'
-  ? `${prompt}, style: ${style}${orientHint}`
-  : `${prompt}${orientHint}`;
+      ? `${prompt}, style: ${style}${orientHint}`
+      : `${prompt}${orientHint}`;
 
     let IMAGE_MODELS = ['imagen-3.0-generate-002', 'imagen-3.0-generate-001', 'gemini-2.0-flash-preview-image-generation', 'gemini-2.0-flash'];
     try {
