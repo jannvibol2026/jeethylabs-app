@@ -571,7 +571,8 @@ function cleanLyricsText(raw) {
 app.post('/api/image', async (req, res) => {
   try {
     const key = geminiKey();
-    const { prompt, style='', aspectRatio='1:1', referenceImageBase64, referenceImageMime } = req.body;
+    // ✅ Replace with
+    const { prompt, style='', aspectRatio='1:1', referenceImageBase64, referenceImageMime, negativePrompt='' } = req.body;
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
     // Map and validate aspect ratio
@@ -583,9 +584,13 @@ app.post('/api/image', async (req, res) => {
       mappedRatio === '9:16' ? ', portrait orientation, vertical composition, tall image' :
       mappedRatio === '16:9' ? ', landscape orientation, wide composition, horizontal image' : '';
 
-    const fullPrompt = style && style.toLowerCase() !== 'none'
-      ? `${prompt}, style: ${style}${orientHint}`
-      : `${prompt}${orientHint}`;
+    // ✅ Replace with
+const _basePrompt = style && style.toLowerCase() !== 'none'
+  ? `${prompt}, style: ${style}${orientHint}`
+  : `${prompt}${orientHint}`;
+const fullPrompt = negativePrompt
+  ? `${_basePrompt}. Avoid the following: ${negativePrompt}`
+  : _basePrompt;
 
     // With:
     let IMAGE_MODELS = ['imagen-3.0-generate-002', 'imagen-3.0-generate-001', 'gemini-2.0-flash-preview-image-generation', 'gemini-2.0-flash'];
