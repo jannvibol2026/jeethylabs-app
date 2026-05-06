@@ -77,7 +77,7 @@ function _renderSongPlanUI(planInfo) {
   }
 
   const hint = document.getElementById("song-duration-hint");
-  if (hint) { hint.textContent = "~" + (planInfo.durationHint || "under 1 minute"); }
+  if (hint) hint.textContent = "~" + (planInfo.durationHint || "under 1 minute");
 
   const panel  = document.getElementById("custom-lyrics-panel");
   const notice = document.getElementById("custom-lyrics-upgrade-notice");
@@ -224,8 +224,7 @@ async function _generateSong() {
     header.innerHTML = `
       <i class="fas fa-music"></i> ${escHtml(songTitle || style + " Song")}
       ${sourceBadge}
-      <span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto;display:flex;align-items:center;gap:6px">
-        <span id="_durLabel_${Date.now()}" style="font-size:10px;background:rgba(74,222,128,.15);color:var(--green,#4ade80);padding:2px 7px;border-radius:20px;display:none"></span>
+      <span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">
         ${escHtml(style)} · ${escHtml(voiceHint)}
       </span>`;
     card.appendChild(header);
@@ -243,57 +242,7 @@ async function _generateSong() {
       audioEl.preload  = "auto";
       audioEl.style.cssText = "width:100%;padding:10px 14px 0;accent-color:var(--green);";
       audioEl.src = blobUrl;
-      audioEl.addEventListener('loadedmetadata', function() {
-        const _dl = card.querySelector('[id^="_durLabel_"]');
-        if (_dl && audioEl.duration && isFinite(audioEl.duration)) {
-          const _m = Math.floor(audioEl.duration / 60);
-          const _s = Math.floor(audioEl.duration % 60);
-          _dl.textContent = _m + ':' + String(_s).padStart(2,'0');
-          _dl.style.display = '';
-        }
-      });
       card.appendChild(audioEl);
-
-      /* ── Waveform visualizer bars (synced to audio.currentTime) ── */
-      const _waveWrap = document.createElement("div");
-      _waveWrap.style.cssText = "display:flex;align-items:flex-end;gap:2px;padding:4px 14px 2px;height:34px;overflow:hidden;";
-      const _BAR_COUNT = 36;
-      const _waveBars  = [];
-      for (let _i = 0; _i < _BAR_COUNT; _i++) {
-        const _b = document.createElement("div");
-        _b.style.cssText = "flex:1;background:var(--green,#4ade80);border-radius:2px 2px 0 0;height:3px;will-change:height;";
-        _waveWrap.appendChild(_b);
-        _waveBars.push(_b);
-      }
-      card.appendChild(_waveWrap);
-      let _waveRaf = null;
-      function _waveStart() {
-        if (_waveRaf) return;
-        (function _tick() {
-          if (audioEl.paused || audioEl.ended) {
-            _waveBars.forEach(_b => _b.style.height = '3px');
-            _waveRaf = null; return;
-          }
-          const _t = audioEl.currentTime;
-          _waveBars.forEach((_b, _i) => {
-            const _v = Math.abs(
-              Math.sin(_t * (1.3 + _i * 0.19) * Math.PI)       * 0.45 +
-              Math.sin(_t * (0.8 + _i * 0.11) * Math.PI * 2)   * 0.35 +
-              Math.sin(_t * (2.3 + _i * 0.28) * Math.PI)       * 0.20
-            );
-            _b.style.height = (3 + _v * 26) + 'px';
-          });
-          _waveRaf = requestAnimationFrame(_tick);
-        })();
-      }
-      function _waveStop() {
-        if (_waveRaf) { cancelAnimationFrame(_waveRaf); _waveRaf = null; }
-        _waveBars.forEach(_b => _b.style.height = '3px');
-      }
-      audioEl.addEventListener('play',  _waveStart);
-      audioEl.addEventListener('pause', _waveStop);
-      audioEl.addEventListener('ended', _waveStop);
-      audioEl.addEventListener('seeking', () => { /* keep going */ });
 
       /* Always download as .mp3 -  mpeg/mp3 are same codec, mp3 opens everywhere */
       const ext = "mp3";
