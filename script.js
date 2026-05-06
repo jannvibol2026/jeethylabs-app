@@ -636,11 +636,11 @@ function syncProfileSheet() {
     const chatLbl  = P2.chatMsg < 0 ? "∞" : P2.chatMsg;
     const imgLbl   = P2.imgDay  < 0 ? "∞" : P2.imgDay;
     const songLbl  = P2.songDay < 0 ? "∞" : P2.songDay;
-    planFeatEl.innerHTML = \`
+    planFeatEl.innerHTML = `
       <div class="pp-feat-row"><i class="fas fa-comments"></i> Chat: <b>\${chatLbl}/day</b></div>
       <div class="pp-feat-row"><i class="fas fa-palette"></i> Images: <b>\${imgLbl}/day</b></div>
       <div class="pp-feat-row"><i class="fas fa-music"></i> Songs: <b>\${songLbl}/day</b></div>
-    \`;
+    `;
   }
 }
 
