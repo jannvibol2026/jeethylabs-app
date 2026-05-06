@@ -7,11 +7,149 @@ let GEMINI_TTS_MODELS    = [];
 
 // ==================== PLAN LIMITS ====================
 const PLAN_LIMITS = {
-  free:    { requests: 20,   label: "Free",  color: "#9ca3af", price: "$0",        chatMsg: 20,  imgDay: 5,   songDay: 3   },
-  pro:     { requests: 100,  label: "Pro",   color: "#06b6d4", price: "$5.99/mo",  chatMsg: 100, imgDay: 25,  songDay: 15  },
-  proplus: { requests: 999,  label: "Pro+",  color: "#a855f7", price: "$24.99/mo", chatMsg: -1,  imgDay: 150, songDay: 100 },
-  max:     { requests: 9999, label: "Max",   color: "#fbbf24", price: "TBA",       chatMsg: -1,  imgDay: -1,  songDay: -1, comingSoon: true }
+  free: {
+    requests: 20, label: "Free", color: "#9ca3af", price: "$0",
+    chatMsg: 20, imgDay: 5, songDay: 3,
+    chatModel: "gemini-2.0-flash",
+    contextMemory: "session", fileUpload: false, chatHistory: 0,
+    exportChat: false, customSystemPrompt: false, forceKhmer: false,
+    imgResolution: "720x720", aspectRatios: ["1:1"], stylePresets: 3,
+    negativePrompt: false, refImages: 0, batchGenerate: 1, downloadHD: false,
+    imgHistory: 0, imgWatermark: true,
+    songDuration: 55, customLyrics: false, vocalStyles: ["female","male"],
+    allGenres: false, moodControl: false, instrumental: false, khmerStyle: false,
+    downloadMP3: true, songHistory: 0, regenerate: false,
+    audioQuality: "standard", audioWatermark: true
+  },
+  pro: {
+    requests: 100, label: "Pro", color: "#06b6d4", price: "$5.99/mo",
+    chatMsg: 100, imgDay: 25, songDay: 15,
+    chatModel: "gemini-2.5-flash",
+    contextMemory: "session", fileUpload: "images", chatHistory: 10,
+    exportChat: false, customSystemPrompt: false, forceKhmer: false,
+    imgResolution: "1024x1024", aspectRatios: ["1:1","9:16","16:9"], stylePresets: 10,
+    negativePrompt: true, refImages: 1, batchGenerate: 2, downloadHD: true,
+    imgHistory: 10, imgWatermark: false,
+    songDuration: 185, customLyrics: true, vocalStyles: ["female","male"],
+    allGenres: false, moodControl: true, instrumental: true, khmerStyle: true,
+    downloadMP3: true, songHistory: 5, regenerate: true,
+    audioQuality: "high", audioWatermark: false
+  },
+  proplus: {
+    requests: 999, label: "Pro+", color: "#a855f7", price: "$24.99/mo",
+    chatMsg: -1, imgDay: 150, songDay: 100,
+    chatModel: "gemini-2.5-pro",
+    contextMemory: "persistent", fileUpload: "images+docs", chatHistory: -1,
+    exportChat: true, customSystemPrompt: true, forceKhmer: true,
+    imgResolution: "2048x2048", aspectRatios: ["1:1","9:16","16:9","all"], stylePresets: -1,
+    negativePrompt: true, refImages: -1, batchGenerate: 4, downloadHD: true,
+    imgHistory: 50, imgWatermark: false,
+    songDuration: 200, customLyrics: true, vocalStyles: ["female","male","duet","choir"],
+    allGenres: true, moodControl: true, instrumental: true, khmerStyle: "premium",
+    downloadMP3: true, songHistory: 30, regenerate: true,
+    audioQuality: "best", audioWatermark: false
+  },
+  max: {
+    requests: 9999, label: "Max", color: "#fbbf24", price: "TBA",
+    chatMsg: -1, imgDay: -1, songDay: -1,
+    chatModel: "gemini-2.5-pro",
+    contextMemory: "persistent", fileUpload: "images+docs", chatHistory: -1,
+    exportChat: true, customSystemPrompt: true, forceKhmer: true,
+    imgResolution: "3840x2160", aspectRatios: ["1:1","9:16","16:9","all"], stylePresets: -1,
+    negativePrompt: true, refImages: -1, batchGenerate: 4, downloadHD: true,
+    imgHistory: -1, imgWatermark: false,
+    songDuration: 300, customLyrics: true, vocalStyles: ["female","male","duet","choir"],
+    allGenres: true, moodControl: true, instrumental: true, khmerStyle: "premium",
+    downloadMP3: true, songHistory: -1, regenerate: true,
+    audioQuality: "best_lyria_pro", audioWatermark: false,
+    comingSoon: true
+  }
 };
+
+
+// ==================== PLAN FEATURE INIT ====================
+function initPlanFeatures() {
+  const P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+
+  // ── CHAT: model
+  if (P.chatModel) GEMINI_CHAT_MODEL = P.chatModel;
+
+  // ── CHAT: file upload button
+  const fileUploadBtn = document.getElementById("chatFileUploadBtn");
+  if (fileUploadBtn) {
+    if (!P.fileUpload) {
+      fileUploadBtn.style.display = "none";
+    } else {
+      fileUploadBtn.style.display = "flex";
+      fileUploadBtn.title = "Upload " + (P.fileUpload === "images+docs" ? "images & docs" : "images");
+    }
+  }
+
+  // ── CHAT: export button
+  const exportBtn = document.getElementById("chatExportBtn");
+  if (exportBtn) exportBtn.style.display = P.exportChat ? "flex" : "none";
+
+  // ── CHAT: custom system prompt
+  const sysPromptWrap = document.getElementById("chatSystemPromptWrap");
+  if (sysPromptWrap) sysPromptWrap.style.display = P.customSystemPrompt ? "block" : "none";
+
+  // ── CHAT: force Khmer button
+  const khmerBtn = document.getElementById("chatForceKhmerBtn");
+  if (khmerBtn) khmerBtn.style.display = P.forceKhmer ? "flex" : "none";
+
+  // ── IMAGE: aspect ratio - lock 9:16 and 16:9 for free
+  const ratioChips = document.querySelectorAll("#imgRatioGroup .chip");
+  ratioChips.forEach(chip => {
+    const val = chip.textContent.trim();
+    if (P.aspectRatios[0] === "1:1" && P.aspectRatios.length === 1 && val !== "1:1") {
+      chip.classList.add("pro-locked");
+      chip.onclick = () => { showUpgradeModal(); showToast("Portrait/Landscape ratios require Pro plan", "error"); };
+      if (!chip.querySelector(".pro-badge")) {
+        const b = document.createElement("span"); b.className = "pro-badge"; b.textContent = "PRO";
+        chip.appendChild(b);
+      }
+    } else {
+      chip.classList.remove("pro-locked");
+    }
+  });
+
+  // ── IMAGE: batch qty - lock 4 for free
+  const qtyChips = document.querySelectorAll("#imgQtyGroup .chip");
+  qtyChips.forEach(chip => {
+    const val = parseInt(chip.textContent.trim());
+    if (val > P.batchGenerate) {
+      chip.classList.add("pro-locked");
+      chip.onclick = () => { showUpgradeModal(); showToast("Batch " + val + " requires Pro+ plan", "error"); };
+    } else {
+      chip.classList.remove("pro-locked");
+    }
+  });
+
+  // ── IMAGE: negative prompt section
+  const negWrap = document.getElementById("negativePromptWrap");
+  if (negWrap) negWrap.style.display = P.negativePrompt ? "block" : "none";
+
+  // ── SONG: choir/duet lock
+  const voiceChips = document.querySelectorAll("#songVoiceGroup .chip");
+  voiceChips.forEach(chip => {
+    const val = chip.textContent.replace(/[^a-zA-Z]/g,"").trim().toLowerCase();
+    const allowed = P.vocalStyles.map(v => v.toLowerCase());
+    if (!allowed.includes(val)) {
+      chip.classList.add("pro-locked");
+      chip.onclick = () => { showUpgradeModal(); showToast("Duet/Choir vocal style requires Pro+ plan", "error"); };
+      if (!chip.querySelector(".pro-badge")) {
+        const b = document.createElement("span"); b.className = "pro-badge"; b.textContent = "PRO+";
+        chip.appendChild(b);
+      }
+    } else {
+      chip.classList.remove("pro-locked");
+    }
+  });
+
+  // ── Profile sheet usage label
+  syncProfileSheet();
+  initSongPlanBadge();
+}
 
 // ======================= STATE =======================
 let currentPanel  = 0;
@@ -38,6 +176,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setWelcomeTime();
   initSwipe();
   renderPlanBadge();
+  initPlanFeatures();
   await fetchOwnerKey();
   await fetchAvailableModels();
   await checkExistingSession();
@@ -373,6 +512,7 @@ function onLoginSuccess(user, runPending) {
     userPlan = user.plan;
     renderPlanBadge();
     initSongPlanBadge();
+    initPlanFeatures();
   }
   updateNavAvatar(user);
   removeAuthGate();
@@ -480,12 +620,27 @@ function syncProfileSheet() {
     const ub = document.getElementById("ppUpgradeBanner");
     if (ub) ub.style.display = (plan === "pro" || plan === "proplus" || plan === "max") ? "none" : "flex";
   }
+  const P2 = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+  const displayLimit = (P2.requests >= 9999 || P2.requests < 0) ? "∞" : String(limit);
   const uc = document.getElementById("ppUsageCount");
-  if (uc) uc.textContent = used + " / " + limit;
+  if (uc) uc.textContent = used + " / " + displayLimit;
   const ub2 = document.getElementById("ppUsageBar");
   if (ub2) {
-    ub2.style.width      = pct + "%";
-    ub2.style.background = pct >= 80 ? "#f87171" : pct >= 50 ? "#fbbf24" : "#a855f7";
+    const barPct = displayLimit === "∞" ? 0 : pct;
+    ub2.style.width      = barPct + "%";
+    ub2.style.background = barPct >= 80 ? "#f87171" : barPct >= 50 ? "#fbbf24" : "#a855f7";
+  }
+  // Show plan features summary in profile
+  const planFeatEl = document.getElementById("ppPlanFeatures");
+  if (planFeatEl && P2) {
+    const chatLbl  = P2.chatMsg < 0 ? "∞" : P2.chatMsg;
+    const imgLbl   = P2.imgDay  < 0 ? "∞" : P2.imgDay;
+    const songLbl  = P2.songDay < 0 ? "∞" : P2.songDay;
+    planFeatEl.innerHTML = \`
+      <div class="pp-feat-row"><i class="fas fa-comments"></i> Chat: <b>\${chatLbl}/day</b></div>
+      <div class="pp-feat-row"><i class="fas fa-palette"></i> Images: <b>\${imgLbl}/day</b></div>
+      <div class="pp-feat-row"><i class="fas fa-music"></i> Songs: <b>\${songLbl}/day</b></div>
+    \`;
   }
 }
 
@@ -622,6 +777,62 @@ function sendChat() {
   _sendChat();
 }
 
+// Chat file upload state
+let _chatFileData = null, _chatFileMime = null, _chatFileName = null;
+let _forceKhmer = false;
+
+function openChatFileUpload() {
+  const P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+  if (!P.fileUpload) { showUpgradeModal(); showToast("File upload requires Pro plan", "error"); return; }
+  document.getElementById("chatFileInput").click();
+}
+function handleChatFileUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+  const isDoc = !file.type.startsWith("image/");
+  if (isDoc && P.fileUpload !== "images+docs") { showToast("Document upload requires Pro+ plan", "error"); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    _chatFileData = ev.target.result.split(",")[1];
+    _chatFileMime = file.type; _chatFileName = file.name;
+    const prev = document.getElementById("chatFilePreview");
+    const name = document.getElementById("chatFilePreviewName");
+    if (prev) prev.style.display = "block";
+    if (name) name.textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+function clearChatFile() {
+  _chatFileData = null; _chatFileMime = null; _chatFileName = null;
+  const prev = document.getElementById("chatFilePreview");
+  if (prev) prev.style.display = "none";
+  const inp = document.getElementById("chatFileInput"); if (inp) inp.value = "";
+}
+function toggleForceKhmer(btn) {
+  _forceKhmer = !_forceKhmer;
+  btn.style.background  = _forceKhmer ? "rgba(168,85,247,.25)" : "rgba(255,255,255,.08)";
+  btn.style.color       = _forceKhmer ? "#a855f7" : "var(--text2)";
+  btn.style.borderColor = _forceKhmer ? "#a855f7" : "var(--border)";
+  showToast(_forceKhmer ? "Force Khmer ON 🇰🇭" : "Force Khmer OFF", "success");
+}
+function exportChat() {
+  const P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+  if (!P.exportChat) { showUpgradeModal(); showToast("Export requires Pro+ plan", "error"); return; }
+  const msgs = document.querySelectorAll("#chatMessages .msg");
+  let text = "JeeThy Labs Chat Export\n" + new Date().toLocaleString() + "\n\n";
+  msgs.forEach(m => {
+    const isBot = m.classList.contains("msg-bot");
+    m.querySelectorAll(".msg-bubble p, .msg-bubble .prose-response").forEach(line => {
+      text += (isBot ? "AI: " : "You: ") + line.textContent + "\n";
+    });
+    text += "\n";
+  });
+  const blob = new Blob([text], {type: "text/plain"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = "chat-export-" + Date.now() + ".txt"; a.click();
+  showToast("Chat exported!", "success");
+}
+
 async function _sendChat() {
   if (isChatLoading) return;
   const key = getActiveApiKey();
@@ -629,13 +840,31 @@ async function _sendChat() {
   if (!checkQuota()) return;
   const input = document.getElementById("chatInput");
   const text  = input.value.trim();
-  if (!text) return;
-  appendMessage("user", text);
+  if (!text && !_chatFileData) return;
+
+  const displayText = text || ("📎 " + (_chatFileName || "file"));
+  appendMessage("user", displayText);
   input.value = ""; input.style.height = "auto";
   isChatLoading = true;
   const sendBtn = document.getElementById("chatSendBtn");
   if (sendBtn) sendBtn.disabled = true;
-  chatHistory.push({ role: "user", parts: [{ text }] });
+
+  // Build user parts
+  const P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+  const khmerSuffix = (_forceKhmer && P.forceKhmer)
+    ? "\n\n[IMPORTANT: Reply ONLY in Khmer language (ភាសាខ្មែរ). Do not use English.]" : "";
+  const userParts = [{ text: (text || " ") + khmerSuffix }];
+  if (_chatFileData && _chatFileMime) {
+    userParts.push({ inlineData: { mimeType: _chatFileMime, data: _chatFileData } });
+  }
+
+  // System prompt
+  const sysPromptEl = document.getElementById("chatSystemPrompt");
+  const sysPromptVal = (P.customSystemPrompt && sysPromptEl?.value.trim())
+    ? sysPromptEl.value.trim()
+    : "You are JeeThy Assistant, a helpful and friendly AI created by JeeThy Labs.\nAnswer in the same language the user writes in.\nBe concise but thorough. Use markdown for formatting.";
+
+  chatHistory.push({ role: "user", parts: userParts });
   const typingId = appendTyping();
   try {
     const res = await fetch(
@@ -643,11 +872,12 @@ async function _sendChat() {
       {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: "You are JeeThy Assistant, a helpful and friendly AI created by JeeThy Labs.\nAnswer in the same language the user writes in.\nBe concise but thorough. Use markdown for formatting." }] },
+          system_instruction: { parts: [{ text: sysPromptVal }] },
           contents: chatHistory
         })
       }
     );
+    clearChatFile();
     removeTyping(typingId);
     if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || `HTTP ${res.status}`); }
     const data  = await res.json();
@@ -656,6 +886,7 @@ async function _sendChat() {
     appendMessage("bot", reply);
     incrementRequest();
   } catch (err) {
+    clearChatFile();
     removeTyping(typingId);
     appendMessage("bot", "⚠ " + err.message);
   }
@@ -794,11 +1025,15 @@ async function _generateImage() {
   resultsEl.innerHTML = `<div class="loading-card"><div class="loading-spinner"></div><div class="loading-label">Generating ${qty} image${qty > 1 ? "s" : ""} with AI...</div></div>`;
 
   async function fetchOne() {
+    const negPrompt = (PLAN_LIMITS[userPlan]?.negativePrompt)
+      ? (document.getElementById("imgNegativePrompt")?.value || "").trim() : "";
+
     const r = await fetch("/api/image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt: fullPrompt, aspectRatio: ratio, style,
+        ...(negPrompt ? { negativePrompt: negPrompt } : {}),
         ...(refBase64 ? { referenceImageBase64: refBase64, referenceImageMime: refMime } : {})
       })
     });
