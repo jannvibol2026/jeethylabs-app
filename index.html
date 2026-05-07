@@ -512,70 +512,101 @@
 
 <!-- PLAN MODAL -->
 <div class="modal-overlay" id="planModal">
-  <div class="modal-box modal-wide modal-wide-3">
+  <div class="modal-box modal-plan-new">
     <div class="modal-header">
       <h3><i class="fas fa-crown"></i> Choose Your Plan</h3>
       <button class="modal-close" onclick="closePlanModal()"><i class="fas fa-xmark"></i></button>
     </div>
-    <div class="modal-body">
-      <p class="modal-desc">All AI tools are powered by JeeThy Labs.</p>
-      <div class="plan-cards-scroll-wrap"><div class="plan-cards-row">
-        <!-- FREE -->
-        <div class="plan-card selected" data-plan="free" onclick="selectPlan('free')">
-          <div class="plan-card-header"><span class="plan-name">Free</span><span class="plan-price">$0</span></div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 20 chat msg/day</li>
-            <li><i class="fas fa-check"></i> 5 images/day</li>
-            <li><i class="fas fa-check"></i> 3 songs/day (~55s)</li>
-            <li><i class="fas fa-xmark muted"></i> No watermark removal</li>
-            <li><i class="fas fa-xmark muted"></i> Custom API key</li>
-          </ul>
-          <div class="plan-check"><i class="fas fa-circle-check"></i></div>
+    <div class="modal-body modal-plan-body">
+      <p class="modal-desc" style="margin-bottom:14px">Powered by JeeThy Labs · Google Gemini AI</p>
+
+      <!-- FREE -->
+      <div class="plan-card-v2" data-plan="free" onclick="selectPlan('free')">
+        <div class="pcv2-left">
+          <div class="pcv2-name">Free</div>
+          <div class="pcv2-price-row"><span class="pcv2-price">$0</span></div>
+          <div class="pcv2-desc">Try all tools, no credit card needed</div>
         </div>
-        <!-- PRO -->
-        <div class="plan-card plan-pro" data-plan="pro" onclick="selectPlan('pro')">
-          <div class="plan-card-badge">Popular</div>
-          <div class="plan-card-header"><span class="plan-name">Pro</span><span class="plan-price">$5.99<span class="plan-period">/mo</span></span></div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 100 chat msg/day</li>
-            <li><i class="fas fa-check"></i> 25 images/day (1024px)</li>
-            <li><i class="fas fa-check"></i> 15 songs/day (~3 min)</li>
-            <li><i class="fas fa-check"></i> No watermark</li>
-            <li><i class="fas fa-check"></i> Custom lyrics</li>
-          </ul>
-          <div class="plan-check"><i class="fas fa-circle-check"></i></div>
+        <div class="pcv2-right">
+          <div class="pcv2-features">
+            <div class="pcv2-feat"><i class="fas fa-comments"></i> 20 Chat msg/day</div>
+            <div class="pcv2-feat"><i class="fas fa-image"></i> 5 Images/day (720px)</div>
+            <div class="pcv2-feat"><i class="fas fa-music"></i> 3 Songs/day (~55s)</div>
+            <div class="pcv2-feat pcv2-no"><i class="fas fa-xmark"></i> No watermark removal</div>
+            <div class="pcv2-feat pcv2-no"><i class="fas fa-xmark"></i> Custom API key</div>
+          </div>
         </div>
-        <!-- PRO+ -->
-        <div class="plan-card plan-proplus" data-plan="proplus" onclick="selectPlan('proplus')">
-          <div class="plan-card-badge" style="background:linear-gradient(90deg,#a855f7,#7c3aed)">Pro+</div>
-          <div class="plan-card-header"><span class="plan-name">Pro+</span><span class="plan-price">$24.99<span class="plan-period">/mo</span></span></div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> Unlimited chat</li>
-            <li><i class="fas fa-check"></i> 150 images/day (2048px)</li>
-            <li><i class="fas fa-check"></i> 100 songs/day (~3:15)</li>
-            <li><i class="fas fa-check"></i> All genres + Khmer Premium</li>
-            <li><i class="fas fa-check"></i> Export PDF/TXT chat</li>
-          </ul>
-          <div class="plan-check"><i class="fas fa-circle-check"></i></div>
+        <div class="pcv2-check"><i class="fas fa-circle-check"></i></div>
+      </div>
+
+      <!-- PRO -->
+      <div class="plan-card-v2 pcv2-pro" data-plan="pro" onclick="selectPlan('pro')">
+        <div class="pcv2-badge">⭐ Popular</div>
+        <div class="pcv2-left">
+          <div class="pcv2-name">Pro</div>
+          <div class="pcv2-price-row"><span class="pcv2-price pcv2-price-pro">$5.99</span><span class="pcv2-period">/mo</span></div>
+          <div class="pcv2-desc">For creators who need more power</div>
         </div>
-        <!-- MAX (Coming Soon) -->
-        <div class="plan-card plan-max" data-plan="max" style="opacity:.6;pointer-events:none;cursor:default;">
-          <div class="plan-card-badge plan-card-badge-max">🔜 Soon</div>
-          <div class="plan-card-header"><span class="plan-name">Max</span><span class="plan-price" style="font-size:13px;letter-spacing:.5px">TBA</span></div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> Unlimited everything</li>
-            <li><i class="fas fa-check"></i> 4K images (3840×2160)</li>
-            <li><i class="fas fa-check"></i> Songs ~4:25–5:25</li>
-            <li><i class="fas fa-check"></i> Lyria Pro audio quality</li>
-            <li><i class="fas fa-check"></i> Priority generation</li>
-          </ul>
-          <div class="plan-check"><i class="fas fa-circle-check"></i></div>
+        <div class="pcv2-right">
+          <div class="pcv2-features">
+            <div class="pcv2-feat"><i class="fas fa-comments"></i> 100 Chat msg/day</div>
+            <div class="pcv2-feat"><i class="fas fa-image"></i> 25 Images/day (HD 1024px)</div>
+            <div class="pcv2-feat"><i class="fas fa-music"></i> 15 Songs/day (~3 min)</div>
+            <div class="pcv2-feat"><i class="fas fa-file-export"></i> Export chat history</div>
+            <div class="pcv2-feat"><i class="fas fa-pen-nib"></i> Custom lyrics support</div>
+            <div class="pcv2-feat"><i class="fas fa-droplet-slash"></i> No watermark on images</div>
+          </div>
         </div>
-      </div></div>
+        <div class="pcv2-check"><i class="fas fa-circle-check"></i></div>
+      </div>
+
+      <!-- PRO+ -->
+      <div class="plan-card-v2 pcv2-proplus" data-plan="proplus" onclick="selectPlan('proplus')">
+        <div class="pcv2-badge pcv2-badge-proplus">🔥 Best Value</div>
+        <div class="pcv2-left">
+          <div class="pcv2-name" style="color:#d8b4fe">Pro+</div>
+          <div class="pcv2-price-row"><span class="pcv2-price pcv2-price-proplus">$24.99</span><span class="pcv2-period">/mo</span></div>
+          <div class="pcv2-desc">Unlimited creativity, full access</div>
+        </div>
+        <div class="pcv2-right">
+          <div class="pcv2-features">
+            <div class="pcv2-feat"><i class="fas fa-infinity"></i> Unlimited Chat</div>
+            <div class="pcv2-feat"><i class="fas fa-image"></i> 150 Images/day (2K · 2048px)</div>
+            <div class="pcv2-feat"><i class="fas fa-music"></i> 100 Songs/day (~3:15 min)</div>
+            <div class="pcv2-feat"><i class="fas fa-users-line"></i> Duet &amp; Choir vocals</div>
+            <div class="pcv2-feat"><i class="fas fa-khanda"></i> Khmer Premium genres</div>
+            <div class="pcv2-feat"><i class="fas fa-robot"></i> System Prompt / AI role</div>
+            <div class="pcv2-feat"><i class="fas fa-file-pdf"></i> Export PDF/TXT chat</div>
+            <div class="pcv2-feat"><i class="fas fa-images"></i> Reference image (4 imgs)</div>
+          </div>
+        </div>
+        <div class="pcv2-check"><i class="fas fa-circle-check"></i></div>
+      </div>
+
+      <!-- MAX -->
+      <div class="plan-card-v2 pcv2-max" data-plan="max" style="opacity:.55;pointer-events:none;">
+        <div class="pcv2-badge pcv2-badge-max">🔜 Coming Soon</div>
+        <div class="pcv2-left">
+          <div class="pcv2-name" style="color:#fbbf24">Max</div>
+          <div class="pcv2-price-row"><span class="pcv2-price" style="color:#fbbf24;font-size:15px">TBA</span></div>
+          <div class="pcv2-desc">Ultimate plan · Priority access</div>
+        </div>
+        <div class="pcv2-right">
+          <div class="pcv2-features">
+            <div class="pcv2-feat"><i class="fas fa-infinity"></i> Unlimited Everything</div>
+            <div class="pcv2-feat"><i class="fas fa-image"></i> 4K Images (3840×2160)</div>
+            <div class="pcv2-feat"><i class="fas fa-music"></i> Songs ~4:25–5:25 min</div>
+            <div class="pcv2-feat"><i class="fas fa-waveform-lines"></i> Lyria Pro audio</div>
+            <div class="pcv2-feat"><i class="fas fa-bolt"></i> Priority generation</div>
+          </div>
+        </div>
+        <div class="pcv2-check"><i class="fas fa-circle-check"></i></div>
+      </div>
+
       <div id="proSettingsInModal" style="display:none">
         <a href="https://aistudio.google.com/app/apikey" target="_blank" class="modal-link">Get a free Google AI key &rarr;</a>
       </div>
-      <button class="btn-generate btn-purple" onclick="confirmPlan()" style="margin-top:16px">
+      <button class="btn-generate btn-purple" onclick="confirmPlan()" style="margin-top:14px">
         <i class="fas fa-check"></i> Confirm Plan
       </button>
     </div>
