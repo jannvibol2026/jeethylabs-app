@@ -619,16 +619,16 @@
       <button class="modal-close" onclick="closeUpgradeModal()"><i class="fas fa-xmark"></i></button>
     </div>
     <div class="modal-body">
-      <p class="modal-desc">You've used all your requests on the <strong>Free plan</strong>.</p>
+      <p class="modal-desc" id="upgradeModalDesc">Upgrade your plan to unlock this feature.</p>
       <div class="upgrade-card">
         <div class="upgrade-icon"><i class="fas fa-crown"></i></div>
         <div class="upgrade-text">
-          <strong>Upgrade to Pro</strong>
-          <span>100 chat msg/day &middot; $5.99/mo</span>
+          <strong class="upgrade-plan-name">Upgrade to Pro</strong>
+          <span class="upgrade-plan-desc">100 chat msg/day · $5.99/mo</span>
         </div>
       </div>
-      <button class="btn-generate btn-purple" onclick="upgradeNow()" style="margin-top:16px">
-        <i class="fas fa-crown"></i> Upgrade to Pro
+      <button class="btn-generate btn-purple btn-upgrade-confirm" onclick="upgradeNow()" style="margin-top:16px">
+        👑 Upgrade to Pro
       </button>
       <button class="btn-outline" onclick="closeUpgradeModal()">Maybe later</button>
     </div>
