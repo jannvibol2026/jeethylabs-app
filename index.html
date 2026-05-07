@@ -125,7 +125,7 @@
         </div>
         <div class="pd-body">
           <!-- ដោយ: -->
-​                   <button class="pd-btn" onclick="closeDd();openProfileSheet();">
+                   <button class="pd-btn" onclick="closeDd();openProfileSheet();">
           <button class="pd-signout" onclick="closeDd();doLogout()"><i class="fas fa-right-from-bracket"></i> Sign Out</button>
         </div>
       </div>
@@ -607,13 +607,14 @@
       <div id="proSettingsInModal" style="display:none">
         <a href="https://aistudio.google.com/app/apikey" target="_blank" class="modal-link">Get a free Google AI key &rarr;</a>
       </div>
-    <div style="padding:12px 16px 14px;border-top:1px solid var(--border);border-radius:0 0 20px 20px;background:var(--surface);">
+    </div><!-- end modal-plan-body -->
+    <div class="modal-plan-footer">
       <button class="btn-generate btn-purple" onclick="confirmPlan()" style="width:100%;margin:0">
         <i class="fas fa-check"></i> Confirm Plan
       </button>
     </div>
-  </div>
-</div>
+  </div><!-- end modal-box -->
+</div><!-- end planModal -->
 
 <!-- SETTINGS MODAL -->
 <div class="modal-overlay" id="settingsModal">
@@ -736,8 +737,8 @@
 </div>
 
 <!-- ជំនួស v=2.1 ដោយ v=2.2 -->
-<script src="script.js?v=2.2"></script>
-<script src="song-plan.js?v=2.2"></script>
+<script src="script.js?v=2.3"></script>
+<script src="song-plan.js?v=2.3"></script>
 
 
 <!-- OTHER GENRE MODAL -->
