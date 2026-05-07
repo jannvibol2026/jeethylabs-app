@@ -1,4 +1,4 @@
-/* â”€â”€ STYLE.CSS â€” JeeThy Labs App â”€â”€ */
+/* STYLE.CSS ” JeeThy Labs App  */
 /* â”€â”€ Complete implementation including all interactive components â”€â”€ */
 :root{
   --bg:#0a0a0f;--surface:#111827;--surface2:#1f2937;
@@ -94,13 +94,13 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .modal-body{padding:16px;display:flex;flex-direction:column;gap:12px}
 .modal-desc{font-size:13px;color:var(--text2);line-height:1.6}
 
-/* PLAN CARDS â€” see plan-card-v2 below */
+/* PLAN CARDS ” see plan-card-v2 below */
 
-/* â•â• UTILITY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ UTILITY ══════════════════════════════════════════════ */
 .muted{color:var(--text2) !important}
 .open{opacity:1 !important;pointer-events:all !important}
 
-/* â•â• ANIMATIONS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ ANIMATIONS ═══════════════════════════════════════════ */
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-7px)}}
 @keyframes msgIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
@@ -108,7 +108,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 @keyframes overlayIn{from{opacity:0}to{opacity:1}}
 @keyframes ddIn{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 
-/* â•â• TYPING DOTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ TYPING DOTS ══════════════════════════════════════════ */
 .typing-dots{display:flex;align-items:center;gap:5px;padding:2px 0}
 .typing-dots span{
   width:7px;height:7px;border-radius:50%;
@@ -119,7 +119,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .typing-dots span:nth-child(2){animation-delay:.2s}
 .typing-dots span:nth-child(3){animation-delay:.4s}
 
-/* â•â• LOADING STATES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ LOADING STATES ═══════════════════════════════════════ */
 .loading-card{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:14px;padding:32px 20px;background:var(--surface);
@@ -139,7 +139,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 }
 .loading-label{font-size:13px;color:var(--text2);font-weight:500;line-height:1.5}
 
-/* â•â• PROSE / MARKDOWN RESPONSE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ PROSE / MARKDOWN RESPONSE ════════════════════════════ */
 .prose-response{font-size:14px;line-height:1.65;color:var(--text)}
 .prose-response p{margin:0 0 8px}
 .prose-response p:last-child{margin-bottom:0}
@@ -162,7 +162,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .prose-response li{margin-bottom:3px}
 .prose-response h3,.prose-response h4{color:#fff;margin:10px 0 4px}
 
-/* â•â• USER AVATAR BUTTON â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ USER AVATAR BUTTON ═══════════════════════════════════ */
 .user-profile-wrap{position:relative;display:flex;align-items:center}
 .user-avatar-btn{
   width:32px;height:32px;border-radius:50%;
@@ -178,7 +178,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .user-avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .user-avatar-btn span{font-size:13px;font-weight:700;color:#fff}
 
-/* â•â• PROFILE DROPDOWN â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ PROFILE DROPDOWN ═════════════════════════════════════ */
 .profile-dropdown{
   position:absolute;top:calc(100% + 8px);right:0;
   width:220px;background:var(--surface);
@@ -241,7 +241,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .pd-signout:hover{background:rgba(239,68,68,.08)}
 .pd-signout i{width:16px;text-align:center;font-size:12px}
 
-/* â•â• PROFILE SHEET â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ PROFILE SHEET ════════════════════════════════════════ */
 #ppOverlay{
   position:fixed;inset:0;
   background:rgba(0,0,0,.7);backdrop-filter:blur(8px);
@@ -339,7 +339,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 }
 .pp-upgrade-banner:hover{background:linear-gradient(135deg,rgba(168,85,247,.18),rgba(34,211,238,.14));border-color:rgba(168,85,247,.45)}
 
-/* â•â• SETTINGS TOGGLE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ SETTINGS TOGGLE ══════════════════════════════════════ */
 .settings-toggle-row{
   display:flex;align-items:center;justify-content:space-between;
   padding:10px 0;gap:12px;
@@ -370,7 +370,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   transform:translateX(20px);
 }
 
-/* â•â• UPGRADE CARD â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ UPGRADE CARD ═════════════════════════════════════════ */
 .upgrade-card{
   display:flex;align-items:center;gap:14px;
   background:linear-gradient(135deg,rgba(168,85,247,.1),rgba(124,58,237,.08));
@@ -387,11 +387,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .upgrade-text strong{font-size:14px;color:#fff;font-weight:700}
 .upgrade-text span{font-size:12px;color:var(--text2)}
 
-/* â•â• FORM ROW / HALF â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ FORM ROW / HALF ══════════════════════════════════════ */
 .form-row{display:flex;gap:10px}
 .form-row .form-group.half{flex:1;min-width:0}
 
-/* â•â• CHIP PRO-LOCKED â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ CHIP PRO-LOCKED ══════════════════════════════════════ */
 .chip.pro-locked{opacity:.65;cursor:pointer}
 .chip.pro-locked:hover{border-color:rgba(168,85,247,.4);opacity:.85}
 .pro-badge{
@@ -401,7 +401,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   letter-spacing:.3px;vertical-align:middle;
 }
 
-/* â•â• MODAL LINK â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ MODAL LINK ═══════════════════════════════════════════ */
 .modal-link{
   display:inline-block;font-size:12px;color:var(--primary);
   text-decoration:none;margin-top:6px;
@@ -409,7 +409,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 }
 .modal-link:hover{opacity:.75;text-decoration:underline}
 
-/* â•â• IMAGE RESULT CARD â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ IMAGE RESULT CARD ════════════════════════════════════ */
 .img-result-card{
   background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius);overflow:hidden;
@@ -427,7 +427,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 }
 .img-grid img:hover{opacity:.88;transform:scale(.98)}
 
-/* â•â• SONG RESULT CARD â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ SONG RESULT CARD ═════════════════════════════════════ */
 .song-result-card{
   background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius);overflow:hidden;
@@ -445,7 +445,7 @@ audio{
   accent-color:var(--green);
 }
 
-/* â•â• DOWNLOAD BUTTON â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ DOWNLOAD BUTTON ══════════════════════════════════════ */
 .btn-download{
   display:flex;align-items:center;justify-content:center;gap:8px;
   width:calc(100% - 28px);margin:0 14px 14px;
@@ -459,7 +459,7 @@ audio{
 .btn-download:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18)}
 .btn-download i{font-size:12px;color:var(--text2)}
 
-/* â•â• ERROR CARD â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ ERROR CARD ═══════════════════════════════════════════ */
 .error-card{
   display:flex;align-items:center;gap:10px;
   padding:14px;background:rgba(239,68,68,.08);
@@ -470,7 +470,7 @@ audio{
 }
 .error-card i{font-size:16px;flex-shrink:0}
 
-/* â•â• TOAST â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ TOAST ════════════════════════════════════════════════ */
 .toast{
   position:fixed;bottom:80px;left:50%;
   transform:translateX(-50%);
@@ -484,7 +484,7 @@ audio{
 .toast-success{background:#10b981}
 .toast-error{background:#ef4444}
 
-/* â•â• RESPONSIVE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ RESPONSIVE ═══════════════════════════════════════════ */
 @media (min-width:480px){
   .img-grid.qty-4{grid-template-columns:1fr 1fr}
   #ppSheet{max-width:480px;left:50%;right:auto;transform:translateX(-50%) translateY(100%);border-radius:22px 22px 0 0}
@@ -495,7 +495,7 @@ audio{
   .modal-box{border-radius:22px}
 }
 
-/* â•â• DESKTOP â€” 768px â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ DESKTOP ” 768px ══════════════════════════════════════ */
 @media (min-width:768px){
   :root{ --nav:60px; --tab:68px; }
 
@@ -510,7 +510,7 @@ audio{
   .tab{ font-size:12px; gap:5px; }
   .tab i{ font-size:20px; }
 
-  /* Panels â€” constrain width and center on wide screens */
+  /* Panels ” constrain width and center on wide screens */
   .panels-wrap{
     display:flex;
     align-items:stretch;
@@ -521,7 +521,7 @@ audio{
     width:100%;
   }
 
-  /* Panel inner scroll â€” more breathing room */
+  /* Panel inner scroll ” more breathing room */
   .panel-inner-scroll{ padding:20px 24px; gap:16px; }
 
   /* Chat */
@@ -557,7 +557,7 @@ audio{
   /* Profile dropdown */
   .profile-dropdown{ width:240px; }
 
-  /* Profile sheet â€” centered dialog on desktop */
+  /* Profile sheet ” centered dialog on desktop */
   #ppSheet{
     max-width:520px;
     left:50%;right:auto;
@@ -576,7 +576,7 @@ audio{
   .loading-label{ font-size:14px; }
 }
 
-/* â•â• DESKTOP â€” 1024px â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ DESKTOP ” 1024px ═════════════════════════════════════ */
 @media (min-width:1024px){
   :root{ --nav:64px; --tab:72px; }
 
@@ -584,7 +584,7 @@ audio{
   .app-nav{ padding:0 32px; }
   .nav-brand{ font-size:19px; }
 
-  /* Panels â€” side-by-side layout: show all 3 panels at once */
+  /* Panels ” side-by-side layout: show all 3 panels at once */
   .panels-wrap{
     overflow:visible;
     justify-content:center;
@@ -604,7 +604,7 @@ audio{
   }
   .panel:last-child{ border-right:none; }
 
-  /* Tab bar â€” becomes a sidebar-style top indicator on desktop */
+  /* Tab bar ” becomes a sidebar-style top indicator on desktop */
   .tab-bar{
     left:50%;
     transform:translateX(-50%);
@@ -621,7 +621,7 @@ audio{
   /* Panel inner scroll */
   .panel-inner-scroll{ padding:22px 28px; }
 
-  /* Modals â€” slightly larger */
+  /* Modals ” slightly larger */
   .modal-box{ max-width:440px; }
   .modal-wide{ max-width:560px; }
 
@@ -639,7 +639,7 @@ audio{
   }
 }
 
-/* â•â• DESKTOP â€” 1280px â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══ DESKTOP ” 1280px ═════════════════════════════════════ */
 @media (min-width:1280px){
   :root{ --nav:66px; }
 
@@ -652,7 +652,7 @@ audio{
   /* Tab bar */
   .tab-bar{ max-width:1440px; }
 
-  /* Panel inner scroll â€” generous padding on large screens */
+  /* Panel inner scroll ” generous padding on large screens */
   .panel-inner-scroll{ padding:28px 36px; gap:20px; }
   .chat-messages{ padding:22px 28px; }
   .chat-input-wrap{ padding:14px 24px; }
@@ -671,18 +671,18 @@ audio{
 }
 @import url('song-plan.css');
 
-/* removed: modal-wide-3 600px override â€” handled by modal-plan-new */
+/* removed: modal-wide-3 600px override ” handled by modal-plan-new */
 
-/* â•â•â•â• Song Plan Badge Row â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ════ Song Plan Badge Row ══════════════════════════════════ */
 .song-plan-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;min-height:18px;}
 .song-plan-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;letter-spacing:.5px;}
 .song-duration-hint{font-size:11px;color:var(--text2);opacity:.75;}
 
-/* â•â•â•â• Custom Genre Chip â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ════ Custom Genre Chip ════════════════════════════════════ */
 .chip-custom{border-color:rgba(168,85,247,.35)!important;color:#a855f7!important;}
 .chip-custom.active{background:linear-gradient(135deg,rgba(124,58,237,.25),rgba(168,85,247,.2))!important;border-color:#a855f7!important;color:#d8b4fe!important;}
 
-/* â•â•â•â• Custom Style Pop-up Panel â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ════ Custom Style Pop-up Panel ════════════════════════════ */
 .custom-style-panel{
   background:var(--surface2,#1e1e2e);
   border:1px solid rgba(168,85,247,.25);
@@ -695,7 +695,7 @@ audio{
 .chip-group-sm{gap:5px;}
 .chip.chip-sm{padding:4px 11px;font-size:11px;border-radius:20px;}
 
-/* â•â•â•â• Upgrade Modal â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ════ Upgrade Modal ════════════════════════════════════════ */
 .upgrade-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .upgrade-modal-box{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px 24px;max-width:340px;width:100%;text-align:center;}
 .upgrade-modal-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;}
@@ -704,7 +704,7 @@ audio{
 @media(max-width:480px){
   .custom-style-panel{padding:12px 10px;}
 }
-/* â•â•â•â• Chip Shake Animation (max limit feedback) â•â•â•â• */
+/* ════ Chip Shake Animation (max limit feedback) ════ */
 @keyframes chipShake {
   0%,100%{transform:translateX(0)}
   20%{transform:translateX(-5px)}
@@ -717,36 +717,36 @@ audio{
 .chip-multi-limit{font-size:9px;color:#f87171;margin-left:4px;opacity:.85;}
 
 /* â”€â”€ Plan Modal Mobile Swipe â”€â”€ */
-/* removed: old plan card scroll â€” see modal-plan-new below */
+/* removed: old plan card scroll ” see modal-plan-new below */
 /* â”€â”€ Chat input paperclip â”€â”€ */
 .chat-input-box{display:flex;align-items:flex-end;gap:0}
 #chatFileUploadBtn{display:none}
 #chatFileUploadBtn.visible{display:flex!important}
 
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   PLAN MODAL v2 â€” vertical cards, readable on mobile
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-/* LINE 730-740 — ជំនួស block .modal-plan-new & .modal-plan-body */
+/* ════════════════════════════════════════════════════════════
+   PLAN MODAL v2 ” vertical cards, readable on mobile
+   ════════════════════════════════════════════════════════════ */
+/* Plan modal v2 layout */
 
 .modal-plan-new {
   max-width: 520px;
   width: calc(100vw - 24px);
-  overflow: hidden;           /* ← បន្ថែម */
-  display: flex;              /* ← បន្ថែម */
-  flex-direction: column;     /* ← បន្ថែម */
-  max-height: 92vh;           /* ← បន្ថែម */
+  overflow: hidden;           /* added */
+  display: flex;              /* added */
+  flex-direction: column;     /* added */
+  max-height: 92vh;           /* added */
 }
 .modal-plan-body {
   display: flex;
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
-  overflow-x: hidden;         /* ← បន្ថែម */
-  flex: 1;                    /* ← បន្ថែម */
-  min-height: 0;              /* ← បន្ថែម */
-  max-height: 62vh;           /* ← ប្តូរ ពី 74vh */
-  padding: 0 16px 8px;        /* ← ប្តូរ */
+  overflow-x: hidden;         /* added */
+  flex: 1;                    /* added */
+  min-height: 0;              /* added */
+  max-height: 62vh;           /* changed from 74vh */
+  padding: 0 16px 8px;        /* changed */
 }
 
 /* â”€â”€ Card â”€â”€ */
@@ -880,3 +880,16 @@ audio{
   .pcv2-feat { font-size: 11.5px; }
   .plan-card-v2 { padding: 12px 10px; gap: 10px; }
 }
+/* Plan modal sticky confirm footer */
+.modal-plan-footer {
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 0 0 20px 20px;
+  flex-shrink: 0;
+}
+.modal-plan-footer .btn-generate {
+  width: 100%;
+  margin: 0;
+}
+
