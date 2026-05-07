@@ -71,10 +71,10 @@ const PLAN_LIMITS = {
 function initPlanFeatures() {
   const P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
 
-  // â”€â”€ CHAT: model
+  // Ã¢â€â‚¬Ã¢â€â‚¬ CHAT: model
   if (P.chatModel) GEMINI_CHAT_MODEL = P.chatModel;
 
-  // â”€â”€ CHAT: file upload button
+  // Ã¢â€â‚¬Ã¢â€â‚¬ CHAT: file upload button
   const fileUploadBtn = document.getElementById("chatFileUploadBtn");
   if (fileUploadBtn) {
     if (!P.fileUpload) {
@@ -85,19 +85,19 @@ function initPlanFeatures() {
     }
   }
 
-  // â”€â”€ CHAT: export button
+  // Ã¢â€â‚¬Ã¢â€â‚¬ CHAT: export button
   const exportBtn = document.getElementById("chatExportBtn");
   if (exportBtn) exportBtn.style.display = P.exportChat ? "flex" : "none";
 
-  // â”€â”€ CHAT: custom system prompt
+  // Ã¢â€â‚¬Ã¢â€â‚¬ CHAT: custom system prompt
   const sysPromptWrap = document.getElementById("chatSystemPromptWrap");
   if (sysPromptWrap) sysPromptWrap.style.display = P.customSystemPrompt ? "block" : "none";
 
-  // â”€â”€ CHAT: force Khmer button
+  // Ã¢â€â‚¬Ã¢â€â‚¬ CHAT: force Khmer button
   const khmerBtn = document.getElementById("chatForceKhmerBtn");
   if (khmerBtn) khmerBtn.style.display = P.forceKhmer ? "flex" : "none";
 
-  // â”€â”€ IMAGE: aspect ratio - lock 9:16 and 16:9 for free
+  // Ã¢â€â‚¬Ã¢â€â‚¬ IMAGE: aspect ratio - lock 9:16 and 16:9 for free
   const ratioChips = document.querySelectorAll("#imgRatioGroup .chip");
   ratioChips.forEach(chip => {
     chip.removeAttribute("onclick");
@@ -119,7 +119,7 @@ function initPlanFeatures() {
     }
   });
 
-  // â”€â”€ IMAGE: batch qty - lock based on plan
+  // Ã¢â€â‚¬Ã¢â€â‚¬ IMAGE: batch qty - lock based on plan
   const qtyChips = document.querySelectorAll("#imgQtyGroup .chip");
   qtyChips.forEach(chip => {
     chip.removeAttribute("onclick");
@@ -132,7 +132,7 @@ function initPlanFeatures() {
     }
   });
 
-  // â”€â”€ IMAGE: quality - 3 levels: Standard(720/free), HD-1280(pro), 2K-2048(pro+/max)
+  // Ã¢â€â‚¬Ã¢â€â‚¬ IMAGE: quality - 3 levels: Standard(720/free), HD-1280(pro), 2K-2048(pro+/max)
   const qualChips = document.querySelectorAll("#imgQualityGroup .chip");
   qualChips.forEach(chip => {
     chip.removeAttribute("onclick");
@@ -160,7 +160,7 @@ function initPlanFeatures() {
     }
   });
 
-  // â”€â”€ SONG: choir/duet lock
+  // Ã¢â€â‚¬Ã¢â€â‚¬ SONG: choir/duet lock
   const voiceChips = document.querySelectorAll("#songVoiceGroup .chip");
   voiceChips.forEach(chip => {
     chip.removeAttribute("onclick");
@@ -181,7 +181,7 @@ function initPlanFeatures() {
     }
   });
 
-  // â”€â”€ Profile sheet usage label
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Profile sheet usage label
   syncProfileSheet();
   initSongPlanBadge();
 }
@@ -207,7 +207,7 @@ let authToken     = null;
 
 // ======================== INIT ========================
 document.addEventListener("DOMContentLoaded", async () => {
-  // â”€â”€ Delegated chip group click handlers â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Delegated chip group click handlers Ã¢â€â‚¬Ã¢â€â‚¬
   // Handles chips even after removeAttribute("onclick") by initPlanFeatures
   const CHIP_GROUPS = [
     { id: "imgRatioGroup",  groupId: "imgRatioGroup"  },
@@ -237,7 +237,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 function enforceAuthGate() {
   const chatInput   = document.getElementById("chatInput");
   const chatSendBtn = document.getElementById("chatSendBtn");
-  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = "ðŸ”’ Sign in to start chatting..."; }
+  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = "Ã°Å¸â€â€™ Sign in to start chatting..."; }
   if (chatSendBtn) chatSendBtn.disabled = true;
   showPanelOverlay("panel-chat",  "chat");
   showPanelOverlay("panel-image", "image");
@@ -634,7 +634,7 @@ function closeDd() {
   const dd = document.getElementById("profileDropdown");
   if (dd) dd.classList.remove("open");
 }
-// âœ… AFTER (bubble phase = normal):
+// Ã¢Å“â€¦ AFTER (bubble phase = normal):
 document.addEventListener("click", e => {
   const wrap = document.getElementById("userProfileWrap");
   if (wrap && !wrap.contains(e.target)) closeDd();
@@ -671,21 +671,21 @@ function syncProfileSheet() {
     if (ub) ub.style.display = (plan === "pro" || plan === "proplus" || plan === "max") ? "none" : "flex";
   }
   const P2 = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
-  const displayLimit = (P2.requests >= 9999 || P2.requests < 0) ? "âˆž" : String(limit);
+  const displayLimit = (P2.requests >= 9999 || P2.requests < 0) ? "Ã¢Ë†Å¾" : String(limit);
   const uc = document.getElementById("ppUsageCount");
   if (uc) uc.textContent = used + " / " + displayLimit;
   const ub2 = document.getElementById("ppUsageBar");
   if (ub2) {
-    const barPct = displayLimit === "âˆž" ? 0 : pct;
+    const barPct = displayLimit === "Ã¢Ë†Å¾" ? 0 : pct;
     ub2.style.width      = barPct + "%";
     ub2.style.background = barPct >= 80 ? "#f87171" : barPct >= 50 ? "#fbbf24" : "#a855f7";
   }
   // Show plan features summary in profile
   const planFeatEl = document.getElementById("ppPlanFeatures");
   if (planFeatEl && P2) {
-    const chatLbl  = P2.chatMsg < 0 ? "âˆž" : P2.chatMsg;
-    const imgLbl   = P2.imgDay  < 0 ? "âˆž" : P2.imgDay;
-    const songLbl  = P2.songDay < 0 ? "âˆž" : P2.songDay;
+    const chatLbl  = P2.chatMsg < 0 ? "Ã¢Ë†Å¾" : P2.chatMsg;
+    const imgLbl   = P2.imgDay  < 0 ? "Ã¢Ë†Å¾" : P2.imgDay;
+    const songLbl  = P2.songDay < 0 ? "Ã¢Ë†Å¾" : P2.songDay;
     planFeatEl.innerHTML = `
       <div class="pp-feat-row"><i class="fas fa-comments"></i> Chat: <b>${chatLbl}/day</b></div>
       <div class="pp-feat-row"><i class="fas fa-palette"></i> Images: <b>${imgLbl}/day</b></div>
@@ -722,14 +722,14 @@ function openPlanModal() {
   const m = document.getElementById("planModal");
   if (!m) return;
   m.classList.add("open");
-  document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === userPlan));
+  document.querySelectorAll(".plan-card, .plan-card-v2").forEach(c => c.classList.toggle("selected", c.dataset.plan === userPlan));
 }
 function closePlanModal() {
   const m = document.getElementById("planModal");
   if (m) m.classList.remove("open");
 }
 function selectPlan(plan) {
-  document.querySelectorAll(".plan-card").forEach(c => c.classList.toggle("selected", c.dataset.plan === plan));
+  document.querySelectorAll(".plan-card, .plan-card-v2").forEach(c => c.classList.toggle("selected", c.dataset.plan === plan));
   const ps = document.getElementById("proSettingsInModal");
   if (ps) ps.style.display = (plan === "pro" || plan === "proplus" || plan === "max") ? "block" : "none";
 }
@@ -767,7 +767,7 @@ async function confirmPlan() {
     updateNavAvatar(currentUser);
     syncProfileSheet();
     closePlanModal();
-    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! ðŸŽ‰", "success");
+    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! Ã°Å¸Å½â€°", "success");
   } catch (err) {
     showToast(err.message || "Network error.", "error");
   } finally {
@@ -776,7 +776,7 @@ async function confirmPlan() {
 }
 
 // ====================== SETTINGS ======================
-// âœ… NEW
+// Ã¢Å“â€¦ NEW
 function openSettings() {
   if (userPlan === "free") { showToast("Settings available on Pro, Pro+ and Max plans", "error"); openPlanModal(); return; }
   const m = document.getElementById("settingsModal"); if (!m) return;
@@ -818,8 +818,8 @@ function showUpgradeModal() {
   const upgradeDesc  = document.querySelector("#upgradeModal .upgrade-plan-desc");
   const upgradeBtn   = document.querySelector("#upgradeModal .btn-upgrade-confirm");
   if (upgradeTitle) upgradeTitle.textContent = "Upgrade to " + NP.label;
-  if (upgradeDesc)  upgradeDesc.textContent  = (NP.chatMsg < 0 ? "Unlimited" : NP.chatMsg) + " chat msg/day Â· " + NP.price;
-  if (upgradeBtn)   upgradeBtn.textContent   = "ðŸ‘‘ Upgrade to " + NP.label;
+  if (upgradeDesc)  upgradeDesc.textContent  = (NP.chatMsg < 0 ? "Unlimited" : NP.chatMsg) + " chat msg/day Ã‚Â· " + NP.price;
+  if (upgradeBtn)   upgradeBtn.textContent   = "Ã°Å¸â€˜â€˜ Upgrade to " + NP.label;
   const desc = document.getElementById("upgradeModalDesc");
   if (desc) {
     if (userPlan === "free") desc.innerHTML = 'You\'ve used all requests on the <strong>Free plan</strong>. Upgrade to unlock more.';
@@ -881,7 +881,7 @@ function toggleForceKhmer(btn) {
   btn.style.background  = _forceKhmer ? "rgba(168,85,247,.25)" : "rgba(255,255,255,.08)";
   btn.style.color       = _forceKhmer ? "#a855f7" : "var(--text2)";
   btn.style.borderColor = _forceKhmer ? "#a855f7" : "var(--border)";
-  showToast(_forceKhmer ? "Force Khmer ON ðŸ‡°ðŸ‡­" : "Force Khmer OFF", "success");
+  showToast(_forceKhmer ? "Force Khmer ON Ã°Å¸â€¡Â°Ã°Å¸â€¡Â­" : "Force Khmer OFF", "success");
 }
 function exportChat() {
   const P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
@@ -910,7 +910,7 @@ async function _sendChat() {
   const text  = input.value.trim();
   if (!text && !_chatFileData) return;
 
-  const displayText = text || ("ðŸ“Ž " + (_chatFileName || "file"));
+  const displayText = text || ("Ã°Å¸â€œÅ½ " + (_chatFileName || "file"));
   appendMessage("user", displayText);
   input.value = ""; input.style.height = "auto";
   isChatLoading = true;
@@ -920,7 +920,7 @@ async function _sendChat() {
   // Build user parts
   const P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
   const khmerSuffix = (_forceKhmer && P.forceKhmer)
-    ? "\n\n[IMPORTANT: Reply ONLY in Khmer language (áž—áž¶ážŸáž¶ážáŸ’áž˜áŸ‚ážš). Do not use English.]" : "";
+    ? "\n\n[IMPORTANT: Reply ONLY in Khmer language (Ã¡Å¾â€”Ã¡Å¾Â¶Ã¡Å¾Å¸Ã¡Å¾Â¶Ã¡Å¾ÂÃ¡Å¸â€™Ã¡Å¾ËœÃ¡Å¸â€šÃ¡Å¾Å¡). Do not use English.]" : "";
   const userParts = [{ text: (text || " ") + khmerSuffix }];
   if (_chatFileData && _chatFileMime) {
     userParts.push({ inlineData: { mimeType: _chatFileMime, data: _chatFileData } });
@@ -956,7 +956,7 @@ async function _sendChat() {
   } catch (err) {
     clearChatFile();
     removeTyping(typingId);
-    appendMessage("bot", "âš  " + err.message);
+    appendMessage("bot", "Ã¢Å¡  " + err.message);
   }
   isChatLoading = false;
   if (sendBtn) sendBtn.disabled = false;
@@ -1012,7 +1012,7 @@ function formatMarkdown(text) {
 }
 
 // =================== IMAGE GENERATE ===================
-// â”€â”€ Reference Image Upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Reference Image Upload Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function openRefImgUpload() {
   if (userPlan !== "pro" && userPlan !== "proplus" && userPlan !== "max") {
     showUpgradeModal();
@@ -1065,7 +1065,7 @@ function renderRefImgPreviews() {
   pv.innerHTML = _refImgs.map((img, i) => `
     <div style="position:relative;display:inline-block;margin:4px;">
       <img src="${img.dataUrl}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--cyan,#06b6d4)" alt="ref ${i+1}"/>
-      <button onclick="removeRefImg(event,${i})" style="position:absolute;top:-6px;right:-6px;background:#ef4444;border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:11px;cursor:pointer;line-height:1;font-weight:700;">Ã—</button>
+      <button onclick="removeRefImg(event,${i})" style="position:absolute;top:-6px;right:-6px;background:#ef4444;border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:11px;cursor:pointer;line-height:1;font-weight:700;">Ãƒâ€”</button>
     </div>
   `).join('') + (((userPlan === 'proplus' || userPlan === 'max') && _refImgs.length < 4) || (userPlan === 'pro' && _refImgs.length < 2) ? `
     <div onclick="event.stopPropagation();openRefImgUpload();" style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border:2px dashed var(--border);border-radius:8px;cursor:pointer;vertical-align:top;margin:4px;color:var(--text2);font-size:22px;background:rgba(255,255,255,.04)">+</div>
@@ -1291,7 +1291,7 @@ function openFullscreen(src, ratio) {
 }
 
 // =================== SONG GENERATE ===================
-// â•â•â•â• Song Plan Badge â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Song Plan Badge Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 function initSongPlanBadge() {
   const badge = document.getElementById("song-plan-badge");
   const hint  = document.getElementById("song-duration-hint");
@@ -1306,15 +1306,15 @@ function initSongPlanBadge() {
   if (hint) {
     const hints = {
       free:    "~55s",
-      pro:     "~2:50â€“3:05",
-      proplus: "~3:00â€“3:25",
-      max:     "~4:25â€“5:25 (full song)"
+      pro:     "~2:50Ã¢â‚¬â€œ3:05",
+      proplus: "~3:00Ã¢â‚¬â€œ3:25",
+      max:     "~4:25Ã¢â‚¬â€œ5:25 (full song)"
     };
     hint.textContent = hints[userPlan] || "~55s";
   }
 }
 
-// â•â•â•â• Custom Genre Chip (pops up instrument/tempo/mood panel) â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Custom Genre Chip (pops up instrument/tempo/mood panel) Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 function selectChipCustom(btn) {
   const group = document.getElementById('songStyleGroup');
   const panel = document.getElementById('custom-style-panel');
@@ -1333,7 +1333,7 @@ function selectChipCustom(btn) {
     panel.style.removeProperty('transform');
     panel.style.display = 'block';
   } else {
-    // Deactivate â†’ hide panel + re-activate Pop
+    // Deactivate Ã¢â€ â€™ hide panel + re-activate Pop
     panel.style.display = 'none';
     const firstChip = group.querySelector('.chip:not(.chip-custom)');
     if (firstChip) firstChip.classList.add('active');
@@ -1372,7 +1372,7 @@ async function _generateSong() {
   const tempo       = isCustom ? (getActiveChip("songTempoGroup")      || "Auto") : "Auto";
   const mood        = isCustom ? (getActiveChip("songMoodGroup")       || "Auto") : "Auto";
 
-  // Build style: if Custom â†’ combine instrument+tempo+mood; else â†’ use genre chip value
+  // Build style: if Custom Ã¢â€ â€™ combine instrument+tempo+mood; else Ã¢â€ â€™ use genre chip value
   const style = isCustom
     ? [
         (instrumentArr.length === 1 && instrumentArr[0] === 'Auto') ? '' : instrumentArr.join(' + ') + ' instrument',
@@ -1418,7 +1418,7 @@ async function _generateSong() {
     const header = document.createElement("div"); header.className = "song-result-title";
     const isLyria = audioSource && audioSource.toLowerCase().includes("lyria");
     const sourceBadge = audioSource
-      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "ðŸŽµ Lyria" : "ðŸ”Š TTS"}</span>`
+      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "Ã°Å¸Å½Âµ Lyria" : "Ã°Å¸â€Å  TTS"}</span>`
       : "";
     header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} - ${escapeHtml(voiceHint)}</span>`;
     card.appendChild(header);
@@ -1433,7 +1433,7 @@ async function _generateSong() {
       audioEl.style.cssText = "width:100%;padding:10px 14px 0;accent-color:var(--green);";
       audioEl.src = audioBlobUrl;
 
-      // â”€â”€ Waveform beat effect â”€â”€
+      // Ã¢â€â‚¬Ã¢â€â‚¬ Waveform beat effect Ã¢â€â‚¬Ã¢â€â‚¬
       const waveWrap = document.createElement('div');
       waveWrap.style.cssText = 'display:flex;align-items:flex-end;gap:3px;height:32px;padding:6px 14px 4px;';
       for (let wb = 0; wb < 22; wb++) {
@@ -1514,7 +1514,7 @@ function getActiveChip(groupId) {
   }
   return el.textContent.trim();
 }
-// â•â•â•â• Multi-select Chip (for Instrument) â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Multi-select Chip (for Instrument) Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 const INSTRUMENT_MAX = 3; // max selectable instruments (excluding Auto)
 
 function toggleMultiChip(el, groupId) {
@@ -1522,7 +1522,7 @@ function toggleMultiChip(el, groupId) {
   const allMulti = document.querySelectorAll(`[data-multi="${el.dataset.multi}"]`);
 
   if (isAuto) {
-    // Auto â†’ clear all, activate only Auto
+    // Auto Ã¢â€ â€™ clear all, activate only Auto
     allMulti.forEach(c => c.classList.remove("active"));
     el.classList.add("active");
     return;
@@ -1541,7 +1541,7 @@ function toggleMultiChip(el, groupId) {
     const stillActive = Array.from(allMulti).filter(c =>
       c.classList.contains("active") && !c.textContent.trim().startsWith("Auto")
     );
-    // If nothing left â†’ fall back to Auto
+    // If nothing left Ã¢â€ â€™ fall back to Auto
     if (!stillActive.length) {
       allMulti.forEach(c => { if (c.textContent.trim().startsWith("Auto")) c.classList.add("active"); });
     }
@@ -1581,7 +1581,7 @@ function selectChip(el, groupId) {
   }
   document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove("active"));
   el.classList.add("active");
-  // If selecting a non-custom, non-other genre chip â†’ clear Other value + hide custom panel
+  // If selecting a non-custom, non-other genre chip Ã¢â€ â€™ clear Other value + hide custom panel
   if (groupId === 'songStyleGroup' && !el.classList.contains('chip-custom') && !el.classList.contains('chip-other')) {
     _otherStyleValue = null;
     const panel = document.getElementById('custom-style-panel');
@@ -1613,7 +1613,7 @@ function showToast(msg, type = "info") {
 }
 
 
-// â•â•â•â• Khmer Music Rhythm Dataset v1 - JeeThy Labs â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Khmer Music Rhythm Dataset v1 - JeeThy Labs Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 // ============================================================
 // KHMER RHYTHM DATASET - Rich Lyria-optimized prompts v2.0
 // Each entry contains: label, bpm range, full Lyria prompt
@@ -1623,7 +1623,7 @@ function showToast(msg, type = "info") {
 const KHMER_RHYTHM_DB = {
 
   romvong: {
-    label: 'ážšáž¶áŸ†ážœáž„áŸ‹ (Romvong)',
+    label: 'Ã¡Å¾Å¡Ã¡Å¾Â¶Ã¡Å¸â€ Ã¡Å¾Å“Ã¡Å¾â€žÃ¡Å¸â€¹ (Romvong)',
     bpm: [90, 110],
     desc: 'Khmer Romvong - traditional Cambodian circular dance music with warm, friendly, wedding/party feel. '
         + 'Tempo: 90-110 BPM, 4/4 time signature, medium energy. '
@@ -1642,7 +1642,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   saravan: {
-    label: 'ážŸáž¶ážšáŸ‰áž¶ážœáŸ‰áž¶áž“áŸ‹ (Saravan)',
+    label: 'Ã¡Å¾Å¸Ã¡Å¾Â¶Ã¡Å¾Å¡Ã¡Å¸â€°Ã¡Å¾Â¶Ã¡Å¾Å“Ã¡Å¸â€°Ã¡Å¾Â¶Ã¡Å¾â€œÃ¡Å¸â€¹ (Saravan)',
     bpm: [95, 115],
     desc: 'Khmer Saravan - bouncy festive village dance music with playful, lively feel. '
         + 'Tempo: 95-115 BPM, 4/4 time signature, medium-high energy. '
@@ -1660,7 +1660,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   kantreum: {
-    label: 'áž€áž“áŸ’áž‘áŸ’ážšáž¹áž˜ (Kantreum)',
+    label: 'Ã¡Å¾â‚¬Ã¡Å¾â€œÃ¡Å¸â€™Ã¡Å¾â€˜Ã¡Å¸â€™Ã¡Å¾Å¡Ã¡Å¾Â¹Ã¡Å¾Ëœ (Kantreum)',
     bpm: [110, 135],
     desc: 'Khmer Kantreum - fast energetic folk dance music, powerful and festive. '
         + 'Tempo: 110-135 BPM, 4/4 time signature, high energy. '
@@ -1679,7 +1679,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   madison: {
-    label: 'áž˜áŸ‰áž¶ážŒáž¸ážŸáž»áž“ (Madison)',
+    label: 'Ã¡Å¾ËœÃ¡Å¸â€°Ã¡Å¾Â¶Ã¡Å¾Å’Ã¡Å¾Â¸Ã¡Å¾Å¸Ã¡Å¾Â»Ã¡Å¾â€œ (Madison)',
     bpm: [100, 120],
     desc: 'Khmer Madison - structured Cambodian line dance with retro party feel, clean and danceable. '
         + 'Tempo: 100-120 BPM, 4/4 time signature, medium-high energy. '
@@ -1697,7 +1697,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   romkbach: {
-    label: 'ážšáž¶áŸ†áž€áŸ’áž”áž¶áž…áŸ‹ (Romkbach)',
+    label: 'Ã¡Å¾Å¡Ã¡Å¾Â¶Ã¡Å¸â€ Ã¡Å¾â‚¬Ã¡Å¸â€™Ã¡Å¾â€Ã¡Å¾Â¶Ã¡Å¾â€¦Ã¡Å¸â€¹ (Romkbach)',
     bpm: [75, 95],
     desc: 'Khmer Romkbach - elegant graceful traditional Cambodian slow dance, refined and dignified. '
         + 'Tempo: 75-95 BPM, 4/4 time signature, low-medium energy. '
@@ -1715,7 +1715,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   slow: {
-    label: 'áž…áž„áŸ’ážœáž¶áž€áŸ‹áž™ážºáž (Slow Ballad)',
+    label: 'Ã¡Å¾â€¦Ã¡Å¾â€žÃ¡Å¸â€™Ã¡Å¾Å“Ã¡Å¾Â¶Ã¡Å¾â‚¬Ã¡Å¸â€¹Ã¡Å¾â„¢Ã¡Å¾ÂºÃ¡Å¾Â (Slow Ballad)',
     bpm: [60, 80],
     desc: 'Khmer Slow Ballad - deeply romantic emotional Cambodian ballad with nostalgic, heartfelt feel. '
         + 'Tempo: 60-80 BPM, 4/4 time signature, low energy, cinematic and intimate. '
@@ -1734,7 +1734,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   taloong: {
-    label: 'ážáž¶áž¡áž¼áž„ (Taloong)',
+    label: 'Ã¡Å¾ÂÃ¡Å¾Â¶Ã¡Å¾Â¡Ã¡Å¾Â¼Ã¡Å¾â€ž (Taloong)',
     bpm: [125, 145],
     desc: 'Khmer Taloong - fastest and most driving traditional Cambodian dance rhythm, urgent and exhilarating. '
         + 'Tempo: 125-145 BPM, 4/4 time signature, very high energy. '
@@ -1752,7 +1752,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   cha_cha_cha: {
-    label: 'áž†áž¶ áž†áž¶ áž†áž¶ (Cha Cha)',
+    label: 'Ã¡Å¾â€ Ã¡Å¾Â¶ Ã¡Å¾â€ Ã¡Å¾Â¶ Ã¡Å¾â€ Ã¡Å¾Â¶ (Cha Cha)',
     bpm: [110, 130],
     desc: 'Khmer Cha Cha - Latin-influenced Cambodian dance rhythm with Khmer melodic identity, playful and seductive. '
         + 'Tempo: 110-130 BPM, 4/4 time signature, medium-high energy. '
@@ -1771,7 +1771,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   chapey: {
-    label: 'áž…áž¶áž”áŸ‰áž¸ (Chapey Dang Veng)',
+    label: 'Ã¡Å¾â€¦Ã¡Å¾Â¶Ã¡Å¾â€Ã¡Å¸â€°Ã¡Å¾Â¸ (Chapey Dang Veng)',
     bpm: [70, 95],
     desc: 'Chapey Dang Veng - ancient Cambodian long-neck lute storytelling tradition, UNESCO Intangible Cultural Heritage. '
         + 'Tempo: 70-95 BPM with rubato feel - tempo breathes naturally with the story. '
@@ -1789,7 +1789,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   lbokkatob: {
-    label: 'áž›áŸáž”áž€ážáž” (Lbok Katob / Ayai)',
+    label: 'Ã¡Å¾â€ºÃ¡Å¸ÂÃ¡Å¾â€Ã¡Å¾â‚¬Ã¡Å¾ÂÃ¡Å¾â€ (Lbok Katob / Ayai)',
     bpm: [80, 100],
     desc: 'Lbok Katob - traditional Cambodian improvised call-and-response folk singing style, witty and playful. '
         + 'Tempo: 80-100 BPM, 4/4, moderate and conversational energy. '
