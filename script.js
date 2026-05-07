@@ -736,7 +736,7 @@ function selectPlan(plan) {
 
 // ================ confirmPlan (FIXED) ================
 async function confirmPlan() {
-  const selected = document.querySelector(".plan-card.selected");
+  const selected = document.querySelector(".plan-card.selected, .plan-card-v2.selected");
   if (!selected) { showToast("Please select a plan first", "error"); return; }
   const plan = selected.dataset.plan;
   if (!currentUser) { closePlanModal(); openAuthModal(null); return; }
