@@ -114,6 +114,8 @@ function initPlanFeatures() {
       // Remove any injected badge when unlocked
       const badge = chip.querySelector(".pro-badge");
       if (badge) badge.remove();
+      // Re-attach click handler since we removed onclick attribute
+      if (!chip._ratioHandler) { chip._ratioHandler = function(){ selectChip(this,"imgRatioGroup"); }; chip.addEventListener("click", chip._ratioHandler); }
     }
   });
 
@@ -126,10 +128,9 @@ function initPlanFeatures() {
       chip.classList.add("pro-locked");
     } else {
       chip.classList.remove("pro-locked");
+      if (!chip._qtyHandler) { chip._qtyHandler = function(){ selectChip(this,"imgQtyGroup"); }; chip.addEventListener("click", chip._qtyHandler); }
     }
   });
-
-
 
   // ── IMAGE: quality - 3 levels: Standard(720/free), HD-1280(pro), 2K-2048(pro+/max)
   const qualChips = document.querySelectorAll("#imgQualityGroup .chip");
@@ -176,6 +177,7 @@ function initPlanFeatures() {
       chip.classList.remove("pro-locked");
       const badge = chip.querySelector(".pro-badge");
       if (badge) badge.remove();
+      if (!chip._voiceHandler) { chip._voiceHandler = function(){ selectChip(this,"songVoiceGroup"); }; chip.addEventListener("click", chip._voiceHandler); }
     }
   });
 
@@ -205,6 +207,22 @@ let authToken     = null;
 
 // ======================== INIT ========================
 document.addEventListener("DOMContentLoaded", async () => {
+  // ── Delegated chip group click handlers ──
+  // Handles chips even after removeAttribute("onclick") by initPlanFeatures
+  const CHIP_GROUPS = [
+    { id: "imgRatioGroup",  groupId: "imgRatioGroup"  },
+    { id: "imgQtyGroup",    groupId: "imgQtyGroup"    },
+    { id: "songVoiceGroup", groupId: "songVoiceGroup" },
+  ];
+  CHIP_GROUPS.forEach(({ id, groupId }) => {
+    const group = document.getElementById(id);
+    if (!group) return;
+    group.addEventListener("click", function(e) {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      selectChip(chip, groupId);
+    });
+  });
   setWelcomeTime();
   initSwipe();
   renderPlanBadge();
@@ -1049,8 +1067,8 @@ function renderRefImgPreviews() {
       <img src="${img.dataUrl}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--cyan,#06b6d4)" alt="ref ${i+1}"/>
       <button onclick="removeRefImg(event,${i})" style="position:absolute;top:-6px;right:-6px;background:#ef4444;border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:11px;cursor:pointer;line-height:1;font-weight:700;">×</button>
     </div>
-  `).join('') + (((userPlan === 'proplus' || userPlan === 'max') && _refImgs.length < 4) || (userPlan === 'pro' && _refImgs.length < 1) ? `
-    <div onclick="openRefImgUpload()" style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border:2px dashed var(--border);border-radius:8px;cursor:pointer;vertical-align:top;margin:4px;color:var(--text2);font-size:22px;">+</div>
+  `).join('') + (((userPlan === 'proplus' || userPlan === 'max') && _refImgs.length < 4) || (userPlan === 'pro' && _refImgs.length < 2) ? `
+    <div onclick="event.stopPropagation();openRefImgUpload();" style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border:2px dashed var(--border);border-radius:8px;cursor:pointer;vertical-align:top;margin:4px;color:var(--text2);font-size:22px;background:rgba(255,255,255,.04)">+</div>
   ` : '');
 }
 
