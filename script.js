@@ -641,7 +641,12 @@ document.addEventListener("click", e => {
 });
 
 // =================== PROFILE SHEET ===================
-function openProfileSheet()  { syncProfileSheet(); document.getElementById("ppOverlay").classList.add("open"); }
+function openProfileSheet() {
+  if (!currentUser) { showToast("Please sign in first.", "error"); return; }
+  syncProfileSheet();
+  const ov = document.getElementById("ppOverlay");
+  if (ov) ov.classList.add("open");
+}
 function closeProfileSheet() { document.getElementById("ppOverlay").classList.remove("open"); }
 function closePPif(e)        { if (e.target === document.getElementById("ppOverlay")) closeProfileSheet(); }
 
@@ -778,6 +783,7 @@ async function confirmPlan() {
 // ====================== SETTINGS ======================
 // Ã¢Å“â€¦ NEW
 function openSettings() {
+  if (!currentUser) { showToast("Please sign in first.", "error"); return; }  // ← បន្ថែម
   if (userPlan === "free") { showToast("Settings available on Pro, Pro+ and Max plans", "error"); openPlanModal(); return; }
   const m = document.getElementById("settingsModal"); if (!m) return;
   m.classList.add("open");
