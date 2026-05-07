@@ -781,7 +781,7 @@ function openSettings() {
   if (userPlan === "free") { showToast("Settings available on Pro, Pro+ and Max plans", "error"); openPlanModal(); return; }
   const m = document.getElementById("settingsModal"); if (!m) return;
   m.classList.add("open");
-  document.getElementById("customKeyInput").value    = proCustomKey;
+  const _ki = document.getElementById("customKeyInput"); if (_ki) _ki.value = proCustomKey;
   _ownKeyOn = useOwnKey;
   updateSettingsUI();
 }
@@ -1501,8 +1501,12 @@ async function _generateSong() {
         </button>
       </div>`;
   }
-  btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
+    } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
+  }
 }
+
+// ===================== UTILITIES =====================
 
 // ===================== UTILITIES =====================
 function getActiveChip(groupId) {
