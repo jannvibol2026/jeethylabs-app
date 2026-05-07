@@ -116,12 +116,12 @@ function _bindLyricsFileUpload() {
 /*  " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " 
    generateSong -  entry point from Generate Song button
  " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " "  */
-function generateSong() {
+function _generateSongSP() {
   if (!window.currentUser) {
     if (typeof openAuthModal === "function") openAuthModal("song");
     return;
   }
-  _generateSong();
+  _generateSongSP(); 
 }
 
 /*  " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " " 
