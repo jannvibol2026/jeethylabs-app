@@ -1189,9 +1189,10 @@ async function _generateImage() {
         <br/><button onclick="_generateImage()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--accent,#7c3aed);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Try Again
         </button>
-      </div>`;
+  </div>`;
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Image';
   }
-  btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Image';
 }
 
 // Render image onto canvas using cover-fill (zoom to fill ratio exactly).
@@ -1500,12 +1501,13 @@ async function _generateSong() {
         <br/><button onclick="_generateSong()" style="margin-top:10px;padding:6px 16px;border-radius:20px;border:none;background:var(--green,#10b981);color:#fff;font-size:12px;cursor:pointer;font-weight:600;">
           <i class="fas fa-rotate-right"></i> Try Again
         </button>
-      </div>`;
-  }
-    } finally {
+    </div>`;
+  } finally {
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Song';
   }
 }
+
+// ===================== UTILITIES =====================
 
 // ===================== UTILITIES =====================
 
