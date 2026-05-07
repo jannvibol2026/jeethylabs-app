@@ -15,10 +15,12 @@
 .song-plan-badge {
   font-size: 11px;
   font-weight: 700;
-  color: #fff;
   padding: 2px 10px;
   border-radius: 99px;
   letter-spacing: .3px;
+  border: 1px solid transparent;
+  background: rgba(168,85,247,.12);
+  display: inline-block;
 }
 
 .song-duration-hint {
@@ -104,143 +106,3 @@
 
 .pro-text { color: #7c3aed; }
 .max-text { color: #d97706; }
-
-/* Song result card */
-.song-result-card {
-  background: rgba(255, 255, 255, .04);
-  border: 1px solid rgba(255, 255, 255, .07);
-  border-radius: 14px;
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-
-.song-result-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding: 12px 14px 10px;
-  color: #f3f4f6;
-  font-size: 14px;
-  font-weight: 600;
-  border-bottom: 1px solid rgba(255, 255, 255, .06);
-}
-
-/* Lyrics display wrapper */
-.lyrics-display-wrap {
-  background: rgba(255, 255, 255, .03);
-  margin: 0 12px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, .07);
-  overflow: hidden;
-}
-
-/* Lyrics read mode */
-.sp-lyrics-pre {
-  padding: 14px 16px;
-  font-size: 13px;
-  color: #d1d5db;
-  white-space: pre-wrap;
-  line-height: 1.9;
-  font-family: inherit;
-  margin: 0;
-  overflow-y: auto;
-  max-height: 320px;
-}
-
-/* Lyrics edit mode */
-.sp-lyrics-editor {
-  width: 100%;
-  padding: 14px 16px;
-  font-size: 13px;
-  color: #d1d5db;
-  background: rgba(255, 255, 255, .05);
-  border: none;
-  outline: none;
-  line-height: 1.9;
-  font-family: inherit;
-  resize: vertical;
-  min-height: 220px;
-  box-sizing: border-box;
-}
-
-/* Edit / Done button */
-.sp-lyrics-edit-btn {
-  transition: all .2s;
-}
-
-.sp-lyrics-edit-btn:hover {
-  background: rgba(255, 255, 255, .1) !important;
-}
-
-/* Upgrade modal */
-.upgrade-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, .75);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.upgrade-modal-box {
-  background: #111827;
-  border-radius: 18px;
-  padding: 30px 24px;
-  max-width: 320px;
-  width: 90%;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
-}
-
-.upgrade-modal-title {
-  color: #f3f4f6;
-  font-size: 17px;
-  margin-bottom: 8px;
-}
-
-.upgrade-modal-msg {
-  color: #9ca3af;
-  font-size: 13px;
-  margin-bottom: 20px;
-  line-height: 1.6;
-}
-
-/* Tablet */
-@media (min-width: 768px) {
-  #custom-lyrics-textarea {
-    min-height: 180px;
-    font-size: 14px;
-  }
-  .sp-lyrics-pre {
-    max-height: 400px;
-    font-size: 14px;
-  }
-  .sp-lyrics-editor {
-    min-height: 280px;
-    font-size: 14px;
-  }
-  .song-result-card {
-    border-radius: 16px;
-  }
-}
-
-/* Desktop */
-@media (min-width: 1024px) {
-  #custom-lyrics-textarea {
-    min-height: 220px;
-    font-size: 14px;
-  }
-  .sp-lyrics-pre {
-    max-height: 480px;
-    font-size: 14px;
-  }
-  .sp-lyrics-editor {
-    min-height: 340px;
-    font-size: 14px;
-  }
-  .lyrics-display-wrap {
-    margin: 0 16px 16px;
-  }
-}
