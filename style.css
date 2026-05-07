@@ -727,17 +727,26 @@ audio{
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    PLAN MODAL v2 â€” vertical cards, readable on mobile
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* LINE 730-740 — ជំនួស block .modal-plan-new & .modal-plan-body */
+
 .modal-plan-new {
   max-width: 520px;
   width: calc(100vw - 24px);
+  overflow: hidden;           /* ← បន្ថែម */
+  display: flex;              /* ← បន្ថែម */
+  flex-direction: column;     /* ← បន្ថែម */
+  max-height: 92vh;           /* ← បន្ថែម */
 }
 .modal-plan-body {
   display: flex;
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
-  max-height: 74vh;
-  padding-bottom: 8px;
+  overflow-x: hidden;         /* ← បន្ថែម */
+  flex: 1;                    /* ← បន្ថែម */
+  min-height: 0;              /* ← បន្ថែម */
+  max-height: 62vh;           /* ← ប្តូរ ពី 74vh */
+  padding: 0 16px 8px;        /* ← ប្តូរ */
 }
 
 /* â”€â”€ Card â”€â”€ */
