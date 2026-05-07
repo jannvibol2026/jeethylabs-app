@@ -100,26 +100,30 @@ function initPlanFeatures() {
   // ── IMAGE: aspect ratio - lock 9:16 and 16:9 for free
   const ratioChips = document.querySelectorAll("#imgRatioGroup .chip");
   ratioChips.forEach(chip => {
+    chip.removeAttribute("onclick");
     const val = chip.firstChild?.textContent?.trim() || chip.textContent.trim().replace(/PRO.*$/,'').trim();
     if (P.aspectRatios[0] === "1:1" && P.aspectRatios.length === 1 && val !== "1:1") {
       chip.classList.add("pro-locked");
-      chip.onclick = () => { showUpgradeModal(); showToast("Portrait/Landscape ratios require Pro plan", "error"); };
-      if (!chip.querySelector(".pro-badge")) {
+      const existing = chip.querySelector(".pro-badge");
+      if (!existing) {
         const b = document.createElement("span"); b.className = "pro-badge"; b.textContent = "PRO";
         chip.appendChild(b);
       }
     } else {
       chip.classList.remove("pro-locked");
+      // Remove any injected badge when unlocked
+      const badge = chip.querySelector(".pro-badge");
+      if (badge) badge.remove();
     }
   });
 
-  // ── IMAGE: batch qty - lock 4 for free
+  // ── IMAGE: batch qty - lock based on plan
   const qtyChips = document.querySelectorAll("#imgQtyGroup .chip");
   qtyChips.forEach(chip => {
+    chip.removeAttribute("onclick");
     const val = parseInt(chip.firstChild?.textContent?.trim() || chip.textContent.trim());
     if (val > P.batchGenerate) {
       chip.classList.add("pro-locked");
-      chip.onclick = () => { showUpgradeModal(); showToast("Batch " + val + " requires Pro+ plan", "error"); };
     } else {
       chip.classList.remove("pro-locked");
     }
@@ -130,6 +134,7 @@ function initPlanFeatures() {
   // ── IMAGE: quality - 3 levels: Standard(720/free), HD-1280(pro), 2K-2048(pro+/max)
   const qualChips = document.querySelectorAll("#imgQualityGroup .chip");
   qualChips.forEach(chip => {
+    chip.removeAttribute("onclick");
     const q = parseInt(chip.dataset.quality || "720");
     if (q <= 720) {
       chip.classList.remove("pro-locked");
@@ -157,17 +162,20 @@ function initPlanFeatures() {
   // ── SONG: choir/duet lock
   const voiceChips = document.querySelectorAll("#songVoiceGroup .chip");
   voiceChips.forEach(chip => {
+    chip.removeAttribute("onclick");
     const val = (chip.dataset.voice || chip.firstChild?.textContent?.replace(/[^a-zA-Z]/g,"").trim() || chip.textContent.replace(/[^a-zA-Z]/g,"").trim()).toLowerCase();
     const allowed = P.vocalStyles.map(v => v.toLowerCase());
     if (!allowed.includes(val)) {
       chip.classList.add("pro-locked");
-      chip.onclick = () => { showUpgradeModal(); showToast("Duet/Choir vocal style requires Pro+ plan", "error"); };
       if (!chip.querySelector(".pro-badge")) {
         const b = document.createElement("span"); b.className = "pro-badge"; b.textContent = "PRO+";
+        b.style.cssText = "background:linear-gradient(90deg,#a855f7,#7c3aed);font-size:9px";
         chip.appendChild(b);
       }
     } else {
       chip.classList.remove("pro-locked");
+      const badge = chip.querySelector(".pro-badge");
+      if (badge) badge.remove();
     }
   });
 
@@ -784,7 +792,25 @@ function saveSettings() {
 }
 
 // =================== UPGRADE MODAL ===================
-function showUpgradeModal()  { const m = document.getElementById("upgradeModal"); if (m) m.classList.add("open"); }
+function showUpgradeModal() {
+  // Update modal content to suggest appropriate next plan
+  const nextPlan = (userPlan === "free") ? "pro" : (userPlan === "pro") ? "proplus" : "proplus";
+  const NP = PLAN_LIMITS[nextPlan] || PLAN_LIMITS.pro;
+  const upgradeTitle = document.querySelector("#upgradeModal .upgrade-plan-name");
+  const upgradeDesc  = document.querySelector("#upgradeModal .upgrade-plan-desc");
+  const upgradeBtn   = document.querySelector("#upgradeModal .btn-upgrade-confirm");
+  if (upgradeTitle) upgradeTitle.textContent = "Upgrade to " + NP.label;
+  if (upgradeDesc)  upgradeDesc.textContent  = (NP.chatMsg < 0 ? "Unlimited" : NP.chatMsg) + " chat msg/day · " + NP.price;
+  if (upgradeBtn)   upgradeBtn.textContent   = "👑 Upgrade to " + NP.label;
+  const desc = document.getElementById("upgradeModalDesc");
+  if (desc) {
+    if (userPlan === "free") desc.innerHTML = 'You\'ve used all requests on the <strong>Free plan</strong>. Upgrade to unlock more.';
+    else if (userPlan === "pro") desc.innerHTML = 'This feature requires <strong>Pro+ plan</strong>. Upgrade to unlock.';
+    else desc.innerHTML = 'Upgrade your plan to unlock this feature.';
+  }
+  const m = document.getElementById("upgradeModal");
+  if (m) m.classList.add("open");
+}
 function closeUpgradeModal() { const m = document.getElementById("upgradeModal"); if (m) m.classList.remove("open"); }
 function upgradeNow()        { closeUpgradeModal(); if (userPlan === "free") openPlanModal(); }
 function requirePro(btn, groupId) {
@@ -1522,6 +1548,18 @@ function getMultiChips(multiKey) {
 }
 
 function selectChip(el, groupId) {
+  // If chip is pro-locked, trigger upgrade modal instead of selecting
+  if (el.classList.contains("pro-locked")) {
+    const badge = el.querySelector(".pro-badge");
+    const badgeTxt = badge ? badge.textContent.trim() : "PRO";
+    if (badgeTxt === "PRO+") {
+      showToast("This feature requires Pro+ plan", "error");
+    } else {
+      showToast("This feature requires Pro plan", "error");
+    }
+    showUpgradeModal();
+    return;
+  }
   document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove("active"));
   el.classList.add("active");
   // If selecting a non-custom, non-other genre chip → clear Other value + hide custom panel
