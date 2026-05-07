@@ -26,7 +26,7 @@ const PLAN_CONFIG = {
   free: {
     durationHint:    'under 1 minute (target: ~55 seconds). CRITICAL: must end before 60 seconds.',
     durationSeconds: 55,
-    structureHint:   'Short Instrumental Intro (8s) -> Verse (20s) -> Chorus (18s) -> Short Outro (9s) — total: ~55s',
+    structureHint:   'Short Instrumental Intro (8s) -> Verse (20s) -> Chorus (18s) -> Short Outro (9s) â€” total: ~55s',
     customLyrics:    false,
     chatMsgDay:      20,
     imgDay:          5,
@@ -37,7 +37,7 @@ const PLAN_CONFIG = {
   pro: {
     durationHint:    'between 2 minutes 50 seconds and 3 minutes 05 seconds (target: 3 minutes). CRITICAL: must be at least 2:50.',
     durationSeconds: 180,
-    structureHint:   'Instrumental Intro (20s) -> Verse 1 (30s) -> Pre-Chorus (10s) -> Chorus (25s) -> Break (20s) -> Verse 2 (25s) -> Chorus (25s) -> Final Chorus (20s) -> Outro (15s) — total: ~2:50-3:05',
+    structureHint:   'Instrumental Intro (20s) -> Verse 1 (30s) -> Pre-Chorus (10s) -> Chorus (25s) -> Break (20s) -> Verse 2 (25s) -> Chorus (25s) -> Final Chorus (20s) -> Outro (15s) â€” total: ~2:50-3:05',
     customLyrics:    true,
     chatMsgDay:      100,
     imgDay:          25,
@@ -48,7 +48,7 @@ const PLAN_CONFIG = {
   proplus: {
     durationHint:    'between 3 minutes and 3 minutes 25 seconds (target: 3:15). CRITICAL: must be at least 3:00.',
     durationSeconds: 200,
-    structureHint:   'Extended Intro (25s) -> Verse 1 (30s) -> Pre-Chorus (12s) -> Chorus (25s) -> Break (22s) -> Verse 2 (28s) -> Pre-Chorus (12s) -> Chorus (25s) -> Bridge (15s) -> Final Chorus (25s) -> Outro (25s) — total: ~3:00-3:25',
+    structureHint:   'Extended Intro (25s) -> Verse 1 (30s) -> Pre-Chorus (12s) -> Chorus (25s) -> Break (22s) -> Verse 2 (28s) -> Pre-Chorus (12s) -> Chorus (25s) -> Bridge (15s) -> Final Chorus (25s) -> Outro (25s) â€” total: ~3:00-3:25',
     customLyrics:    true,
     chatMsgDay:      -1,
     imgDay:          150,
@@ -59,7 +59,7 @@ const PLAN_CONFIG = {
   max: {
     durationHint:    'between 4 minutes 25 seconds and 5 minutes 25 seconds (target: ~5 min full song). CRITICAL: must be at least 4:00.',
     durationSeconds: 300,
-    structureHint:   'Extended Intro (35s) -> Verse 1 (35s) -> Pre-Chorus (15s) -> Chorus (30s) -> Break (30s) -> Verse 2 (30s) -> Pre-Chorus (15s) -> Chorus (30s) -> Bridge (20s) -> Solo (25s) -> Final Chorus (30s) -> Extended Outro (40s) — total: ~4:25-5:25',
+    structureHint:   'Extended Intro (35s) -> Verse 1 (35s) -> Pre-Chorus (15s) -> Chorus (30s) -> Break (30s) -> Verse 2 (30s) -> Pre-Chorus (15s) -> Chorus (30s) -> Bridge (20s) -> Solo (25s) -> Final Chorus (30s) -> Extended Outro (40s) â€” total: ~4:25-5:25',
     customLyrics:    true,
     chatMsgDay:      -1,
     imgDay:          -1,
@@ -512,17 +512,37 @@ app.post('/api/chat', async (req, res) => {
   try {
     const key     = geminiKey();
     const history = req.body.history || req.body.contents || [];
+    const model   = req.body.model   || 'gemini-2.5-flash';
     const system  = req.body.system  || 'You are JeeThy Assistant, a helpful AI by JeeThy Labs.\nAnswer in the same language the user uses.\nBe concise and clear.';
-    const r = await fetch(`${GEMINI}/gemini-2.5-flash:generateContent?key=${key}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: system }] },
-        contents: history,
-      }),
-    });
-    const d = await r.json();
-    if (!r.ok) return res.status(r.status).json({ error: d.error?.message || 'Gemini error' });
-    res.json({ reply: d.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.' });
+
+    // Try requested model first, fallback to flash if overloaded
+    const CHAT_MODELS = [model, 'gemini-2.5-flash', 'gemini-2.0-flash'];
+    const tried = new Set();
+    let lastErr;
+    for (const m of CHAT_MODELS) {
+      if (tried.has(m)) continue;
+      tried.add(m);
+      try {
+        const r = await fetch(`${GEMINI}/${m}:generateContent?key=${key}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: system }] },
+            contents: history,
+          }),
+        });
+        const d = await r.json();
+        if (!r.ok) {
+          const isOverload = /overload|high demand|503|429|quota/i.test(d.error?.message || '');
+          if (isOverload && m !== CHAT_MODELS[CHAT_MODELS.length-1]) {
+            lastErr = d.error?.message;
+            continue; // try next model
+          }
+          return res.status(r.status).json({ error: d.error?.message || 'Gemini error' });
+        }
+        return res.json({ reply: d.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.', model: m });
+      } catch (e) { lastErr = e.message; }
+    }
+    res.status(503).json({ error: lastErr || 'All chat models unavailable. Please try again.' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -571,8 +591,8 @@ function cleanLyricsText(raw) {
 app.post('/api/image', async (req, res) => {
   try {
     const key = geminiKey();
-    // ✅ Replace with
-    const { prompt, style='', aspectRatio='1:1', referenceImageBase64, referenceImageMime, extraRefImages=[] } = req.body;
+    // âœ… Replace with
+    const { prompt, style='', aspectRatio='1:1', quality=720, referenceImageBase64, referenceImageMime, extraRefImages=[] } = req.body;
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
     // Map and validate aspect ratio
@@ -601,7 +621,12 @@ app.post('/api/image', async (req, res) => {
           // Imagen models support native aspectRatio param; flash models use prompt hint only
         
         const genConfig = { responseModalities: ['IMAGE', 'TEXT'] };
-          // ✅ ក្រោយ (ត្រឹមត្រូវ — Imagen only):
+          // Apply output image size based on selected quality
+          const sampleSize = quality >= 2048 ? 2048 : quality >= 1280 ? 1024 : 512;
+          if (/imagen/i.test(model)) {
+            genConfig.outputOptions = { mimeType: 'image/jpeg', compressionQuality: quality >= 1280 ? 95 : 85 };
+          }
+          // âœ… áž€áŸ’ážšáŸ„áž™ (ážáŸ’ážšáž¹áž˜ážáŸ’ážšáž¼ážœ â€” Imagen only):
          if (/imagen/i.test(model)) genConfig.aspectRatio = mappedRatio;
 
           const r = await fetch(`${GEMINI}/${model}:generateContent?key=${key}`, {
@@ -679,7 +704,7 @@ app.get('/api/song/plan-info', auth, async (req, res) => {
 });
 
 
-// ════ Khmer Instrument Prompt Builder for Lyria ════
+// â•â•â•â• Khmer Instrument Prompt Builder for Lyria â•â•â•â•
 const KHMER_INSTRUMENT_DESCRIPTIONS = {
   'khloy':        'Khloy (Cambodian bamboo vertical flute): breathy airy melodic flute with gentle vibrato and warm mid-range pitch of Southeast Asian bamboo flutes.',
   'roneat ek':    'Roneat Ek (Cambodian bamboo xylophone): bright crisp resonant xylophone tones with fast melodic runs and percussive mallet strike of Khmer classical music.',
@@ -720,7 +745,7 @@ function buildInstrumentPrompt(instrument) {
 }
 
 
-/* ── WAV audio concatenation for MAX plan dual-segment songs ── */
+/* â”€â”€ WAV audio concatenation for MAX plan dual-segment songs â”€â”€ */
 function concatWavBuffers(buf1, buf2, maxSeconds) {
   try {
     const b1 = Buffer.from(buf1, 'base64');
@@ -730,7 +755,7 @@ function concatWavBuffers(buf1, buf2, maxSeconds) {
     const pcm2   = b2.length > 44 ? b2.slice(44) : b2;
     let   pcmAll = Buffer.concat([pcm1, pcm2]);
 
-    /* ── Trim to maxSeconds if provided ── */
+    /* â”€â”€ Trim to maxSeconds if provided â”€â”€ */
     if (maxSeconds && maxSeconds > 0) {
       // Read sample rate + bit depth + channels from WAV header
       const sampleRate  = hdr.readUInt32LE(24); // bytes 24-27
@@ -763,7 +788,7 @@ function trimAudioBuffer(buf64, maxSeconds, mimeType) {
     const buf  = Buffer.from(buf64, 'base64');
     const mime = (mimeType || '').toLowerCase();
 
-    /* ── WAV format: has "RIFF" magic at bytes 0-3 ── */
+    /* â”€â”€ WAV format: has "RIFF" magic at bytes 0-3 â”€â”€ */
     if (buf.length > 44 && buf.slice(0,4).toString('ascii') === 'RIFF') {
       const hdr         = buf.slice(0, 44);
       let   pcm         = buf.slice(44);
@@ -773,7 +798,7 @@ function trimAudioBuffer(buf64, maxSeconds, mimeType) {
       const bytesPerSec = sampleRate * numChannels * (bitsPerSamp / 8);
       const maxBytes    = Math.floor(bytesPerSec * maxSeconds);
       if (pcm.length > maxBytes) {
-        console.log('[trimAudio/WAV] ' + (pcm.length/bytesPerSec).toFixed(1) + 's → ' + maxSeconds + 's');
+        console.log('[trimAudio/WAV] ' + (pcm.length/bytesPerSec).toFixed(1) + 's â†’ ' + maxSeconds + 's');
         pcm = pcm.slice(0, maxBytes);
         const out = Buffer.concat([hdr, pcm]);
         out.writeUInt32LE(pcm.length,      40);
@@ -783,7 +808,7 @@ function trimAudioBuffer(buf64, maxSeconds, mimeType) {
       return buf64;
     }
 
-    /* ── Raw L16 PCM (Lyria default): no header ── */
+    /* â”€â”€ Raw L16 PCM (Lyria default): no header â”€â”€ */
     /* Extract sample rate from mimeType e.g. "audio/l16;rate=24000" */
     const rateMatch  = mime.match(/rate=(\d+)/);
     const sampleRate = rateMatch ? parseInt(rateMatch[1]) : 24000; /* Lyria default: 24000 */
@@ -791,7 +816,7 @@ function trimAudioBuffer(buf64, maxSeconds, mimeType) {
     const bytesPerSec = sampleRate * numChannels * 2;               /* 16-bit = 2 bytes/sample */
     const maxBytes    = Math.floor(bytesPerSec * maxSeconds);
     if (buf.length > maxBytes) {
-      console.log('[trimAudio/L16] ' + (buf.length/bytesPerSec).toFixed(1) + 's → ' + maxSeconds + 's (rate:' + sampleRate + ')');
+      console.log('[trimAudio/L16] ' + (buf.length/bytesPerSec).toFixed(1) + 's â†’ ' + maxSeconds + 's (rate:' + sampleRate + ')');
       return buf.slice(0, maxBytes).toString('base64');
     }
     return buf64;
@@ -813,10 +838,17 @@ app.post('/api/song', auth, async (req, res) => {
     if (!prompt && !customLyrics)
       return res.status(400).json({ error: 'Please provide a song description or custom lyrics.' });
 
-    // customLyrics via prompt textarea — no plan gate needed
-    const isFemale  = voice.toLowerCase().includes('female') || !voice.toLowerCase().includes('male');
-    const voiceHint = isFemale ? 'female vocalist' : 'male vocalist';
-    const ttsVoice  = isFemale ? 'Aoede' : 'Charon';
+    // customLyrics via prompt textarea â€” no plan gate needed
+    const v = voice.toLowerCase();
+    const isDuet  = v.includes('duet');
+    const isChoir = v.includes('choir');
+    const isFemale = !isDuet && !isChoir && (v.includes('female') || !v.includes('male'));
+    const voiceHint = isDuet
+      ? 'male and female duet vocalists, call-and-response singing, two distinct voices alternating and harmonizing'
+      : isChoir
+      ? 'full choir ensemble, multiple vocal parts (soprano, alto, tenor, bass), rich choral harmonies, group singing in unison and harmony'
+      : isFemale ? 'female vocalist' : 'male vocalist';
+    const ttsVoice  = isDuet ? 'Aoede' : isFemale ? 'Aoede' : 'Charon';
 
     console.log(`[/api/song] user:${req.user.id} plan:${planKey} style:${style} voice:${voiceHint}`);
 
@@ -850,12 +882,12 @@ app.post('/api/song', auth, async (req, res) => {
         `Vocalist: ${voiceHint}. Genre: ${style}.`,
         `Song structure: ${planCfg.structureHint}.`,
         ``,
-        `RHYMING RULES — YOU MUST FOLLOW STRICTLY:`,
+        `RHYMING RULES â€” YOU MUST FOLLOW STRICTLY:`,
         `- Every 2 or 4 lines MUST end-rhyme using AABB or ABAB pattern.`,
-        `- If Khmer (ភាសាខ្មែរ): use beautiful Khmer end-rhyme (ជួនពាក្យ) that sounds natural when sung.`,
+        `- If Khmer (áž—áž¶ážŸáž¶ážáŸ’áž˜áŸ‚ážš): use beautiful Khmer end-rhyme (áž‡áž½áž“áž–áž¶áž€áŸ’áž™) that sounds natural when sung.`,
         `  Khmer rhyme examples:`,
-        `    ស្រុកស្រែស្នេហ៍ខ្ញុំ / ក្រមុំតូចធំ  (ខ្ញុំ rhymes with ធំ)`,
-        `    នាំគ្នាទៅវត្ត / ម្តាយអើយកុំឃាត់  (វត្ត rhymes with ឃាត់)`,
+        `    ážŸáŸ’ážšáž»áž€ážŸáŸ’ážšáŸ‚ážŸáŸ’áž“áŸáž áŸážáŸ’áž‰áž»áŸ† / áž€áŸ’ážšáž˜áž»áŸ†ážáž¼áž…áž’áŸ†  (ážáŸ’áž‰áž»áŸ† rhymes with áž’áŸ†)`,
+        `    áž“áž¶áŸ†áž‚áŸ’áž“áž¶áž‘áŸ…ážœážáŸ’áž / áž˜áŸ’ážáž¶áž™áž¢áž¾áž™áž€áž»áŸ†ážƒáž¶ážáŸ‹  (ážœážáŸ’áž rhymes with ážƒáž¶ážáŸ‹)`,
         `  Every line must have a natural Khmer end-sound that rhymes with the paired line.`,
         `- If English: clear end-rhyme per couplet; internal rhyme is welcome bonus.`,
         `- NEVER write 2+ consecutive lines with zero rhyme. Every pair must rhyme.`,
@@ -872,7 +904,7 @@ app.post('/api/song', auth, async (req, res) => {
         planKey === 'proplus' ? '[TIMESTAMPS] [0:00-0:25 Extended Intro] [0:25-0:55 Verse 1] [0:55-1:07 Pre-Chorus] [1:07-1:32 Chorus] [1:32-1:54 Break] [1:54-2:22 Verse 2] [2:22-2:34 Pre-Chorus] [2:34-2:59 Chorus] [2:59-3:14 Bridge] [3:14-3:39 Final Chorus+Outro]' : '',
         planKey === 'max' ? '[TIMESTAMPS] [0:00-0:35 Extended Intro] [0:35-1:10 Verse 1] [1:10-1:25 Pre-Chorus] [1:25-1:55 Chorus] [1:55-2:25 Break] [2:25-2:55 Verse 2] [2:55-3:10 Pre-Chorus] [3:10-3:40 Chorus] [3:40-4:00 Bridge] [4:00-4:25 Solo] [4:25-4:55 Final Chorus] [4:55-5:25 Extended Outro]' : '',
         planKey === 'free'
-          ? '[TIMESTAMPS] [0:00-0:08 Short Instrumental Intro] [0:08-0:28 Verse] [0:28-0:46 Chorus] [0:46-0:55 Outro] — MUST end before 60 seconds'
+          ? '[TIMESTAMPS] [0:00-0:08 Short Instrumental Intro] [0:08-0:28 Verse] [0:28-0:46 Chorus] [0:46-0:55 Outro] â€” MUST end before 60 seconds'
           : 'Generate the FULL song from start to finish. Do not cut short.',
       ].join('\n');
     }
@@ -916,7 +948,7 @@ app.post('/api/song', auth, async (req, res) => {
       try {
         console.log('[/api/song] trying Lyria: ' + model + ' plan:' + planKey);
 
-        /* Single Lyria call for all plans — MAX uses extended instrumental structure via prompt */
+        /* Single Lyria call for all plans â€” MAX uses extended instrumental structure via prompt */
           const _res_single = await _lyriaCall(model, musicPrompt);
           lyricsText  = _res_single.txt;
           /* Apply hard trim per plan */
