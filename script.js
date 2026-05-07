@@ -953,13 +953,14 @@ async function _sendChat() {
     chatHistory.push({ role: "model", parts: [{ text: reply }] });
     appendMessage("bot", reply);
     incrementRequest();
-  } catch (err) {
+   } catch (err) {
     clearChatFile();
     removeTyping(typingId);
-    appendMessage("bot", "Ã¢Å¡  " + err.message);
+    appendMessage("bot", "⚠️ " + err.message);
+  } finally {
+    isChatLoading = false;
+    if (sendBtn) sendBtn.disabled = false;
   }
-  isChatLoading = false;
-  if (sendBtn) sendBtn.disabled = false;
 }
 
 function appendMessage(role, text) {
