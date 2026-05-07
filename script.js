@@ -671,21 +671,21 @@ function syncProfileSheet() {
     if (ub) ub.style.display = (plan === "pro" || plan === "proplus" || plan === "max") ? "none" : "flex";
   }
   const P2 = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
-  const displayLimit = (P2.requests >= 9999 || P2.requests < 0) ? "Ã¢Ë†Å¾" : String(limit);
+  const displayLimit = (P2.requests >= 9999 || P2.requests < 0) ? "∞" : String(limit);
   const uc = document.getElementById("ppUsageCount");
   if (uc) uc.textContent = used + " / " + displayLimit;
   const ub2 = document.getElementById("ppUsageBar");
   if (ub2) {
-    const barPct = displayLimit === "Ã¢Ë†Å¾" ? 0 : pct;
+    const barPct = displayLimit === "∞" ? 0 : pct;
     ub2.style.width      = barPct + "%";
     ub2.style.background = barPct >= 80 ? "#f87171" : barPct >= 50 ? "#fbbf24" : "#a855f7";
   }
   // Show plan features summary in profile
   const planFeatEl = document.getElementById("ppPlanFeatures");
   if (planFeatEl && P2) {
-    const chatLbl  = P2.chatMsg < 0 ? "Ã¢Ë†Å¾" : P2.chatMsg;
-    const imgLbl   = P2.imgDay  < 0 ? "Ã¢Ë†Å¾" : P2.imgDay;
-    const songLbl  = P2.songDay < 0 ? "Ã¢Ë†Å¾" : P2.songDay;
+    const chatLbl  = P2.chatMsg < 0 ? "∞" : P2.chatMsg;
+    const imgLbl   = P2.imgDay  < 0 ? "∞" : P2.imgDay;
+    const songLbl  = P2.songDay < 0 ? "∞" : P2.songDay;
     planFeatEl.innerHTML = `
       <div class="pp-feat-row"><i class="fas fa-comments"></i> Chat: <b>${chatLbl}/day</b></div>
       <div class="pp-feat-row"><i class="fas fa-palette"></i> Images: <b>${imgLbl}/day</b></div>
@@ -818,7 +818,7 @@ function showUpgradeModal() {
   const upgradeDesc  = document.querySelector("#upgradeModal .upgrade-plan-desc");
   const upgradeBtn   = document.querySelector("#upgradeModal .btn-upgrade-confirm");
   if (upgradeTitle) upgradeTitle.textContent = "Upgrade to " + NP.label;
-  if (upgradeDesc)  upgradeDesc.textContent  = (NP.chatMsg < 0 ? "Unlimited" : NP.chatMsg) + " chat msg/day Ã‚Â· " + NP.price;
+  if (upgradeDesc)  upgradeDesc.textContent  = (NP.chatMsg < 0 ? "Unlimited" : NP.chatMsg) + " chat msg/day · " + NP.price;
   if (upgradeBtn)   upgradeBtn.textContent   = "Ã°Å¸â€˜â€˜ Upgrade to " + NP.label;
   const desc = document.getElementById("upgradeModalDesc");
   if (desc) {
@@ -1291,7 +1291,7 @@ function openFullscreen(src, ratio) {
 }
 
 // =================== SONG GENERATE ===================
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Song Plan Badge Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// •••• Song Plan Badge ••••
 function initSongPlanBadge() {
   const badge = document.getElementById("song-plan-badge");
   const hint  = document.getElementById("song-duration-hint");
@@ -1306,15 +1306,15 @@ function initSongPlanBadge() {
   if (hint) {
     const hints = {
       free:    "~55s",
-      pro:     "~2:50Ã¢â‚¬â€œ3:05",
-      proplus: "~3:00Ã¢â‚¬â€œ3:25",
-      max:     "~4:25Ã¢â‚¬â€œ5:25 (full song)"
+      pro:     "~2:50–3:05",
+      proplus: "~3:00–3:25",
+      max:     "~4:25–5:25 (full song)"
     };
     hint.textContent = hints[userPlan] || "~55s";
   }
 }
 
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Custom Genre Chip (pops up instrument/tempo/mood panel) Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// •••• Custom Genre Chip (pops up instrument/tempo/mood panel) ••••
 function selectChipCustom(btn) {
   const group = document.getElementById('songStyleGroup');
   const panel = document.getElementById('custom-style-panel');
@@ -1333,7 +1333,7 @@ function selectChipCustom(btn) {
     panel.style.removeProperty('transform');
     panel.style.display = 'block';
   } else {
-    // Deactivate Ã¢â€ â€™ hide panel + re-activate Pop
+    // Deactivate → hide panel + re-activate Pop
     panel.style.display = 'none';
     const firstChip = group.querySelector('.chip:not(.chip-custom)');
     if (firstChip) firstChip.classList.add('active');
@@ -1372,7 +1372,7 @@ async function _generateSong() {
   const tempo       = isCustom ? (getActiveChip("songTempoGroup")      || "Auto") : "Auto";
   const mood        = isCustom ? (getActiveChip("songMoodGroup")       || "Auto") : "Auto";
 
-  // Build style: if Custom Ã¢â€ â€™ combine instrument+tempo+mood; else Ã¢â€ â€™ use genre chip value
+  // Build style: if Custom → combine instrument+tempo+mood; else → use genre chip value
   const style = isCustom
     ? [
         (instrumentArr.length === 1 && instrumentArr[0] === 'Auto') ? '' : instrumentArr.join(' + ') + ' instrument',
@@ -1514,7 +1514,7 @@ function getActiveChip(groupId) {
   }
   return el.textContent.trim();
 }
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Multi-select Chip (for Instrument) Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// •••• Multi-select Chip (for Instrument) ••••
 const INSTRUMENT_MAX = 3; // max selectable instruments (excluding Auto)
 
 function toggleMultiChip(el, groupId) {
@@ -1522,7 +1522,7 @@ function toggleMultiChip(el, groupId) {
   const allMulti = document.querySelectorAll(`[data-multi="${el.dataset.multi}"]`);
 
   if (isAuto) {
-    // Auto Ã¢â€ â€™ clear all, activate only Auto
+    // Auto → clear all, activate only Auto
     allMulti.forEach(c => c.classList.remove("active"));
     el.classList.add("active");
     return;
@@ -1541,7 +1541,7 @@ function toggleMultiChip(el, groupId) {
     const stillActive = Array.from(allMulti).filter(c =>
       c.classList.contains("active") && !c.textContent.trim().startsWith("Auto")
     );
-    // If nothing left Ã¢â€ â€™ fall back to Auto
+    // If nothing left → fall back to Auto
     if (!stillActive.length) {
       allMulti.forEach(c => { if (c.textContent.trim().startsWith("Auto")) c.classList.add("active"); });
     }
@@ -1581,7 +1581,7 @@ function selectChip(el, groupId) {
   }
   document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove("active"));
   el.classList.add("active");
-  // If selecting a non-custom, non-other genre chip Ã¢â€ â€™ clear Other value + hide custom panel
+  // If selecting a non-custom, non-other genre chip → clear Other value + hide custom panel
   if (groupId === 'songStyleGroup' && !el.classList.contains('chip-custom') && !el.classList.contains('chip-other')) {
     _otherStyleValue = null;
     const panel = document.getElementById('custom-style-panel');
@@ -1613,7 +1613,7 @@ function showToast(msg, type = "info") {
 }
 
 
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Khmer Music Rhythm Dataset v1 - JeeThy Labs Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// •••• Khmer Music Rhythm Dataset v1 - JeeThy Labs ••••
 // ============================================================
 // KHMER RHYTHM DATASET - Rich Lyria-optimized prompts v2.0
 // Each entry contains: label, bpm range, full Lyria prompt
