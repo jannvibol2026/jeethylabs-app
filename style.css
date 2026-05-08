@@ -253,10 +253,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   position:fixed;inset:0;
   background:rgba(0,0,0,.7);backdrop-filter:blur(8px);
   z-index: 1100;
-  opacity:0;pointer-events:none;
-  transition:opacity .25s ease;
+  opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity .25s ease,visibility .25s ease;
 }
-#ppOverlay.open{opacity:1;pointer-events:all}
+#ppOverlay.open{opacity:1;pointer-events:all;visibility:visible}
 #ppSheet{
   position:absolute;bottom:0;left:0;right:0;
   background:var(--surface);
