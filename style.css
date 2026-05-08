@@ -1,5 +1,5 @@
-/* STYLE.CSS ” JeeThy Labs App  */
-/* â”€â”€ Complete implementation including all interactive components â”€â”€ */
+/* STYLE.CSS - JeeThy Labs App v2.5  */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Complete implementation including all interactive components Ã¢â€â‚¬Ã¢â€â‚¬ */
 :root{
   --bg:#0a0a0f;--surface:#111827;--surface2:#1f2937;
   --border:rgba(255,255,255,.08);--text:#f3f4f6;--text2:#9ca3af;
@@ -12,7 +12,7 @@
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-size:15px;-webkit-font-smoothing:antialiased}
 
 /* NAV */
-.app-nav{position:fixed;top:0;left:0;right:0;height:var(--nav);display:flex;align-items:center;padding:0 14px;gap:10px;background:rgba(10,10,15,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);z-index:500}
+.app-nav{position:fixed;top:0;left:0;right:0;height:var(--nav);display:flex;align-items:center;padding:0 14px;gap:10px;background:rgba(10,10,15,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);z-index:500;overflow:visible}
 .nav-home{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:13px;text-decoration:none;flex-shrink:0;-webkit-tap-highlight-color:transparent}
 .nav-brand{flex:1;display:flex;align-items:center;gap:6px;font-size:16px;font-weight:800;white-space:nowrap;background:none!important}
 .brand-jee{color:#fff}.brand-labs{color:var(--primary)}.brand-tag{font-size:9px;font-weight:700;padding:2px 7px;background:rgba(168,85,247,.15);color:var(--primary);border:1px solid rgba(168,85,247,.3);border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
@@ -101,13 +101,13 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .modal-body{padding:16px;display:flex;flex-direction:column;gap:12px}
 .modal-desc{font-size:13px;color:var(--text2);line-height:1.6}
 
-/* PLAN CARDS ” see plan-card-v2 below */
+/* PLAN CARDS â€ see plan-card-v2 below */
 
-/* ══ UTILITY ══════════════════════════════════════════════ */
+/* â•Ââ•Â UTILITY â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .muted{color:var(--text2) !important}
 .open{opacity:1 !important;pointer-events:all !important}
 
-/* ══ ANIMATIONS ═══════════════════════════════════════════ */
+/* â•Ââ•Â ANIMATIONS â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-7px)}}
 @keyframes msgIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
@@ -115,7 +115,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 @keyframes overlayIn{from{opacity:0}to{opacity:1}}
 @keyframes ddIn{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 
-/* ══ TYPING DOTS ══════════════════════════════════════════ */
+/* â•Ââ•Â TYPING DOTS â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .typing-dots{display:flex;align-items:center;gap:5px;padding:2px 0}
 .typing-dots span{
   width:7px;height:7px;border-radius:50%;
@@ -126,7 +126,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .typing-dots span:nth-child(2){animation-delay:.2s}
 .typing-dots span:nth-child(3){animation-delay:.4s}
 
-/* ══ LOADING STATES ═══════════════════════════════════════ */
+/* â•Ââ•Â LOADING STATES â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .loading-card{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:14px;padding:32px 20px;background:var(--surface);
@@ -146,7 +146,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 }
 .loading-label{font-size:13px;color:var(--text2);font-weight:500;line-height:1.5}
 
-/* ══ PROSE / MARKDOWN RESPONSE ════════════════════════════ */
+/* â•Ââ•Â PROSE / MARKDOWN RESPONSE â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .prose-response{font-size:14px;line-height:1.65;color:var(--text)}
 .prose-response p{margin:0 0 8px}
 .prose-response p:last-child{margin-bottom:0}
@@ -169,7 +169,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .prose-response li{margin-bottom:3px}
 .prose-response h3,.prose-response h4{color:#fff;margin:10px 0 4px}
 
-/* ══ USER AVATAR BUTTON ═══════════════════════════════════ */
+/* â•Ââ•Â USER AVATAR BUTTON â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .user-profile-wrap{position:relative;display:flex;align-items:center}
 .user-avatar-btn{
   width:32px;height:32px;border-radius:50%;
@@ -185,20 +185,20 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .user-avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .user-avatar-btn span{font-size:13px;font-weight:700;color:#fff}
 
-/* ══ PROFILE DROPDOWN ═════════════════════════════════════ */
+/* â•Ââ•Â PROFILE DROPDOWN â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .profile-dropdown{
   position:absolute;top:calc(100% + 8px);right:0;
   width:220px;background:var(--surface);
   border:1px solid var(--border);border-radius:14px;
   box-shadow:0 16px 48px rgba(0,0,0,.6);
   z-index:600;overflow:hidden;
-  opacity:0;pointer-events:none;
+  opacity:0;pointer-events:none;visibility:hidden;
   transform:translateY(-6px) scale(.97);
   transform-origin:top right;
-  transition:opacity .18s ease,transform .18s ease;
+  transition:opacity .18s ease,transform .18s ease,visibility .18s ease;
 }
 .profile-dropdown.open{
-  opacity:1;pointer-events:all;
+  opacity:1;pointer-events:all;visibility:visible;
   transform:translateY(0) scale(1);
 }
 .pd-header{
@@ -248,7 +248,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .pd-signout:hover{background:rgba(239,68,68,.08)}
 .pd-signout i{width:16px;text-align:center;font-size:12px}
 
-/* ══ PROFILE SHEET ════════════════════════════════════════ */
+/* â•Ââ•Â PROFILE SHEET â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 #ppOverlay{
   position:fixed;inset:0;
   background:rgba(0,0,0,.7);backdrop-filter:blur(8px);
@@ -354,7 +354,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 }
 .pp-upgrade-banner:hover{background:linear-gradient(135deg,rgba(168,85,247,.18),rgba(34,211,238,.14));border-color:rgba(168,85,247,.45)}
 
-/* ══ SETTINGS TOGGLE ══════════════════════════════════════ */
+/* â•Ââ•Â SETTINGS TOGGLE â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .settings-toggle-row{
   display:flex;align-items:center;justify-content:space-between;
   padding:10px 0;gap:12px;
@@ -385,7 +385,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   transform:translateX(20px);
 }
 
-/* ══ UPGRADE CARD ═════════════════════════════════════════ */
+/* â•Ââ•Â UPGRADE CARD â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .upgrade-card{
   display:flex;align-items:center;gap:14px;
   background:linear-gradient(135deg,rgba(168,85,247,.1),rgba(124,58,237,.08));
@@ -402,11 +402,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .upgrade-text strong{font-size:14px;color:#fff;font-weight:700}
 .upgrade-text span{font-size:12px;color:var(--text2)}
 
-/* ══ FORM ROW / HALF ══════════════════════════════════════ */
+/* â•Ââ•Â FORM ROW / HALF â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .form-row{display:flex;gap:10px}
 .form-row .form-group.half{flex:1;min-width:0}
 
-/* ══ CHIP PRO-LOCKED ══════════════════════════════════════ */
+/* â•Ââ•Â CHIP PRO-LOCKED â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .chip.pro-locked{opacity:.65;cursor:pointer}
 .chip.pro-locked:hover{border-color:rgba(168,85,247,.4);opacity:.85}
 .pro-badge{
@@ -416,7 +416,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   letter-spacing:.3px;vertical-align:middle;
 }
 
-/* ══ MODAL LINK ═══════════════════════════════════════════ */
+/* â•Ââ•Â MODAL LINK â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .modal-link{
   display:inline-block;font-size:12px;color:var(--primary);
   text-decoration:none;margin-top:6px;
@@ -424,7 +424,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 }
 .modal-link:hover{opacity:.75;text-decoration:underline}
 
-/* ══ IMAGE RESULT CARD ════════════════════════════════════ */
+/* â•Ââ•Â IMAGE RESULT CARD â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .img-result-card{
   background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius);overflow:hidden;
@@ -442,7 +442,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 }
 .img-grid img:hover{opacity:.88;transform:scale(.98)}
 
-/* ══ SONG RESULT CARD ═════════════════════════════════════ */
+/* â•Ââ•Â SONG RESULT CARD â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .song-result-card{
   background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius);overflow:hidden;
@@ -460,7 +460,7 @@ audio{
   accent-color:var(--green);
 }
 
-/* ══ DOWNLOAD BUTTON ══════════════════════════════════════ */
+/* â•Ââ•Â DOWNLOAD BUTTON â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .btn-download{
   display:flex;align-items:center;justify-content:center;gap:8px;
   width:calc(100% - 28px);margin:0 14px 14px;
@@ -474,7 +474,7 @@ audio{
 .btn-download:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18)}
 .btn-download i{font-size:12px;color:var(--text2)}
 
-/* ══ ERROR CARD ═══════════════════════════════════════════ */
+/* â•Ââ•Â ERROR CARD â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .error-card{
   display:flex;align-items:center;gap:10px;
   padding:14px;background:rgba(239,68,68,.08);
@@ -485,7 +485,7 @@ audio{
 }
 .error-card i{font-size:16px;flex-shrink:0}
 
-/* ══ TOAST ════════════════════════════════════════════════ */
+/* â•Ââ•Â TOAST â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .toast{
   position:fixed;bottom:80px;left:50%;
   transform:translateX(-50%);
@@ -499,7 +499,7 @@ audio{
 .toast-success{background:#10b981}
 .toast-error{background:#ef4444}
 
-/* ══ RESPONSIVE ═══════════════════════════════════════════ */
+/* â•Ââ•Â RESPONSIVE â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 @media (min-width:480px){
   .img-grid.qty-4{grid-template-columns:1fr 1fr}
   #ppSheet{max-width:480px;left:50%;right:auto;transform:translateX(-50%) translateY(100%);border-radius:22px 22px 0 0}
@@ -510,7 +510,7 @@ audio{
   .modal-box{border-radius:22px}
 }
 
-/* ══ DESKTOP ” 768px ══════════════════════════════════════ */
+/* â•Ââ•Â DESKTOP â€ 768px â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 @media (min-width:768px){
   :root{ --nav:60px; --tab:68px; }
 
@@ -525,7 +525,7 @@ audio{
   .tab{ font-size:12px; gap:5px; }
   .tab i{ font-size:20px; }
 
-  /* Panels ” constrain width and center on wide screens */
+  /* Panels â€ constrain width and center on wide screens */
   .panels-wrap{
     display:flex;
     align-items:stretch;
@@ -536,7 +536,7 @@ audio{
     width:100%;
   }
 
-  /* Panel inner scroll ” more breathing room */
+  /* Panel inner scroll â€ more breathing room */
   .panel-inner-scroll{ padding:20px 24px; gap:16px; }
 
   /* Chat */
@@ -572,7 +572,7 @@ audio{
   /* Profile dropdown */
   .profile-dropdown{ width:240px; }
 
-  /* Profile sheet ” centered dialog on desktop */
+  /* Profile sheet â€ centered dialog on desktop */
   #ppSheet{
     max-width:520px;
     left:50%;right:auto;
@@ -591,7 +591,7 @@ audio{
   .loading-label{ font-size:14px; }
 }
 
-/* ══ DESKTOP ” 1024px ═════════════════════════════════════ */
+/* â•Ââ•Â DESKTOP â€ 1024px â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 @media (min-width:1024px){
   :root{ --nav:64px; --tab:72px; }
 
@@ -599,7 +599,7 @@ audio{
   .app-nav{ padding:0 32px; }
   .nav-brand{ font-size:19px; }
 
-  /* Panels ” side-by-side layout: show all 3 panels at once */
+  /* Panels â€ side-by-side layout: show all 3 panels at once */
   .panels-wrap{
     overflow:visible;
     justify-content:center;
@@ -619,7 +619,7 @@ audio{
   }
   .panel:last-child{ border-right:none; }
 
-  /* Tab bar ” becomes a sidebar-style top indicator on desktop */
+  /* Tab bar â€ becomes a sidebar-style top indicator on desktop */
   .tab-bar{
     left:50%;
     transform:translateX(-50%);
@@ -636,7 +636,7 @@ audio{
   /* Panel inner scroll */
   .panel-inner-scroll{ padding:22px 28px; }
 
-  /* Modals ” slightly larger */
+  /* Modals â€ slightly larger */
   .modal-box{ max-width:440px; }
   .modal-wide{ max-width:560px; }
 
@@ -654,7 +654,7 @@ audio{
   }
 }
 
-/* ══ DESKTOP ” 1280px ═════════════════════════════════════ */
+/* â•Ââ•Â DESKTOP â€ 1280px â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 @media (min-width:1280px){
   :root{ --nav:66px; }
 
@@ -667,7 +667,7 @@ audio{
   /* Tab bar */
   .tab-bar{ max-width:1440px; }
 
-  /* Panel inner scroll ” generous padding on large screens */
+  /* Panel inner scroll â€ generous padding on large screens */
   .panel-inner-scroll{ padding:28px 36px; gap:20px; }
   .chat-messages{ padding:22px 28px; }
   .chat-input-wrap{ padding:14px 24px; }
@@ -686,18 +686,18 @@ audio{
 }
 @import url('song-plan.css');
 
-/* removed: modal-wide-3 600px override ” handled by modal-plan-new */
+/* removed: modal-wide-3 600px override â€ handled by modal-plan-new */
 
-/* ════ Song Plan Badge Row ══════════════════════════════════ */
+/* â•Ââ•Ââ•Ââ•Â Song Plan Badge Row â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .song-plan-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;min-height:18px;}
 .song-plan-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;letter-spacing:.5px;}
 .song-duration-hint{font-size:11px;color:var(--text2);opacity:.75;}
 
-/* ════ Custom Genre Chip ════════════════════════════════════ */
+/* â•Ââ•Ââ•Ââ•Â Custom Genre Chip â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .chip-custom{border-color:rgba(168,85,247,.35)!important;color:#a855f7!important;}
 .chip-custom.active{background:linear-gradient(135deg,rgba(124,58,237,.25),rgba(168,85,247,.2))!important;border-color:#a855f7!important;color:#d8b4fe!important;}
 
-/* ════ Custom Style Pop-up Panel ════════════════════════════ */
+/* â•Ââ•Ââ•Ââ•Â Custom Style Pop-up Panel â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .custom-style-panel{
   background:var(--surface2,#1e1e2e);
   border:1px solid rgba(168,85,247,.25);
@@ -710,7 +710,7 @@ audio{
 .chip-group-sm{gap:5px;}
 .chip.chip-sm{padding:4px 11px;font-size:11px;border-radius:20px;}
 
-/* ════ Upgrade Modal ════════════════════════════════════════ */
+/* â•Ââ•Ââ•Ââ•Â Upgrade Modal â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 .upgrade-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .upgrade-modal-box{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px 24px;max-width:340px;width:100%;text-align:center;}
 .upgrade-modal-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;}
@@ -719,7 +719,7 @@ audio{
 @media(max-width:480px){
   .custom-style-panel{padding:12px 10px;}
 }
-/* ════ Chip Shake Animation (max limit feedback) ════ */
+/* â•Ââ•Ââ•Ââ•Â Chip Shake Animation (max limit feedback) â•Ââ•Ââ•Ââ•Â */
 @keyframes chipShake {
   0%,100%{transform:translateX(0)}
   20%{transform:translateX(-5px)}
@@ -731,17 +731,17 @@ audio{
 /* Multi-select limit hint */
 .chip-multi-limit{font-size:9px;color:#f87171;margin-left:4px;opacity:.85;}
 
-/* â”€â”€ Plan Modal Mobile Swipe â”€â”€ */
-/* removed: old plan card scroll ” see modal-plan-new below */
-/* â”€â”€ Chat input paperclip â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Plan Modal Mobile Swipe Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* removed: old plan card scroll â€ see modal-plan-new below */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Chat input paperclip Ã¢â€â‚¬Ã¢â€â‚¬ */
 .chat-input-box{display:flex;align-items:flex-end;gap:0}
 #chatFileUploadBtn{display:none}
 #chatFileUploadBtn.visible{display:flex!important}
 
 
-/* ════════════════════════════════════════════════════════════
-   PLAN MODAL v2 ” vertical cards, readable on mobile
-   ════════════════════════════════════════════════════════════ */
+/* â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â
+   PLAN MODAL v2 â€ vertical cards, readable on mobile
+   â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â */
 /* Plan modal v2 layout */
 
 .modal-plan-new {
@@ -764,7 +764,7 @@ audio{
   padding: 0 16px 8px;        /* changed */
 }
 
-/* â”€â”€ Card â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Card Ã¢â€â‚¬Ã¢â€â‚¬ */
 .plan-card-v2 {
   position: relative;
   background: rgba(255,255,255,.04);
@@ -789,7 +789,7 @@ audio{
 .pcv2-proplus.selected { border-color: #a855f7; box-shadow: 0 0 0 2px rgba(168,85,247,.3); }
 .pcv2-max { border-color: rgba(251,191,36,.3); }
 
-/* â”€â”€ Badge â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Badge Ã¢â€â‚¬Ã¢â€â‚¬ */
 .pcv2-badge {
   position: absolute;
   top: -9px; left: 14px;
@@ -810,7 +810,7 @@ audio{
   color: #1a1a1a;
 }
 
-/* â”€â”€ Left (name + price) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Left (name + price) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .pcv2-left {
   flex: 0 0 90px;
   display: flex;
@@ -850,7 +850,7 @@ audio{
   line-height: 1.4;
 }
 
-/* â”€â”€ Right (features) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Right (features) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .pcv2-right { flex: 1; min-width: 0; }
 .pcv2-features {
   display: flex;
@@ -876,7 +876,7 @@ audio{
 .pcv2-no { color: var(--text2, #94a3b8) !important; }
 .pcv2-no i { color: #f87171 !important; }
 
-/* â”€â”€ Selected checkmark â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Selected checkmark Ã¢â€â‚¬Ã¢â€â‚¬ */
 .pcv2-check {
   position: absolute;
   top: 10px; right: 12px;
@@ -887,7 +887,7 @@ audio{
 }
 .plan-card-v2.selected .pcv2-check { opacity: 1; }
 
-/* â”€â”€ Responsive â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Responsive Ã¢â€â‚¬Ã¢â€â‚¬ */
 @media (max-width: 400px) {
   .pcv2-left { flex: 0 0 78px; }
   .pcv2-name { font-size: 15px; }
@@ -909,7 +909,7 @@ audio{
 }
 
 
-/* ══ Profile Plan Features ══ */
+/* â•â• Profile Plan Features â•â• */
 .pp-feat-row{
   display:flex;align-items:center;gap:6px;
   font-size:12px;color:var(--text2);
