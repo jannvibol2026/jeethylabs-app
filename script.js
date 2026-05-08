@@ -692,10 +692,12 @@ function syncProfileSheet() {
     const imgLbl   = P2.imgDay  < 0 ? "∞" : P2.imgDay;
     const songLbl  = P2.songDay < 0 ? "∞" : P2.songDay;
     planFeatEl.innerHTML = `
-      <div class="pp-feat-row"><i class="fas fa-comments"></i> Chat: <b>${chatLbl}/day</b></div>
-      <div class="pp-feat-row"><i class="fas fa-palette"></i> Images: <b>${imgLbl}/day</b></div>
-      <div class="pp-feat-row"><i class="fas fa-music"></i> Songs: <b>${songLbl}/day</b></div>
-    `;
+  <div style="overflow:hidden;">
+    <div class="pp-feat-row"><i class="fas fa-comments"></i> Chat: <b>${chatLbl}/day</b></div>
+    <div class="pp-feat-row"><i class="fas fa-palette"></i> Images: <b>${imgLbl}/day</b></div>
+    <div class="pp-feat-row"><i class="fas fa-music"></i> Songs: <b>${songLbl}/day</b></div>
+  </div>
+`;
   }
 }
 
@@ -1072,7 +1074,7 @@ function renderRefImgPreviews() {
   pv.innerHTML = _refImgs.map((img, i) => `
     <div style="position:relative;display:inline-block;margin:4px;">
       <img src="${img.dataUrl}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--cyan,#06b6d4)" alt="ref ${i+1}"/>
-      <button onclick="removeRefImg(event,${i})" style="position:absolute;top:-6px;right:-6px;background:#ef4444;border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:11px;cursor:pointer;line-height:1;font-weight:700;">Ãƒâ€”</button>
+      <button onclick="removeRefImg(event,${i})" style="position:absolute;top:-6px;right:-6px;background:#ef4444;border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:11px;cursor:pointer;line-height:1;font-weight:700;">&#215;</button>
     </div>
   `).join('') + (((userPlan === 'proplus' || userPlan === 'max') && _refImgs.length < 4) || (userPlan === 'pro' && _refImgs.length < 2) ? `
     <div onclick="event.stopPropagation();openRefImgUpload();" style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border:2px dashed var(--border);border-radius:8px;cursor:pointer;vertical-align:top;margin:4px;color:var(--text2);font-size:22px;background:rgba(255,255,255,.04)">+</div>
