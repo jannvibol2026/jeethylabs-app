@@ -101,16 +101,17 @@
 .plan-card.plan-proplus .plan-check { color: #a855f7; }
 </style>
 
+
+
 <style>
-@media (max-width: 767px){
-  .panels-track{width:400% !important;}
-  .panel{flex:0 0 25% !important;}
+.panels-track{width:400% !important;display:flex !important;grid-template-columns:none !important;transform:translateX(0);}
+.panel{flex:0 0 25% !important;max-width:25% !important;}
+@media (min-width:1024px){
+  .panels-wrap{overflow:hidden !important;justify-content:stretch !important;}
+  .panels-track{display:flex !important;width:400% !important;max-width:none !important;gap:0 !important;transform:translateX(0);}
+  .panel{flex:0 0 25% !important;max-width:25% !important;border-right:1px solid var(--border);}
+  .panel:last-child{border-right:none;}
 }
-@media (min-width: 768px){
-  .panels-track{width:400% !important;}
-  .panel{flex:0 0 25% !important;}
-}
-.video-tip-inline{font-size:12px;color:#a1a1aa;line-height:1.45}
 </style>
 
 </head>
