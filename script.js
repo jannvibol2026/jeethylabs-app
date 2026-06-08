@@ -1,5 +1,9 @@
 "use strict";
 
+const VIDEO_PLAN_LIMITS = { free: 1, pro: 3, proplus: 10, max: Infinity };
+let videoDuration = "5s";
+let videoRefs = { start: null, end: null };
+
 // ======================= MODELS =======================
 let GEMINI_CHAT_MODEL    = "gemini-2.5-flash";
 let GEMINI_IMAGE_MODELS  = [];
@@ -365,10 +369,11 @@ function renderPlanBadge() {
 
 // ===================== PANEL NAV =====================
 function goToPanel(index) {
-  currentPanel = index;
   const track = document.getElementById("panelsTrack");
-  if (track) track.style.transform = `translateX(-${index * 33.333}%)`;
-  document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", i === index));
+  const tabs = document.querySelectorAll(".tab-bar .tab");
+  currentPanel = Math.max(0, Math.min(index, tabs.length - 1));
+  if (track) track.style.transform = `translateX(-${currentPanel * 100}%)`;
+  tabs.forEach((tab, i) => tab.classList.toggle("active", i === currentPanel));
 }
 
 function initSwipe() {
@@ -382,7 +387,7 @@ function initSwipe() {
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-      if (dx < 0 && currentPanel < 2) goToPanel(currentPanel + 1);
+      if (dx < 0 && currentPanel < 3) goToPanel(currentPanel + 1);
       if (dx > 0 && currentPanel > 0) goToPanel(currentPanel - 1);
     }
   }, { passive: true });
@@ -1870,3 +1875,171 @@ function buildKhmerRhythmPrompt(key) {
     + ' Generate authentic Cambodian Khmer music. Prioritize Chhing as timekeeper, Skor Thom and Sampho as traditional drum foundation, Roneat Ek and Khim and Tro as melodic identity. Keep rhythm human with slight swing, danceable, and culturally Khmer. Do not use heavy Western trap drums or EDM drops.'
   );
 }
+
+
+function getVideoDailyLimit(plan = userPlan) {
+  return VIDEO_PLAN_LIMITS[plan] ?? VIDEO_PLAN_LIMITS.free;
+}
+
+function canUseVideoReferences(plan = userPlan) {
+  return ["pro", "proplus", "max"].includes(plan);
+}
+
+function getVideoUsageToday() {
+  try {
+    const raw = localStorage.getItem("jl_video_usage") || "{}";
+    const data = JSON.parse(raw);
+    const today = new Date().toISOString().slice(0, 10);
+    if (data.date !== today) return 0;
+    return Number(data.count || 0);
+  } catch (_) {
+    return 0;
+  }
+}
+
+function setVideoUsageToday(count) {
+  const today = new Date().toISOString().slice(0, 10);
+  localStorage.setItem("jl_video_usage", JSON.stringify({ date: today, count: Number(count || 0) }));
+}
+
+function getRemainingVideoQuota(plan = userPlan) {
+  const limit = getVideoDailyLimit(plan);
+  if (!Number.isFinite(limit)) return Infinity;
+  return Math.max(0, limit - getVideoUsageToday());
+}
+
+function updateVideoUI() {
+  const badge = document.getElementById("video-plan-badge");
+  const usage = document.getElementById("video-usage-text");
+  const note = document.getElementById("videoRefPlanNote");
+  const startInput = document.getElementById("videoStartImage");
+  const endInput = document.getElementById("videoEndImage");
+  const limit = getVideoDailyLimit();
+  const used = getVideoUsageToday();
+  const remaining = getRemainingVideoQuota();
+  const refsAllowed = canUseVideoReferences();
+
+  if (badge) badge.textContent = `Plan: ${(PLAN_LIMITS[userPlan]?.label || userPlan).toUpperCase()}`;
+  if (usage) usage.textContent = Number.isFinite(limit)
+    ? `Used ${used}/${limit} videos today · Remaining ${remaining}`
+    : `Unlimited video generations today`;
+  if (note) note.textContent = refsAllowed
+    ? "Reference images unlocked. You can upload both a start image and an end image."
+    : "Start image and end image are available on Pro, Pro+, and Max only.";
+
+  [startInput, endInput].forEach((input) => {
+    if (!input) return;
+    input.disabled = !refsAllowed;
+    input.style.opacity = refsAllowed ? "1" : ".6";
+  });
+
+  if (!refsAllowed) {
+    videoRefs.start = null;
+    videoRefs.end = null;
+    const s = document.getElementById("videoStartPreview");
+    const e = document.getElementById("videoEndPreview");
+    if (s) s.textContent = "Upgrade to Pro to use start image";
+    if (e) e.textContent = "Upgrade to Pro to use end image";
+    if (startInput) startInput.value = "";
+    if (endInput) endInput.value = "";
+  }
+}
+
+function selectVideoDuration(value, el) {
+  videoDuration = value;
+  document.querySelectorAll("#videoDurationChips .chip").forEach(chip => chip.classList.remove("active"));
+  if (el) el.classList.add("active");
+}
+
+function handleVideoRefUpload(kind, event) {
+  if (!canUseVideoReferences()) {
+    showUpgradeModal("pro", "Reference start/end image is available on Pro, Pro+, and Max only.");
+    event.target.value = "";
+    return;
+  }
+  const file = event?.target?.files?.[0];
+  videoRefs[kind] = file || null;
+  const preview = document.getElementById(kind === "start" ? "videoStartPreview" : "videoEndPreview");
+  if (preview) preview.textContent = file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB` : "No file selected";
+}
+
+async function generateVideo() {
+  const promptEl = document.getElementById("videoPrompt");
+  const btn = document.getElementById("videoGenBtn");
+  const prompt = (promptEl?.value || "").trim();
+  if (!prompt) return showToast("Please enter a video prompt", "error");
+
+  const remaining = getRemainingVideoQuota();
+  if (remaining <= 0) {
+    showUpgradeModal(userPlan === "free" ? "pro" : "proplus", "You reached your daily video limit. Upgrade to continue generating more videos.");
+    return;
+  }
+
+  const refsAllowed = canUseVideoReferences();
+  if (!refsAllowed && (videoRefs.start || videoRefs.end)) {
+    showUpgradeModal("pro", "Reference images are available on Pro, Pro+, and Max only.");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("prompt", prompt);
+  fd.append("duration", videoDuration);
+  fd.append("plan", userPlan);
+  if (videoRefs.start) fd.append("startImage", videoRefs.start);
+  if (videoRefs.end) fd.append("endImage", videoRefs.end);
+
+  const oldHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+  try {
+    const res = await fetch("/api/video/generate", {
+      method: "POST",
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      body: fd
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Video generation failed");
+
+    const nextCount = Number.isFinite(data.usageCount) ? data.usageCount : getVideoUsageToday() + 1;
+    setVideoUsageToday(nextCount);
+    updateVideoUI();
+
+    const result = document.getElementById("videoResult");
+    const player = document.getElementById("videoPlayer");
+    const status = document.getElementById("videoStatusText");
+    const dl = document.getElementById("videoDownloadBtn");
+    if (player && data.videoUrl) player.src = data.videoUrl;
+    if (dl && data.videoUrl) dl.href = data.videoUrl;
+    if (status) status.textContent = data.message || `Video ready · ${data.planLabel || userPlan} plan`;
+    if (result) result.style.display = "block";
+    showToast("Video generated successfully", "success");
+  } catch (err) {
+    showToast(err.message || "Unable to generate video", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = oldHtml;
+  }
+}
+
+function resetVideoForm() {
+  const prompt = document.getElementById("videoPrompt");
+  const result = document.getElementById("videoResult");
+  const player = document.getElementById("videoPlayer");
+  const startInput = document.getElementById("videoStartImage");
+  const endInput = document.getElementById("videoEndImage");
+  const startPreview = document.getElementById("videoStartPreview");
+  const endPreview = document.getElementById("videoEndPreview");
+  if (prompt) prompt.value = "";
+  if (result) result.style.display = "none";
+  if (player) player.removeAttribute("src");
+  if (startInput) startInput.value = "";
+  if (endInput) endInput.value = "";
+  if (startPreview) startPreview.textContent = canUseVideoReferences() ? "No file selected" : "Upgrade to Pro to use start image";
+  if (endPreview) endPreview.textContent = canUseVideoReferences() ? "No file selected" : "Upgrade to Pro to use end image";
+  videoRefs = { start: null, end: null };
+  selectVideoDuration("5s", document.querySelector('#videoDurationChips .chip[data-value="5s"]'));
+}
+
+window.addEventListener("load", () => {
+  setTimeout(updateVideoUI, 120);
+});
