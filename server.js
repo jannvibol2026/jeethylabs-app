@@ -1232,9 +1232,6 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => console.log(`JeeThy Labs -> port ${PORT}`));
-
-
 const multer = require("multer");
 const videoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const videoUsageStore = new Map();
@@ -1294,3 +1291,6 @@ app.post("/api/video/generate", videoUpload.fields([{ name: "startImage", maxCou
     return res.status(500).json({ error: "Video generation failed" });
   }
 });
+
+
+app.listen(PORT, () => console.log(`JeeThy Labs -> port ${PORT}`));
