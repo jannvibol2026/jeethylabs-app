@@ -1,6 +1,7 @@
 "use strict";
 
 const VIDEO_PLAN_LIMITS = { free: 1, pro: 3, proplus: 10, max: Infinity };
+const TOTAL_PANELS = 4;
 let videoDuration = "5s";
 let videoRefs = { start: null, end: null };
 
@@ -371,7 +372,7 @@ function renderPlanBadge() {
 function goToPanel(index) {
   const track = document.getElementById("panelsTrack");
   const tabs = document.querySelectorAll(".tab-bar .tab");
-  currentPanel = Math.max(0, Math.min(index, tabs.length - 1));
+  currentPanel = Math.max(0, Math.min(index, TOTAL_PANELS - 1));
   if (track) track.style.transform = `translateX(-${currentPanel * 100}%)`;
   tabs.forEach((tab, i) => tab.classList.toggle("active", i === currentPanel));
 }
@@ -387,7 +388,7 @@ function initSwipe() {
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-      if (dx < 0 && currentPanel < 3) goToPanel(currentPanel + 1);
+      if (dx < 0 && currentPanel < TOTAL_PANELS - 1) goToPanel(currentPanel + 1);
       if (dx > 0 && currentPanel > 0) goToPanel(currentPanel - 1);
     }
   }, { passive: true });
@@ -2042,4 +2043,19 @@ function resetVideoForm() {
 
 window.addEventListener("load", () => {
   setTimeout(updateVideoUI, 120);
+});
+
+
+function initPanelLayout() {
+  const track = document.getElementById("panelsTrack");
+  if (!track) return;
+  track.style.width = `${TOTAL_PANELS * 100}%`;
+  document.querySelectorAll(".panel").forEach(panel => {
+    panel.style.flex = `0 0 ${100 / TOTAL_PANELS}%`;
+  });
+  goToPanel(typeof currentPanel === "number" ? currentPanel : 0);
+}
+
+window.addEventListener("load", () => {
+  setTimeout(initPanelLayout, 50);
 });
