@@ -167,3 +167,25 @@ async function _sendChat() {
     if (sendBtn) sendBtn.disabled = false;
   }
 }
+
+
+const VIDEO_PLAN_RULES = {
+  free: { daily: 1, refs: false },
+  pro: { daily: 3, refs: true },
+  proplus: { daily: 10, refs: true },
+  max: { daily: Infinity, refs: true }
+};
+
+function getDailyVideoLimit(plan) {
+  return (VIDEO_PLAN_RULES[plan] || VIDEO_PLAN_RULES.free).daily;
+}
+
+function canUseVideoRefs(plan) {
+  return !!((VIDEO_PLAN_RULES[plan] || VIDEO_PLAN_RULES.free).refs);
+}
+
+if (typeof window !== "undefined") {
+  window.VIDEO_PLAN_RULES = VIDEO_PLAN_RULES;
+  window.getDailyVideoLimit = getDailyVideoLimit;
+  window.canUseVideoRefs = canUseVideoRefs;
+}
