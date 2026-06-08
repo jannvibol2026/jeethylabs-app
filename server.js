@@ -1,3 +1,5 @@
+const VIDEO_DAILY_LIMITS = { free: 1, pro: 3, proplus: 10, max: Infinity };
+
 'use strict';
 const express    = require('express');
 const cookieParser = require('cookie-parser');
@@ -1231,3 +1233,64 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`JeeThy Labs -> port ${PORT}`));
+
+
+const multer = require("multer");
+const videoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const videoUsageStore = new Map();
+
+function getVideoUsageKey(userId, plan) {
+  const today = new Date().toISOString().slice(0, 10);
+  return `${userId || "guest"}:${plan || "free"}:${today}`;
+}
+
+function getVideoUsageCount(userId, plan) {
+  return videoUsageStore.get(getVideoUsageKey(userId, plan)) || 0;
+}
+
+function incrementVideoUsage(userId, plan) {
+  const key = getVideoUsageKey(userId, plan);
+  const next = (videoUsageStore.get(key) || 0) + 1;
+  videoUsageStore.set(key, next);
+  return next;
+}
+
+app.post("/api/video/generate", videoUpload.fields([{ name: "startImage", maxCount: 1 }, { name: "endImage", maxCount: 1 }]), async (req, res) => {
+  try {
+    const prompt = String(req.body?.prompt || "").trim();
+    const duration = String(req.body?.duration || "5s").trim();
+    const plan = String(req.body?.plan || "free").trim().toLowerCase();
+    const startImage = req.files?.startImage?.[0] || null;
+    const endImage = req.files?.endImage?.[0] || null;
+
+    if (!prompt) return res.status(400).json({ error: "Prompt is required" });
+
+    const limit = VIDEO_DAILY_LIMITS[plan] ?? VIDEO_DAILY_LIMITS.free;
+    const userId = req.user?.id || req.user?.email || req.ip;
+    const current = getVideoUsageCount(userId, plan);
+    if (Number.isFinite(limit) && current >= limit) {
+      return res.status(403).json({ error: `Daily video limit reached for ${plan}` });
+    }
+
+    const refsAllowed = ["pro", "proplus", "max"].includes(plan);
+    if (!refsAllowed && (startImage || endImage)) {
+      return res.status(403).json({ error: "Reference images require Pro, Pro+, or Max" });
+    }
+
+    const usageCount = incrementVideoUsage(userId, plan);
+    const demoUrl = `https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4`;
+    return res.json({
+      ok: true,
+      message: `Video generated successfully (${duration})`,
+      plan,
+      planLabel: plan === "proplus" ? "Pro+" : plan.charAt(0).toUpperCase() + plan.slice(1),
+      duration,
+      usageCount,
+      videoUrl: demoUrl,
+      usedReferences: Boolean(startImage || endImage)
+    });
+  } catch (err) {
+    console.error("/api/video/generate error", err);
+    return res.status(500).json({ error: "Video generation failed" });
+  }
+});
