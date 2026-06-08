@@ -2049,9 +2049,14 @@ window.addEventListener("load", () => {
 function initPanelLayout() {
   const track = document.getElementById("panelsTrack");
   if (!track) return;
+  track.style.display = "flex";
   track.style.width = `${TOTAL_PANELS * 100}%`;
-  document.querySelectorAll(".panel").forEach(panel => {
+  track.style.maxWidth = "none";
+  track.style.gridTemplateColumns = "none";
+  document.querySelectorAll(".panel").forEach((panel, i, arr) => {
     panel.style.flex = `0 0 ${100 / TOTAL_PANELS}%`;
+    panel.style.maxWidth = `${100 / TOTAL_PANELS}%`;
+    panel.style.borderRight = i === arr.length - 1 ? "none" : "1px solid var(--border)";
   });
   goToPanel(typeof currentPanel === "number" ? currentPanel : 0);
 }
@@ -2059,3 +2064,4 @@ function initPanelLayout() {
 window.addEventListener("load", () => {
   setTimeout(initPanelLayout, 50);
 });
+window.addEventListener("resize", initPanelLayout);
