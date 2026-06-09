@@ -24,7 +24,7 @@ const PORT = Number(process.env.PORT || 8080);
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const IS_PROD = NODE_ENV === 'production';
 
-const DATABASE_URL = process.env.DATABASE_URL;
+const DATABASE_URL = process.env.DATABASE_URL || process.env.DATABASEURL;
 const JWT_SECRET = process.env.JWT_SECRET || process.env.JWTSECRET;
 const SESSION_SECRET = process.env.SESSION_SECRET || process.env.SESSIONSECRET || JWT_SECRET;
 
@@ -32,7 +32,12 @@ const SMTP_USER = process.env.SMTP_USER || process.env.SMTPUSER;
 const SMTP_PASS = process.env.SMTP_PASS || process.env.SMTPPASS;
 const FROM_EMAIL = process.env.FROM_EMAIL || process.env.FROMEMAIL || SMTP_USER;
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GEMINIAPIKEY || '';
+const GEMINI_API_KEY =
+  process.env.GEMINI_API_KEY ||
+  process.env.GEMINIAPIKEY ||
+  process.env.OWNER_API_KEY ||
+  '';
+
 const APP_URL = process.env.APP_URL || process.env.APPURL || 'https://app.jeethy.site';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env.STRIPESECRETKEY || '';
@@ -43,11 +48,11 @@ const STRIPE_PRICE_PROPLUS = process.env.STRIPE_PRICE_PROPLUS || process.env.STR
 const STRIPE_PRICE_MAX = process.env.STRIPE_PRICE_MAX || process.env.STRIPEPRICEMAX || '';
 
 if (!DATABASE_URL) {
-  console.error('Missing DATABASE_URL');
+  console.error('Missing DATABASE_URL / DATABASEURL');
   process.exit(1);
 }
 if (!JWT_SECRET) {
-  console.error('Missing JWT_SECRET');
+  console.error('Missing JWT_SECRET / JWTSECRET');
   process.exit(1);
 }
 
