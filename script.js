@@ -2,6 +2,7 @@
 
 const VIDEO_PLAN_LIMITS = { free: 1, pro: 3, proplus: 10, max: Infinity };
 const TOTAL_PANELS = 4;
+const SONG_GENERATION_ENABLED = false;
 let videoDuration = "5s";
 let videoRefs = { start: null, end: null };
 
@@ -242,11 +243,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 function enforceAuthGate() {
   const chatInput   = document.getElementById("chatInput");
   const chatSendBtn = document.getElementById("chatSendBtn");
-  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = "Ã°Å¸â€â€™ Sign in to start chatting..."; }
+  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = '🔒 Sign in to start chatting...'; }
   if (chatSendBtn) chatSendBtn.disabled = true;
   showPanelOverlay("panel-chat",  "chat");
   showPanelOverlay("panel-image", "image");
-  showPanelOverlay("panel-song",  "song");
+  showPanelOverlay("panel-song",  SONG_GENERATION_ENABLED ? "song" : "song-disabled");
 }
 
 function showPanelOverlay(panelClass, action) {
@@ -264,24 +265,23 @@ function showPanelOverlay(panelClass, action) {
     gap:16px;backdrop-filter:blur(6px);
     border-radius:inherit;
   `;
-  const icon  = action === "chat" ? "fa-comments" : action === "image" ? "fa-image" : "fa-music";
-  const label = action === "chat" ? "AI Assistant" : action === "image" ? "Image Generator" : "Song Generator";
+  const disabledSong = action === 'song-disabled';
+  const icon  = action === 'chat' ? 'fa-comments' : action === 'image' ? 'fa-image' : 'fa-music';
+  const label = action === 'chat' ? 'AI Assistant' : action === 'image' ? 'Image Generator' : 'Song Generator';
+  const title = disabledSong ? 'Coming Soon' : 'Sign In Required';
+  const text = disabledSong
+    ? 'Song generation service is currently unavailable on this deployment.'
+    : `Please create an account or sign in<br/>to use the <strong>${label}</strong>.`;
+  const button = disabledSong
+    ? '<button type="button" onclick="showToast(\'Song generation is coming soon.\', \'error\')"><i class="fas fa-clock"></i> Coming Soon</button>'
+    : `<button type="button" onclick="openAuthModal('${action}')"><i class="fas fa-arrow-right-to-bracket"></i> Sign In / Sign Up</button>`;
   overlay.innerHTML = `
-    <div style="width:64px;height:64px;border-radius:50%;background:rgba(124,58,237,.18);border:2px solid rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center;">
-      <i class="fas ${icon}" style="font-size:24px;color:#a855f7;"></i>
+    <div class="auth-gate-icon"><i class="fas ${icon}"></i></div>
+    <div>
+      <div class="auth-gate-title">${title}</div>
+      <div class="auth-gate-text">${text}</div>
     </div>
-    <div style="text-align:center;padding:0 24px;">
-      <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:6px;">Sign In Required</div>
-      <div style="font-size:13px;color:#9ca3af;line-height:1.5;">
-        Please create an account or sign in<br/>to use the <strong style="color:#c4b5fd;">${label}</strong>.
-      </div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:10px;width:220px;">
-      <button onclick="openAuthModal('${action}')"
-        style="padding:12px;border-radius:24px;border:none;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.3px;">
-        <i class="fas fa-arrow-right-to-bracket"></i> Sign In / Sign Up
-      </button>
-    </div>
+    <div>${button}</div>
   `;
   const style = window.getComputedStyle(panel);
   if (style.position === "static") panel.style.position = "relative";
@@ -855,7 +855,7 @@ function autoResize(el) { el.style.height = "auto"; el.style.height = Math.min(e
 function handleChatKey(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } }
 
 function sendChat() {
-  if (!currentUser) { openAuthModal("chat"); return; }
+  if (!currentUser) { openAuthModal('chat'); return; }
   _sendChat();
 }
 
@@ -1357,6 +1357,7 @@ function selectChipCustom(btn) {
 }
 
 function generateSong() {
+  if (!SONG_GENERATION_ENABLED) { showToast('Song generation service is currently unavailable.', 'error'); return; }
   if (!currentUser) { openAuthModal("song"); return; }
   _generateSong();
 }
