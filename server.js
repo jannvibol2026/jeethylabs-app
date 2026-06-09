@@ -130,22 +130,8 @@ const STRIPE_PRICES = {
    APP MIDDLEWARE
 ========================= */
 
-app.set('trust proxy', 1);
-
-const ALLOWED_ORIGINS = [
-  APP_URL,
-  'https://app.jeethy.site',
-  'https://jeethy.site',
-  'http://localhost:3000',
-  'http://localhost:8080',
-].filter(Boolean);
-
 app.use(cors({
-  origin(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    return callback(null, true);
-  },
+  origin: true,
   credentials: true,
 }));
 
@@ -156,17 +142,13 @@ app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 app.use(session({
-  name: 'jl.sid',
   secret: SESSION_SECRET,
-  proxy: IS_PROD,
   resave: false,
   saveUninitialized: false,
-  rolling: true,
   cookie: {
     httpOnly: true,
     secure: IS_PROD,
     sameSite: 'lax',
-    path: '/',
     maxAge: 30 * 24 * 60 * 60 * 1000,
   },
 }));
@@ -201,6 +183,7 @@ const transporter = nodemailer.createTransport({
 
 /* =========================
    MEMORY STORES
+   NOTE: good enough for now; move to DB/Redis later
 ========================= */
 
 const otpStore = new Map();
@@ -222,31 +205,18 @@ function signToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
 }
 
-function getCookieOptions() {
-  return {
+function setAuthCookie(res, token) {
+  res.cookie('jl_token', token, {
     httpOnly: true,
     secure: IS_PROD,
     sameSite: 'lax',
-    path: '/',
     maxAge: 30 * 24 * 60 * 60 * 1000,
-  };
-}
-
-function setAuthCookie(res, token) {
-  res.cookie('jl_token', token, getCookieOptions());
+  });
 }
 
 function clearAuthCookies(res) {
-  const base = {
-    httpOnly: true,
-    secure: IS_PROD,
-    sameSite: 'lax',
-    path: '/',
-  };
-
-  res.clearCookie('jl_token', base);
-  res.clearCookie('jl.sid', base);
-  res.clearCookie('connect.sid', base);
+  res.clearCookie('jl_token');
+  res.clearCookie('connect.sid');
 }
 
 function auth(req, res, next) {
@@ -261,7 +231,7 @@ function auth(req, res, next) {
   try {
     req.user = jwt.verify(token, JWT_SECRET);
     return next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
@@ -507,8 +477,8 @@ function buildInstrumentPrompt(instrument) {
   if (!instrument) return '';
   const lines = [`Featured instruments: ${instrument}.`];
   const lower = instrument.toLowerCase();
-  const hits = [];
 
+  const hits = [];
   for (const [key, desc] of Object.entries(KHMER_INSTRUMENT_DESCRIPTIONS)) {
     if (lower.includes(key)) hits.push(desc);
   }
@@ -574,7 +544,7 @@ function buildSongPrompt({ prompt, style, voice, customLyrics, instrument, tempo
 }
 
 /* =========================
-   STARTUP LOGS
+   DB / SMTP STARTUP LOGS
 ========================= */
 
 pool.connect()
@@ -595,8 +565,6 @@ if (SMTP_USER && SMTP_PASS) {
 }
 
 console.log('JeeThy Labs starting...');
-console.log('ENV:', NODE_ENV);
-console.log('APP_URL:', APP_URL);
 console.log('GEMINI_API_KEY:', GEMINI_API_KEY ? 'SET' : 'MISSING');
 console.log('STRIPE:', STRIPE_SECRET_KEY ? 'SET' : 'NOT SET');
 
@@ -611,7 +579,6 @@ app.get('/api/health', (req, res) => {
     gemini: !!GEMINI_API_KEY,
     stripe: !!STRIPE_SECRET_KEY,
     env: NODE_ENV,
-    appUrl: APP_URL,
   });
 });
 
@@ -626,10 +593,6 @@ app.post('/api/send-otp', async (req, res) => {
 
     if (!cleanEmail) {
       return res.status(400).json({ error: 'Email is required.' });
-    }
-
-    if (!password || String(password).length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters.' });
     }
 
     const otp = genOTP();
@@ -683,8 +646,8 @@ app.post('/api/verify-otp', async (req, res) => {
     const rawPw = String(password || rec.password || '');
     const userName = String(name || rec.name || 'User').trim();
 
-    if (!rawPw || rawPw.length < 8) {
-      return res.status(400).json({ error: 'Password missing or too short.' });
+    if (!rawPw) {
+      return res.status(400).json({ error: 'Password missing.' });
     }
 
     const hash = await bcrypt.hash(rawPw, 10);
@@ -711,29 +674,21 @@ app.post('/api/verify-otp', async (req, res) => {
     const u = rows[0];
     const token = signToken({ id: u.id, email: u.email });
 
-    req.session.regenerate(err => {
-      if (err) {
-        console.error('session regenerate verify-otp:', err.message);
-        return res.status(500).json({ error: 'Session error.' });
-      }
+    req.session.token = token;
+    setAuthCookie(res, token);
 
-      req.session.token = token;
-      req.session.userId = u.id;
-      setAuthCookie(res, token);
-
-      return res.json({
-        success: true,
-        token,
-        user: {
-          id: u.id,
-          userid: u.userid,
-          name: u.name,
-          email: u.email,
-          plan: u.plan || 'free',
-          avatarurl: u.avatarurl || null,
-          createdat: u.createdat,
-        },
-      });
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: u.id,
+        userid: u.userid,
+        name: u.name,
+        email: u.email,
+        plan: u.plan || 'free',
+        avatarurl: u.avatarurl || null,
+        createdat: u.createdat,
+      },
     });
   } catch (e) {
     console.error('verify-otp:', e.message);
@@ -765,7 +720,7 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Account has no password.' });
     }
 
-    const ok = await bcrypt.compare(String(password), u.passwordhash);
+    const ok = await bcrypt.compare(password, u.passwordhash);
     if (!ok) {
       return res.status(401).json({ error: 'Wrong password.' });
     }
@@ -776,33 +731,21 @@ app.post('/api/login', async (req, res) => {
     );
 
     const token = signToken({ id: u.id, email: u.email });
+    req.session.token = token;
+    setAuthCookie(res, token);
 
-    req.session.regenerate(err => {
-      if (err) {
-        console.error('session regenerate login:', err.message);
-        return res.status(500).json({ error: 'Session error.' });
-      }
-
-      req.session.token = token;
-      req.session.userId = u.id;
-
-      setAuthCookie(res, token);
-
-      console.log('LOGIN OK', { userId: u.id, email: u.email, secure: IS_PROD });
-
-      return res.json({
-        success: true,
-        token,
-        user: {
-          id: u.id,
-          userid: u.userid,
-          name: u.name,
-          email: u.email,
-          plan: u.plan || 'free',
-          avatarurl: u.avatarurl || null,
-          createdat: u.createdat,
-        },
-      });
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: u.id,
+        userid: u.userid,
+        name: u.name,
+        email: u.email,
+        plan: u.plan || 'free',
+        avatarurl: u.avatarurl || null,
+        createdat: u.createdat,
+      },
     });
   } catch (e) {
     console.error('login:', e.message);
@@ -823,7 +766,6 @@ app.get('/api/me', auth, async (req, res) => {
 
     res.json({ user: rows[0] });
   } catch (e) {
-    console.error('me:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -872,10 +814,6 @@ app.post('/api/reset-password', async (req, res) => {
     const otp = String(req.body?.otp || '').trim();
     const newPassword = String(req.body?.newPassword || '');
 
-    if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ error: 'New password must be at least 8 characters.' });
-    }
-
     const rec = otpStore.get(cleanEmail);
     if (!rec || rec.type !== 'reset' || rec.otp !== otp || Date.now() > rec.expires) {
       otpStore.delete(cleanEmail);
@@ -892,7 +830,6 @@ app.post('/api/reset-password', async (req, res) => {
 
     res.json({ success: true });
   } catch (e) {
-    console.error('reset-password:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -973,20 +910,9 @@ app.post('/api/upload-avatar', auth, async (req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
-  try {
-    clearAuthCookies(res);
-
-    if (!req.session) {
-      return res.json({ success: true });
-    }
-
-    req.session.destroy(() => {
-      return res.json({ success: true });
-    });
-  } catch (e) {
-    console.error('logout:', e.message);
-    res.json({ success: true });
-  }
+  req.session.destroy(() => {});
+  clearAuthCookies(res);
+  res.json({ success: true });
 });
 
 /* =========================
@@ -1574,9 +1500,9 @@ app.post('/api/stripe/webhook', async (req, res) => {
 
     switch (event.type) {
       case 'checkout.session.completed': {
-        const sessionObj = event.data.object;
-        const userId = sessionObj?.metadata?.userId;
-        const plan = sessionObj?.metadata?.plan;
+        const session = event.data.object;
+        const userId = session?.metadata?.userId;
+        const plan = session?.metadata?.plan;
 
         if (userId && plan) {
           const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -1629,7 +1555,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
     const priceId = STRIPE_PRICES[planKey];
 
     if (stripe && priceId?.startsWith('price_')) {
-      const sessionObj = await stripe.checkout.sessions.create({
+      const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
         payment_method_types: ['card'],
         line_items: [{ price: priceId, quantity: 1 }],
@@ -1648,7 +1574,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
 
       return res.json({
         success: true,
-        checkoutUrl: sessionObj.url,
+        checkoutUrl: session.url,
         plan: planKey,
       });
     }
