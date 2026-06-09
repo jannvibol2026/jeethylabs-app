@@ -338,11 +338,8 @@ async function checkExistingSession() {
 }
 
 function getActiveApiKey() {
+  if ((userPlan === "pro" || userPlan === "proplus" || userPlan === "max") && useOwnKey && proCustomKey) return proCustomKey;
   return ownerApiKey;
-}
-
-function isOwnKeyFeatureAvailable() {
-  return false;
 }
 
 function checkQuota() {
@@ -794,12 +791,12 @@ async function confirmPlan() {
 // ====================== SETTINGS ======================
   // ✅ NEW
 function openSettings() {
-  if (!currentUser) { showToast("Please sign in first.", "error"); return; }
+  if (!currentUser) { showToast("Please sign in first.", "error"); return; }  // ← បន្ថែម
   if (userPlan === "free") { showToast("Settings available on Pro, Pro+ and Max plans", "error"); openPlanModal(); return; }
   const m = document.getElementById("settingsModal"); if (!m) return;
   m.classList.add("open");
   const _ki = document.getElementById("customKeyInput"); if (_ki) _ki.value = proCustomKey;
-  _ownKeyOn = useOwnKey && isOwnKeyFeatureAvailable();
+  _ownKeyOn = useOwnKey;
   updateSettingsUI();
 }
 function closeSettings() { const m = document.getElementById("settingsModal"); if (m) m.classList.remove("open"); }
@@ -813,23 +810,16 @@ function updateSettingsUI() {
   if (sec)  sec.style.display     = _ownKeyOn ? "block" : "none";
 }
 function toggleOwnKey() {
-  if (!isOwnKeyFeatureAvailable()) {
-    _ownKeyOn = false;
-    updateSettingsUI();
-    showToast("Custom API key storage will be added later for Pro, Pro+ and Max.", "info");
-    return;
-  }
   _ownKeyOn = !_ownKeyOn;
   updateSettingsUI();
 }
 function saveSettings() {
-  const input = document.getElementById("customKeyInput");
-  const k = input ? input.value.trim() : "";
-  proCustomKey = k;
-  useOwnKey = false;
-  _ownKeyOn = false;
-  updateSettingsUI();
-  showToast("Saved. JeeThy Labs owner key remains active for now. Custom API key support is coming later for Pro, Pro+ and Max.", "success");
+  const k = document.getElementById("customKeyInput").value.trim();
+  useOwnKey = _ownKeyOn;
+  if (useOwnKey) {
+    if (!k) return showToast("Enter your API key first", "error");
+    proCustomKey = k; showToast("Using your own API key", "success");
+  } else { proCustomKey = k; showToast("Using JeeThy Labs owner key", "success"); }
   closeSettings();
 }
 
