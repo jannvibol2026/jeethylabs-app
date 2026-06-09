@@ -717,7 +717,7 @@ app.post('/api/login', async (req, res) => {
     const u = rows[0];
 
     if (!u.passwordhash) {
-      return res.status(401).json({ error: 'Account has no password.' });
+      return res.status(401).json({ error: 'This account was created without a password. Please reset the password first or create the account again using Sign Up.' });
     }
 
     const ok = await bcrypt.compare(password, u.passwordhash);
@@ -1242,6 +1242,11 @@ app.get('/api/song-plan-info', auth, async (req, res) => {
 });
 
 app.post('/api/song', auth, async (req, res) => {
+  return res.status(503).json({ error: 'Song generation service is currently unavailable on this deployment.' });
+});
+
+/* disabled original song route kept below for reference */
+/* app.post('/api/song', auth, async (req, res) => {
   try {
     const key = geminiKey();
     const planKey = await getUserPlan(req.user.id);
