@@ -919,6 +919,13 @@ app.post('/api/logout', (req, res) => {
    MODELS
 ========================= */
 
+app.get('/api/key', (req, res) => {
+  if (!GEMINI_API_KEY) {
+    return res.status(503).json({ error: 'API key not configured' });
+  }
+  res.json({ key: GEMINI_API_KEY });
+});
+
 app.get('/api/models', async (req, res) => {
   try {
     const key = geminiKey();
