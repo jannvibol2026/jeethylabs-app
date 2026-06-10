@@ -103,7 +103,16 @@
 
 
 
-
+<style>
+.panels-track{width:400% !important;display:flex !important;grid-template-columns:none !important;transform:translateX(0);}
+.panel{flex:0 0 25% !important;max-width:25% !important;}
+@media (min-width:1024px){
+  .panels-wrap{overflow:hidden !important;justify-content:stretch !important;}
+  .panels-track{display:flex !important;width:400% !important;max-width:none !important;gap:0 !important;transform:translateX(0);}
+  .panel{flex:0 0 25% !important;max-width:25% !important;border-right:1px solid var(--border);}
+  .panel:last-child{border-right:none;}
+}
+</style>
 
 </head>
 <body>
@@ -440,6 +449,131 @@
     </button>
   </div>
 </div>
+
+    <!-- ═══ VIDEO ═══ -->
+    <section class="panel panel-video">
+      <div class="panel-inner panel-inner-scroll">
+
+        <div class="panel-header">
+          <div class="panel-icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">
+            <i class="fas fa-video"></i>
+          </div>
+          <div>
+            <h2 class="panel-title">Video Generate</h2>
+            <p class="panel-subtitle">Create AI videos from text &amp; images</p>
+          </div>
+        </div>
+
+        <!-- Prompt -->
+        <div class="form-group">
+          <label class="form-label">Video Description</label>
+          <textarea id="videoPrompt" class="form-textarea"
+            placeholder="Describe your video: scene, characters, camera movement, lighting..." rows="4"></textarea>
+        </div>
+
+        <!-- Aspect Ratio -->
+        <div class="form-group">
+          <label class="form-label">Aspect Ratio</label>
+          <div class="chip-group" id="videoAspectGroup">
+            <button class="chip active" data-value="16:9" onclick="selectChip(this,'videoAspectGroup')">
+              <i class="fas fa-display"></i> 16:9 Landscape
+            </button>
+            <button class="chip" data-value="9:16" onclick="selectChip(this,'videoAspectGroup')">
+              <i class="fas fa-mobile-screen"></i> 9:16 Portrait
+            </button>
+            <button class="chip" data-value="1:1" onclick="selectChip(this,'videoAspectGroup')">
+              <i class="fas fa-square"></i> 1:1 Square
+            </button>
+          </div>
+        </div>
+
+        <!-- Duration -->
+        <div class="form-group">
+          <label class="form-label">Duration</label>
+          <div class="chip-group" id="videoDurationChips">
+            <button class="chip" data-value="5s" onclick="selectVideoDuration('5s',this)">5s</button>
+            <button class="chip active" data-value="8s" onclick="selectVideoDuration('8s',this)">8s</button>
+            <button class="chip" data-value="10s" onclick="selectVideoDuration('10s',this)">10s</button>
+          </div>
+        </div>
+
+        <!-- Style -->
+        <div class="form-group">
+          <label class="form-label">Style</label>
+          <div class="chip-group" id="videoStyleGroup">
+            <button class="chip active" data-value="Realistic" onclick="selectChip(this,'videoStyleGroup')">
+              <i class="fas fa-camera"></i> Realistic
+            </button>
+            <button class="chip" data-value="Cartoon" onclick="selectChip(this,'videoStyleGroup')">
+              <i class="fas fa-paintbrush"></i> Cartoon
+            </button>
+            <button class="chip" data-value="Anime" onclick="selectChip(this,'videoStyleGroup')">
+              <i class="fas fa-star"></i> Anime
+            </button>
+            <button class="chip" data-value="Cinematic" onclick="selectChip(this,'videoStyleGroup')">
+              <i class="fas fa-film"></i> Cinematic
+            </button>
+            <button class="chip" data-value="Other" onclick="selectChip(this,'videoStyleGroup')">
+              <i class="fas fa-sliders"></i> Other
+            </button>
+          </div>
+        </div>
+
+        <!-- Reference Images -->
+        <div class="form-group">
+          <label class="form-label">Reference Images
+            <span style="font-size:11px;color:var(--text-muted)">(PRO — optional)</span>
+          </label>
+          <div id="videoRefPlanNote" style="font-size:11px;color:#a855f7;margin-bottom:8px;"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label class="form-label" style="font-size:11px;margin-bottom:4px;">Start Frame</label>
+              <div onclick="document.getElementById('videoStartImage').click()"
+                style="border:1.5px dashed var(--border);border-radius:10px;padding:16px 8px;text-align:center;cursor:pointer;background:var(--surface2);transition:border-color .2s;">
+                <i class="fas fa-image" style="font-size:18px;color:var(--text-muted);display:block;margin-bottom:4px;"></i>
+                <span id="videoStartPreview" style="font-size:11px;color:var(--text-muted);">Tap to upload</span>
+              </div>
+              <input type="file" id="videoStartImage" accept="image/*" style="display:none"
+                onchange="handleVideoRefUpload('start',event)"/>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:11px;margin-bottom:4px;">End Frame</label>
+              <div onclick="document.getElementById('videoEndImage').click()"
+                style="border:1.5px dashed var(--border);border-radius:10px;padding:16px 8px;text-align:center;cursor:pointer;background:var(--surface2);transition:border-color .2s;">
+                <i class="fas fa-image" style="font-size:18px;color:var(--text-muted);display:block;margin-bottom:4px;"></i>
+                <span id="videoEndPreview" style="font-size:11px;color:var(--text-muted);">Tap to upload</span>
+              </div>
+              <input type="file" id="videoEndImage" accept="image/*" style="display:none"
+                onchange="handleVideoRefUpload('end',event)"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Plan + Usage -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+          <span id="video-plan-badge" class="song-plan-badge"></span>
+          <span id="video-usage-text" class="song-duration-hint"></span>
+        </div>
+
+        <!-- Generate Button -->
+        <button class="btn-generate btn-purple" id="videoGenBtn" onclick="generateVideo()">
+          <i class="fas fa-wand-magic-sparkles"></i> Generate Video
+        </button>
+
+        <!-- Status -->
+        <p id="videoStatusText" style="font-size:12px;color:var(--text-muted);margin-top:8px;min-height:18px;"></p>
+
+        <!-- Result -->
+        <div id="videoResult" class="results-wrap" style="display:none;margin-top:12px;">
+          <video id="videoPlayer" controls playsinline
+            style="width:100%;border-radius:14px;background:#000;max-height:420px;"></video>
+          <button id="videoDownloadBtn" class="btn-generate btn-cyan" style="margin-top:10px;width:100%;">
+            <i class="fas fa-download"></i> Download Video
+          </button>
+        </div>
+
+      </div>
+    </section>
 
 <!-- AUTH MODAL -->
 <div class="modal-overlay" id="authModal">
