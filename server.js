@@ -717,7 +717,7 @@ app.post('/api/login', async (req, res) => {
     const u = rows[0];
 
     if (!u.passwordhash) {
-      return res.status(401).json({ error: 'This account was created without a password. Please reset the password first or Sign Up again.' });
+      return res.status(401).json({ error: 'This account was created without a password. Please use Forgot Password or Sign Up again.' });
     }
 
     const ok = await bcrypt.compare(password, u.passwordhash);
