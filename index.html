@@ -431,25 +431,6 @@
       </div>
     </section>
 
-  </div>
-</main>
-
-<!-- ═══════════ MODALS (outside <main>) ═══════════ -->
-
-<!-- Upgrade Modal (Custom Lyrics lock) -->
-<div id="upgrade-modal" class="upgrade-modal-overlay" style="display:none">
-  <div class="upgrade-modal-box">
-    <div style="font-size:36px;margin-bottom:12px;">&#x1F680;</div>
-    <h3 class="upgrade-modal-title">Upgrade Required</h3>
-    <p id="upgrade-modal-message" class="upgrade-modal-msg"></p>
-    <button class="btn-generate btn-purple"
-      onclick="document.getElementById('upgrade-modal').style.display='none'"
-      style="width:100%;margin-top:0;">
-      Got it
-    </button>
-  </div>
-</div>
-
     <!-- ═══ VIDEO ═══ -->
     <section class="panel panel-video">
       <div class="panel-inner panel-inner-scroll">
@@ -464,14 +445,12 @@
           </div>
         </div>
 
-        <!-- Prompt -->
         <div class="form-group">
           <label class="form-label">Video Description</label>
           <textarea id="videoPrompt" class="form-textarea"
             placeholder="Describe your video: scene, characters, camera movement, lighting..." rows="4"></textarea>
         </div>
 
-        <!-- Aspect Ratio -->
         <div class="form-group">
           <label class="form-label">Aspect Ratio</label>
           <div class="chip-group" id="videoAspectGroup">
@@ -487,7 +466,6 @@
           </div>
         </div>
 
-        <!-- Duration -->
         <div class="form-group">
           <label class="form-label">Duration</label>
           <div class="chip-group" id="videoDurationChips">
@@ -497,7 +475,6 @@
           </div>
         </div>
 
-        <!-- Style -->
         <div class="form-group">
           <label class="form-label">Style</label>
           <div class="chip-group" id="videoStyleGroup">
@@ -519,7 +496,6 @@
           </div>
         </div>
 
-        <!-- Reference Images -->
         <div class="form-group">
           <label class="form-label">Reference Images
             <span style="font-size:11px;color:var(--text-muted)">(PRO — optional)</span>
@@ -529,7 +505,7 @@
             <div>
               <label class="form-label" style="font-size:11px;margin-bottom:4px;">Start Frame</label>
               <div onclick="document.getElementById('videoStartImage').click()"
-                style="border:1.5px dashed var(--border);border-radius:10px;padding:16px 8px;text-align:center;cursor:pointer;background:var(--surface2);transition:border-color .2s;">
+                style="border:1.5px dashed var(--border);border-radius:10px;padding:16px 8px;text-align:center;cursor:pointer;background:var(--surface2);">
                 <i class="fas fa-image" style="font-size:18px;color:var(--text-muted);display:block;margin-bottom:4px;"></i>
                 <span id="videoStartPreview" style="font-size:11px;color:var(--text-muted);">Tap to upload</span>
               </div>
@@ -539,7 +515,7 @@
             <div>
               <label class="form-label" style="font-size:11px;margin-bottom:4px;">End Frame</label>
               <div onclick="document.getElementById('videoEndImage').click()"
-                style="border:1.5px dashed var(--border);border-radius:10px;padding:16px 8px;text-align:center;cursor:pointer;background:var(--surface2);transition:border-color .2s;">
+                style="border:1.5px dashed var(--border);border-radius:10px;padding:16px 8px;text-align:center;cursor:pointer;background:var(--surface2);">
                 <i class="fas fa-image" style="font-size:18px;color:var(--text-muted);display:block;margin-bottom:4px;"></i>
                 <span id="videoEndPreview" style="font-size:11px;color:var(--text-muted);">Tap to upload</span>
               </div>
@@ -549,21 +525,17 @@
           </div>
         </div>
 
-        <!-- Plan + Usage -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
           <span id="video-plan-badge" class="song-plan-badge"></span>
           <span id="video-usage-text" class="song-duration-hint"></span>
         </div>
 
-        <!-- Generate Button -->
         <button class="btn-generate btn-purple" id="videoGenBtn" onclick="generateVideo()">
           <i class="fas fa-wand-magic-sparkles"></i> Generate Video
         </button>
 
-        <!-- Status -->
         <p id="videoStatusText" style="font-size:12px;color:var(--text-muted);margin-top:8px;min-height:18px;"></p>
 
-        <!-- Result -->
         <div id="videoResult" class="results-wrap" style="display:none;margin-top:12px;">
           <video id="videoPlayer" controls playsinline
             style="width:100%;border-radius:14px;background:#000;max-height:420px;"></video>
@@ -574,6 +546,25 @@
 
       </div>
     </section>
+
+  </div>
+</main>
+
+<!-- ═══════════ MODALS (outside <main>) ═══════════ -->
+
+<!-- Upgrade Modal (Custom Lyrics lock) -->
+<div id="upgrade-modal" class="upgrade-modal-overlay" style="display:none">
+  <div class="upgrade-modal-box">
+    <div style="font-size:36px;margin-bottom:12px;">&#x1F680;</div>
+    <h3 class="upgrade-modal-title">Upgrade Required</h3>
+    <p id="upgrade-modal-message" class="upgrade-modal-msg"></p>
+    <button class="btn-generate btn-purple"
+      onclick="document.getElementById('upgrade-modal').style.display='none'"
+      style="width:100%;margin-top:0;">
+      Got it
+    </button>
+  </div>
+</div>
 
 <!-- AUTH MODAL -->
 <div class="modal-overlay" id="authModal">
