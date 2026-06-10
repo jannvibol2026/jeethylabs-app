@@ -76,10 +76,10 @@ const PLAN_LIMITS = {
 function initPlanFeatures() {
   const P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
 
-// ── CHAT: model
+// â”€â”€ CHAT: model
   if (P.chatModel) GEMINI_CHAT_MODEL = P.chatModel;
 
-// ── CHAT: file upload button
+// â”€â”€ CHAT: file upload button
   const fileUploadBtn = document.getElementById("chatFileUploadBtn");
   if (fileUploadBtn) {
     if (!P.fileUpload) {
@@ -90,19 +90,19 @@ function initPlanFeatures() {
     }
   }
 
-// ── CHAT: export button
+// â”€â”€ CHAT: export button
   const exportBtn = document.getElementById("chatExportBtn");
   if (exportBtn) exportBtn.style.display = P.exportChat ? "flex" : "none";
 
-// ── CHAT: custom system prompt
+// â”€â”€ CHAT: custom system prompt
   const sysPromptWrap = document.getElementById("chatSystemPromptWrap");
   if (sysPromptWrap) sysPromptWrap.style.display = P.customSystemPrompt ? "block" : "none";
 
-// ── CHAT: force Khmer button
+// â”€â”€ CHAT: force Khmer button
   const khmerBtn = document.getElementById("chatForceKhmerBtn");
   if (khmerBtn) khmerBtn.style.display = P.forceKhmer ? "flex" : "none";
 
-// ── IMAGE: aspect ratio
+// â”€â”€ IMAGE: aspect ratio
   const ratioChips = document.querySelectorAll("#imgRatioGroup .chip");
   ratioChips.forEach(chip => {
     chip.removeAttribute("onclick");
@@ -124,7 +124,7 @@ function initPlanFeatures() {
     }
   });
 
-// ── IMAGE: batch qty
+// â”€â”€ IMAGE: batch qty
   const qtyChips = document.querySelectorAll("#imgQtyGroup .chip");
   qtyChips.forEach(chip => {
     chip.removeAttribute("onclick");
@@ -137,7 +137,7 @@ function initPlanFeatures() {
     }
   });
 
-// ── IMAGE: quality
+// â”€â”€ IMAGE: quality
   const qualChips = document.querySelectorAll("#imgQualityGroup .chip");
   qualChips.forEach(chip => {
     chip.removeAttribute("onclick");
@@ -165,7 +165,7 @@ function initPlanFeatures() {
     }
   });
 
-// ── SONG: choir/duet lock
+// â”€â”€ SONG: choir/duet lock
   const voiceChips = document.querySelectorAll("#songVoiceGroup .chip");
   voiceChips.forEach(chip => {
     chip.removeAttribute("onclick");
@@ -186,7 +186,7 @@ function initPlanFeatures() {
     }
   });
 
-// ── Profile sheet usage label
+// â”€â”€ Profile sheet usage label
   syncProfileSheet();
   initSongPlanBadge();
 }
@@ -212,7 +212,7 @@ let authToken     = null;
 
 // ======================== INIT ========================
 document.addEventListener("DOMContentLoaded", async () => {
-// ── Delegated chip group click handlers ──
+// â”€â”€ Delegated chip group click handlers â”€â”€
   // Handles chips even after removeAttribute("onclick") by initPlanFeatures
   const CHIP_GROUPS = [
     { id: "imgRatioGroup",  groupId: "imgRatioGroup"  },
@@ -242,12 +242,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 function enforceAuthGate() {
   const chatInput   = document.getElementById("chatInput");
   const chatSendBtn = document.getElementById("chatSendBtn");
-  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = "Ã°Å¸â€â€™ Sign in to start chatting..."; }
+  if (chatInput)   { chatInput.disabled = true; chatInput.placeholder = "ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬â„¢ Sign in to start chatting..."; }
   if (chatSendBtn) chatSendBtn.disabled = true;
   showPanelOverlay("panel-chat",  "chat");
   showPanelOverlay("panel-image", "image");
   showPanelOverlay("panel-song",  "song");
-  showPanelOverlay("panel-video", "video");
 }
 
 function showPanelOverlay(panelClass, action) {
@@ -265,14 +264,8 @@ function showPanelOverlay(panelClass, action) {
     gap:16px;backdrop-filter:blur(6px);
     border-radius:inherit;
   `;
-  const icon  = action === "chat"  ? "fa-comments"
-              : action === "image" ? "fa-image"
-              : action === "song"  ? "fa-music"
-              : "fa-video";
-  const label = action === "chat"  ? "AI Assistant"
-              : action === "image" ? "Image Generator"
-              : action === "song"  ? "Song Generator"
-              : "Video Generator";
+  const icon  = action === "chat" ? "fa-comments" : action === "image" ? "fa-image" : "fa-music";
+  const label = action === "chat" ? "AI Assistant" : action === "image" ? "Image Generator" : "Song Generator";
   overlay.innerHTML = `
     <div style="width:64px;height:64px;border-radius:50%;background:rgba(124,58,237,.18);border:2px solid rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center;">
       <i class="fas ${icon}" style="font-size:24px;color:#a855f7;"></i>
@@ -345,8 +338,11 @@ async function checkExistingSession() {
 }
 
 function getActiveApiKey() {
+  // Pro/Max users with own key: still pass it for image/song via server
   if ((userPlan === "pro" || userPlan === "proplus" || userPlan === "max") && useOwnKey && proCustomKey) return proCustomKey;
-  return ownerApiKey;
+  // âœ… FIXED: Chat now routes through /api/chat on server â€” always return non-empty string
+  // ownerApiKey is still used for image/song routes that accept it as optional override
+  return ownerApiKey || "server";
 }
 
 function checkQuota() {
@@ -647,7 +643,7 @@ function closeDd() {
   const dd = document.getElementById("profileDropdown");
   if (dd) dd.classList.remove("open");
 }
-  // ✅ AFTER (bubble phase = normal):
+  // âœ… AFTER (bubble phase = normal):
 document.addEventListener("click", e => {
   const wrap = document.getElementById("userProfileWrap");
   if (wrap && !wrap.contains(e.target)) closeDd();
@@ -689,21 +685,21 @@ function syncProfileSheet() {
     if (ub) ub.style.display = (plan === "pro" || plan === "proplus" || plan === "max") ? "none" : "flex";
   }
   const P2 = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
-  const displayLimit = (P2.requests >= 9999 || P2.requests < 0) ? "∞" : String(limit);
+  const displayLimit = (P2.requests >= 9999 || P2.requests < 0) ? "âˆž" : String(limit);
   const uc = document.getElementById("ppUsageCount");
   if (uc) uc.textContent = used + " / " + displayLimit;
   const ub2 = document.getElementById("ppUsageBar");
   if (ub2) {
-    const barPct = displayLimit === "∞" ? 0 : pct;
+    const barPct = displayLimit === "âˆž" ? 0 : pct;
     ub2.style.width      = barPct + "%";
     ub2.style.background = barPct >= 80 ? "#f87171" : barPct >= 50 ? "#fbbf24" : "#a855f7";
   }
   // Show plan features summary in profile
   const planFeatEl = document.getElementById("ppPlanFeatures");
   if (planFeatEl && P2) {
-    const chatLbl  = P2.chatMsg < 0 ? "∞" : P2.chatMsg;
-    const imgLbl   = P2.imgDay  < 0 ? "∞" : P2.imgDay;
-    const songLbl  = P2.songDay < 0 ? "∞" : P2.songDay;
+    const chatLbl  = P2.chatMsg < 0 ? "âˆž" : P2.chatMsg;
+    const imgLbl   = P2.imgDay  < 0 ? "âˆž" : P2.imgDay;
+    const songLbl  = P2.songDay < 0 ? "âˆž" : P2.songDay;
     planFeatEl.innerHTML = `
   <div style="overflow:hidden;">
     <div class="pp-feat-row"><i class="fas fa-comments"></i> Chat: <b>${chatLbl}/day</b></div>
@@ -787,7 +783,7 @@ async function confirmPlan() {
     updateNavAvatar(currentUser);
     syncProfileSheet();
     closePlanModal();
-    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! 🎉", "success");
+    showToast((PLAN_LIMITS[userPlan]?.label || userPlan) + " plan activated! ðŸŽ‰", "success");
   } catch (err) {
     showToast(err.message || "Network error.", "error");
   } finally {
@@ -796,9 +792,9 @@ async function confirmPlan() {
 }
 
 // ====================== SETTINGS ======================
-  // ✅ NEW
+  // âœ… NEW
 function openSettings() {
-  if (!currentUser) { showToast("Please sign in first.", "error"); return; }  // ← បន្ថែម
+  if (!currentUser) { showToast("Please sign in first.", "error"); return; }  // â† áž”áž“áŸ’ážáŸ‚áž˜
   if (userPlan === "free") { showToast("Settings available on Pro, Pro+ and Max plans", "error"); openPlanModal(); return; }
   const m = document.getElementById("settingsModal"); if (!m) return;
   m.classList.add("open");
@@ -839,8 +835,8 @@ function showUpgradeModal() {
   const upgradeDesc  = document.querySelector("#upgradeModal .upgrade-plan-desc");
   const upgradeBtn   = document.querySelector("#upgradeModal .btn-upgrade-confirm");
   if (upgradeTitle) upgradeTitle.textContent = "Upgrade to " + NP.label;
-  if (upgradeDesc)  upgradeDesc.textContent  = (NP.chatMsg < 0 ? "Unlimited" : NP.chatMsg) + " chat msg/day · " + NP.price;
-  if (upgradeBtn)   upgradeBtn.textContent   = "👑 Upgrade to " + NP.label;
+  if (upgradeDesc)  upgradeDesc.textContent  = (NP.chatMsg < 0 ? "Unlimited" : NP.chatMsg) + " chat msg/day Â· " + NP.price;
+  if (upgradeBtn)   upgradeBtn.textContent   = "ðŸ‘‘ Upgrade to " + NP.label;
   const desc = document.getElementById("upgradeModalDesc");
   if (desc) {
     if (userPlan === "free") desc.innerHTML = 'You\'ve used all requests on the <strong>Free plan</strong>. Upgrade to unlock more.';
@@ -902,7 +898,7 @@ function toggleForceKhmer(btn) {
   btn.style.background  = _forceKhmer ? "rgba(168,85,247,.25)" : "rgba(255,255,255,.08)";
   btn.style.color       = _forceKhmer ? "#a855f7" : "var(--text2)";
   btn.style.borderColor = _forceKhmer ? "#a855f7" : "var(--border)";
-  showToast(_forceKhmer ? "Force Khmer ON 🇰🇭" : "Force Khmer OFF", "success");
+  showToast(_forceKhmer ? "Force Khmer ON ðŸ‡°ðŸ‡­" : "Force Khmer OFF", "success");
 }
 function exportChat() {
   const P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
@@ -924,14 +920,12 @@ function exportChat() {
 
 async function _sendChat() {
   if (isChatLoading) return;
-  const key = getActiveApiKey();
-  if (!key) { showToast("Service unavailable.", "error"); return; }
   if (!checkQuota()) return;
   const input = document.getElementById("chatInput");
   const text  = input.value.trim();
   if (!text && !_chatFileData) return;
 
-  const displayText = text || ("Ã°Å¸â€œÅ½ " + (_chatFileName || "file"));
+  const displayText = text || ("ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â½ " + (_chatFileName || "file"));
   appendMessage("user", displayText);
   input.value = ""; input.style.height = "auto";
   isChatLoading = true;
@@ -941,7 +935,7 @@ async function _sendChat() {
   // Build user parts
   const P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
   const khmerSuffix = (_forceKhmer && P.forceKhmer)
-    ? "\n\n[IMPORTANT: Reply ONLY in Khmer language (Ã¡Å¾â€”Ã¡Å¾Â¶Ã¡Å¾Å¸Ã¡Å¾Â¶Ã¡Å¾ÂÃ¡Å¸â€™Ã¡Å¾ËœÃ¡Å¸â€šÃ¡Å¾Å¡). Do not use English.]" : "";
+    ? "\n\n[IMPORTANT: Reply ONLY in Khmer language (ÃƒÂ¡Ã…Â¾Ã¢â‚¬â€ÃƒÂ¡Ã…Â¾Ã‚Â¶ÃƒÂ¡Ã…Â¾Ã…Â¸ÃƒÂ¡Ã…Â¾Ã‚Â¶ÃƒÂ¡Ã…Â¾Ã‚ÂÃƒÂ¡Ã…Â¸Ã¢â‚¬â„¢ÃƒÂ¡Ã…Â¾Ã‹Å“ÃƒÂ¡Ã…Â¸Ã¢â‚¬Å¡ÃƒÂ¡Ã…Â¾Ã…Â¡). Do not use English.]" : "";
   const userParts = [{ text: (text || " ") + khmerSuffix }];
   if (_chatFileData && _chatFileMime) {
     userParts.push({ inlineData: { mimeType: _chatFileMime, data: _chatFileData } });
@@ -956,28 +950,34 @@ async function _sendChat() {
   chatHistory.push({ role: "user", parts: userParts });
   const typingId = appendTyping();
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CHAT_MODEL}:generateContent?key=${key}`,
-      {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: sysPromptVal }] },
-          contents: chatHistory
-        })
-      }
-    );
+    // âœ… FIXED: Route through backend /api/chat (no exposed API key)
+    const headers = { "Content-Type": "application/json" };
+    if (authToken) headers["Authorization"] = "Bearer " + authToken;
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({
+        history: chatHistory,
+        model: GEMINI_CHAT_MODEL,
+        system: sysPromptVal
+      })
+    });
     clearChatFile();
     removeTyping(typingId);
-    if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || `HTTP ${res.status}`); }
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
     const data  = await res.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, could not generate a response.";
+    const reply = data.reply || "Sorry, could not generate a response.";
     chatHistory.push({ role: "model", parts: [{ text: reply }] });
     appendMessage("bot", reply);
     incrementRequest();
    } catch (err) {
     clearChatFile();
     removeTyping(typingId);
-    appendMessage("bot", "⚠️ " + err.message);
+    appendMessage("bot", "âš ï¸ " + err.message);
   } finally {
     isChatLoading = false;
     if (sendBtn) sendBtn.disabled = false;
@@ -1034,7 +1034,7 @@ function formatMarkdown(text) {
 }
 
 // =================== IMAGE GENERATE ===================
-// ── Reference Image Upload ──────
+// â”€â”€ Reference Image Upload â”€â”€â”€â”€â”€â”€
 function openRefImgUpload() {
   if (userPlan !== "pro" && userPlan !== "proplus" && userPlan !== "max") {
     showUpgradeModal();
@@ -1112,8 +1112,8 @@ function generateImage() {
   _generateImage();
 }
 async function _generateImage() {
+  // Image uses /api/image on server - key check is server-side
   const key = getActiveApiKey();
-  if (!key) return showToast("Service unavailable.", "error");
   if (!checkQuota()) return;
   const prompt = document.getElementById("imgPrompt").value.trim();
   if (!prompt) return showToast("Please enter a prompt", "error");
@@ -1314,7 +1314,7 @@ function openFullscreen(src, ratio) {
 }
 
 // =================== SONG GENERATE ===================
-// •••• Song Plan Badge ••••
+// â€¢Ââ€¢Ââ€¢Ââ€¢Â Song Plan Badge â€¢Ââ€¢Ââ€¢Ââ€¢Â
 function initSongPlanBadge() {
   const badge = document.getElementById("song-plan-badge");
   const hint  = document.getElementById("song-duration-hint");
@@ -1329,15 +1329,15 @@ function initSongPlanBadge() {
   if (hint) {
     const hints = {
       free:    "~55s",
-      pro:     "~2:50–3:05",
-      proplus: "~3:00–3:25",
-      max:     "~4:25–5:25 (full song)"
+      pro:     "~2:50â€“3:05",
+      proplus: "~3:00â€“3:25",
+      max:     "~4:25â€“5:25 (full song)"
     };
     hint.textContent = hints[userPlan] || "~55s";
   }
 }
 
-// •••• Custom Genre Chip (pops up instrument/tempo/mood panel) ••••
+// â€¢Ââ€¢Ââ€¢Ââ€¢Â Custom Genre Chip (pops up instrument/tempo/mood panel) â€¢Ââ€¢Ââ€¢Ââ€¢Â
 function selectChipCustom(btn) {
   const group = document.getElementById('songStyleGroup');
   const panel = document.getElementById('custom-style-panel');
@@ -1356,7 +1356,7 @@ function selectChipCustom(btn) {
     panel.style.removeProperty('transform');
     panel.style.display = 'block';
   } else {
-    // Deactivate → hide panel + re-activate Pop
+    // Deactivate â†’ hide panel + re-activate Pop
     panel.style.display = 'none';
     const firstChip = group.querySelector('.chip:not(.chip-custom)');
     if (firstChip) firstChip.classList.add('active');
@@ -1395,7 +1395,7 @@ async function _generateSong() {
   const tempo       = isCustom ? (getActiveChip("songTempoGroup")      || "Auto") : "Auto";
   const mood        = isCustom ? (getActiveChip("songMoodGroup")       || "Auto") : "Auto";
 
-  // Build style: if Custom → combine instrument+tempo+mood; else → use genre chip value
+  // Build style: if Custom â†’ combine instrument+tempo+mood; else â†’ use genre chip value
   const style = isCustom
     ? [
         (instrumentArr.length === 1 && instrumentArr[0] === 'Auto') ? '' : instrumentArr.join(' + ') + ' instrument',
@@ -1441,7 +1441,7 @@ async function _generateSong() {
     const header = document.createElement("div"); header.className = "song-result-title";
     const isLyria = audioSource && audioSource.toLowerCase().includes("lyria");
     const sourceBadge = audioSource
-      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "🎵 Lyria" : "🎤 TTS"}</span>`
+      ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;background:${isLyria ? "rgba(168,85,247,.18)" : "rgba(16,185,129,.15)"};color:${isLyria ? "#a855f7" : "#10b981"};border:1px solid ${isLyria ? "rgba(168,85,247,.3)" : "rgba(16,185,129,.3)"};">${isLyria ? "ðŸŽµ Lyria" : "ðŸŽ¤ TTS"}</span>`
       : "";
     header.innerHTML = `<i class="fas fa-music"></i> ${escapeHtml(songTitle || style + " Song")}${sourceBadge}<span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto">${escapeHtml(style)} - ${escapeHtml(voiceHint)}</span>`;
     card.appendChild(header);
@@ -1456,7 +1456,7 @@ async function _generateSong() {
       audioEl.style.cssText = "width:100%;padding:10px 14px 0;accent-color:var(--green);";
       audioEl.src = audioBlobUrl;
 
-// ── Waveform beat effect ──
+// â”€â”€ Waveform beat effect â”€â”€
       const waveWrap = document.createElement('div');
       waveWrap.style.cssText = 'display:flex;align-items:flex-end;gap:3px;height:32px;padding:6px 14px 4px;';
       for (let wb = 0; wb < 22; wb++) {
@@ -1542,7 +1542,7 @@ function getActiveChip(groupId) {
   }
   return el.textContent.trim();
 }
-// •••• Multi-select Chip (for Instrument) ••••
+// â€¢Ââ€¢Ââ€¢Ââ€¢Â Multi-select Chip (for Instrument) â€¢Ââ€¢Ââ€¢Ââ€¢Â
 const INSTRUMENT_MAX = 3; // max selectable instruments (excluding Auto)
 
 function toggleMultiChip(el, groupId) {
@@ -1550,7 +1550,7 @@ function toggleMultiChip(el, groupId) {
   const allMulti = document.querySelectorAll(`[data-multi="${el.dataset.multi}"]`);
 
   if (isAuto) {
-    // Auto → clear all, activate only Auto
+    // Auto â†’ clear all, activate only Auto
     allMulti.forEach(c => c.classList.remove("active"));
     el.classList.add("active");
     return;
@@ -1569,7 +1569,7 @@ function toggleMultiChip(el, groupId) {
     const stillActive = Array.from(allMulti).filter(c =>
       c.classList.contains("active") && !c.textContent.trim().startsWith("Auto")
     );
-    // If nothing left → fall back to Auto
+    // If nothing left â†’ fall back to Auto
     if (!stillActive.length) {
       allMulti.forEach(c => { if (c.textContent.trim().startsWith("Auto")) c.classList.add("active"); });
     }
@@ -1609,7 +1609,7 @@ function selectChip(el, groupId) {
   }
   document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove("active"));
   el.classList.add("active");
-  // If selecting a non-custom, non-other genre chip → clear Other value + hide custom panel
+  // If selecting a non-custom, non-other genre chip â†’ clear Other value + hide custom panel
   if (groupId === 'songStyleGroup' && !el.classList.contains('chip-custom') && !el.classList.contains('chip-other')) {
     _otherStyleValue = null;
     const panel = document.getElementById('custom-style-panel');
@@ -1641,7 +1641,7 @@ function showToast(msg, type = "info") {
 }
 
 
-// •••• Khmer Music Rhythm Dataset v1 - JeeThy Labs ••••
+// â€¢Ââ€¢Ââ€¢Ââ€¢Â Khmer Music Rhythm Dataset v1 - JeeThy Labs â€¢Ââ€¢Ââ€¢Ââ€¢Â
 // ============================================================
 // KHMER RHYTHM DATASET - Rich Lyria-optimized prompts v2.0
 // Each entry contains: label, bpm range, full Lyria prompt
@@ -1651,7 +1651,7 @@ function showToast(msg, type = "info") {
 const KHMER_RHYTHM_DB = {
 
   romvong: {
-    label: 'រាំវង់ (Romvong)',
+    label: 'ážšáž¶áŸ†ážœáž„áŸ‹ (Romvong)',
     bpm: [90, 110],
     desc: 'Khmer Romvong - traditional Cambodian circular dance music with warm, friendly, wedding/party feel. '
         + 'Tempo: 90-110 BPM, 4/4 time signature, medium energy. '
@@ -1670,7 +1670,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   saravan: {
-    label: 'សារ់ាវ់ាន់ (Saravan)',
+    label: 'ážŸáž¶ážšáŸ‹áž¶ážœáŸ‹áž¶áž“áŸ‹ (Saravan)',
     bpm: [95, 115],
     desc: 'Khmer Saravan - bouncy festive village dance music with playful, lively feel. '
         + 'Tempo: 95-115 BPM, 4/4 time signature, medium-high energy. '
@@ -1688,7 +1688,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   kantreum: {
-    label: 'កន្ត្រឹម (Kantreum)',
+    label: 'áž€áž“áŸ’ážáŸ’ážšáž¹áž˜ (Kantreum)',
     bpm: [110, 135],
     desc: 'Khmer Kantreum - fast energetic folk dance music, powerful and festive. '
         + 'Tempo: 110-135 BPM, 4/4 time signature, high energy. '
@@ -1707,7 +1707,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   madison: {
-    label: 'ម់ាឌីសុន (Madison)',
+    label: 'áž˜áŸ‹áž¶ážŒáž¸ážŸáž»áž“ (Madison)',
     bpm: [100, 120],
     desc: 'Khmer Madison - structured Cambodian line dance with retro party feel, clean and danceable. '
         + 'Tempo: 100-120 BPM, 4/4 time signature, medium-high energy. '
@@ -1725,7 +1725,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   romkbach: {
-    label: 'រាំក្បាច់ (Romkbach)',
+    label: 'ážšáž¶áŸ†áž€áŸ’áž”áž¶áž…áŸ‹ (Romkbach)',
     bpm: [75, 95],
     desc: 'Khmer Romkbach - elegant graceful traditional Cambodian slow dance, refined and dignified. '
         + 'Tempo: 75-95 BPM, 4/4 time signature, low-medium energy. '
@@ -1743,7 +1743,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   slow: {
-    label: 'បត្រ័ត (Slow Ballad)',
+    label: 'áž”ážáŸ’ážšáŸáž (Slow Ballad)',
     bpm: [60, 80],
     desc: 'Khmer Slow Ballad - deeply romantic emotional Cambodian ballad with nostalgic, heartfelt feel. '
         + 'Tempo: 60-80 BPM, 4/4 time signature, low energy, cinematic and intimate. '
@@ -1762,7 +1762,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   taloong: {
-    label: 'តាលូង (Taloong)',
+    label: 'ážáž¶áž›áž¼áž„ (Taloong)',
     bpm: [125, 145],
     desc: 'Khmer Taloong - fastest and most driving traditional Cambodian dance rhythm, urgent and exhilarating. '
         + 'Tempo: 125-145 BPM, 4/4 time signature, very high energy. '
@@ -1780,7 +1780,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   cha_cha_cha: {
-    label: 'ចា ចា ចា (Cha Cha)',
+    label: 'áž…áž¶ áž…áž¶ áž…áž¶ (Cha Cha)',
     bpm: [110, 130],
     desc: 'Khmer Cha Cha - Latin-influenced Cambodian dance rhythm with Khmer melodic identity, playful and seductive. '
         + 'Tempo: 110-130 BPM, 4/4 time signature, medium-high energy. '
@@ -1799,7 +1799,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   chapey: {
-    label: 'ចាប័ី ដង វែង (Chapey Dang Veng)',
+    label: 'áž…áž¶áž”áŸáž¸ ážŠáž„ ážœáŸ‚áž„ (Chapey Dang Veng)',
     bpm: [70, 95],
     desc: 'Chapey Dang Veng - ancient Cambodian long-neck lute storytelling tradition, UNESCO Intangible Cultural Heritage. '
         + 'Tempo: 70-95 BPM with rubato feel - tempo breathes naturally with the story. '
@@ -1817,7 +1817,7 @@ const KHMER_RHYTHM_DB = {
   },
 
   lbokkatob: {
-    label: 'លបកតប់ / អាយៀាយ (Lbok Katob / Ayai)',
+    label: 'áž›áž”áž€ážáž”áŸ‹ / áž¢áž¶áž™áŸ€áž¶áž™ (Lbok Katob / Ayai)',
     bpm: [80, 100],
     desc: 'Lbok Katob - traditional Cambodian improvised call-and-response folk singing style, witty and playful. '
         + 'Tempo: 80-100 BPM, 4/4, moderate and conversational energy. '
@@ -1929,7 +1929,7 @@ function updateVideoUI() {
 
   if (badge) badge.textContent = `Plan: ${(PLAN_LIMITS[userPlan]?.label || userPlan).toUpperCase()}`;
   if (usage) usage.textContent = Number.isFinite(limit)
-    ? `Used ${used}/${limit} videos today · Remaining ${remaining}`
+    ? `Used ${used}/${limit} videos today Â· Remaining ${remaining}`
     : `Unlimited video generations today`;
   if (note) note.textContent = refsAllowed
     ? "Reference images unlocked. You can upload both a start image and an end image."
@@ -1968,15 +1968,10 @@ function handleVideoRefUpload(kind, event) {
   const file = event?.target?.files?.[0];
   videoRefs[kind] = file || null;
   const preview = document.getElementById(kind === "start" ? "videoStartPreview" : "videoEndPreview");
-  if (preview) preview.textContent = file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB` : "No file selected";
+  if (preview) preview.textContent = file ? `${file.name} Â· ${(file.size / 1024 / 1024).toFixed(2)} MB` : "No file selected";
 }
 
 async function generateVideo() {
-  if (!currentUser) {
-    openAuthModal("video");
-    return;
-  }
-
   const promptEl = document.getElementById("videoPrompt");
   const btn = document.getElementById("videoGenBtn");
   const prompt = (promptEl?.value || "").trim();
@@ -2023,7 +2018,7 @@ async function generateVideo() {
     const dl = document.getElementById("videoDownloadBtn");
     if (player && data.videoUrl) player.src = data.videoUrl;
     if (dl && data.videoUrl) dl.href = data.videoUrl;
-    if (status) status.textContent = data.message || `Video ready · ${data.planLabel || userPlan} plan`;
+    if (status) status.textContent = data.message || `Video ready Â· ${data.planLabel || userPlan} plan`;
     if (result) result.style.display = "block";
     showToast("Video generated successfully", "success");
   } catch (err) {
