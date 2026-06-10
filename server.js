@@ -1,923 +1,344 @@
-'use strict';
-
 require('dotenv').config();
 
 const express = require('express');
-const cookieParser = require('cookie-parser');
 const session = require('express-session');
-const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
 const cors = require('cors');
-const path = require('path');
+const nodemailer = require('nodemailer');
+const { Pool } = require('pg');
+const jwt = require('jsonwebtoken');
+const Stripe = require('stripe');
+const cookieParser = require('cookie-parser');
 const multer = require('multer');
-const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-/* =========================
-   ENV
-========================= */
+const {
+  DATABASE_URL,
+  SESSION_SECRET,
+  JWT_SECRET,
+  EMAIL_USER,
+  EMAIL_PASS,
+  GEMINI_API_KEY,
+  STRIPE_SECRET_KEY,
+  APP_URL,
+  NODE_ENV
+} = process.env;
 
-const PORT = Number(process.env.PORT || 8080);
-const NODE_ENV = process.env.NODE_ENV || 'development';
-const IS_PROD = NODE_ENV === 'production';
-
-const DATABASE_URL = process.env.DATABASE_URL || process.env.DATABASEURL;
-const JWT_SECRET = process.env.JWT_SECRET || process.env.JWTSECRET;
-const SESSION_SECRET = process.env.SESSION_SECRET || process.env.SESSIONSECRET || JWT_SECRET;
-
-const SMTP_USER = process.env.SMTP_USER || process.env.SMTPUSER;
-const SMTP_PASS = process.env.SMTP_PASS || process.env.SMTPPASS;
-const FROM_EMAIL = process.env.FROM_EMAIL || process.env.FROMEMAIL || SMTP_USER;
-
-const GEMINI_API_KEY =
-  process.env.GEMINI_API_KEY ||
-  process.env.GEMINIAPIKEY ||
-  process.env.OWNER_API_KEY ||
-  '';
-
-const APP_URL = process.env.APP_URL || process.env.APPURL || 'https://app.jeethy.site';
-
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env.STRIPESECRETKEY || '';
-const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || process.env.STRIPEWEBHOOKSECRET || '';
-
-const STRIPE_PRICE_PRO = process.env.STRIPE_PRICE_PRO || process.env.STRIPEPRICEPRO || '';
-const STRIPE_PRICE_PROPLUS = process.env.STRIPE_PRICE_PROPLUS || process.env.STRIPEPRICEPROPLUS || '';
-const STRIPE_PRICE_MAX = process.env.STRIPE_PRICE_MAX || process.env.STRIPEPRICEMAX || '';
-
-if (!DATABASE_URL) {
-  console.error('Missing DATABASE_URL / DATABASEURL');
-  process.exit(1);
-}
-if (!JWT_SECRET) {
-  console.error('Missing JWT_SECRET / JWTSECRET');
-  process.exit(1);
-}
-
-/* =========================
-   CONFIG
-========================= */
-
-const VIDEO_DAILY_LIMITS = {
-  free: 1,
-  pro: 3,
-  proplus: 10,
-  max: Infinity,
-};
-
-const PLAN_CONFIG = {
-  free: {
-    label: 'Free',
-    durationHint: 'under 1 minute, target 55 seconds, must end before 60 seconds',
-    durationSeconds: 55,
-    structureHint: 'Short Instrumental Intro 8s - Verse 20s - Chorus 18s - Short Outro 9s',
-    customLyrics: false,
-    chatMsgDay: 20,
-    imgDay: 5,
-    songDay: 3,
-    imgResolution: '720x720',
-    audioQuality: 'standard',
-  },
-  pro: {
-    label: 'Pro',
-    durationHint: 'between 2 minutes 50 seconds and 3 minutes 05 seconds, target 3 minutes',
-    durationSeconds: 180,
-    structureHint: 'Instrumental Intro 20s - Verse 1 30s - Pre-Chorus 10s - Chorus 25s - Break 20s - Verse 2 25s - Chorus 25s - Final Chorus 20s - Outro 15s',
-    customLyrics: true,
-    chatMsgDay: 100,
-    imgDay: 25,
-    songDay: 15,
-    imgResolution: '1024x1024',
-    audioQuality: 'high',
-  },
-  proplus: {
-    label: 'Pro+',
-    durationHint: 'between 3 minutes and 3 minutes 25 seconds, target 3 minutes 15 seconds',
-    durationSeconds: 200,
-    structureHint: 'Extended Intro 25s - Verse 1 30s - Pre-Chorus 12s - Chorus 25s - Break 22s - Verse 2 28s - Pre-Chorus 12s - Chorus 25s - Bridge 15s - Final Chorus 25s - Outro 25s',
-    customLyrics: true,
-    chatMsgDay: -1,
-    imgDay: 150,
-    songDay: 100,
-    imgResolution: '2048x2048',
-    audioQuality: 'best',
-  },
-  max: {
-    label: 'Max',
-    durationHint: 'between 4 minutes 25 seconds and 5 minutes 25 seconds, target 5 minutes full song',
-    durationSeconds: 300,
-    structureHint: 'Extended Intro 35s - Verse 1 35s - Pre-Chorus 15s - Chorus 30s - Break 30s - Verse 2 30s - Pre-Chorus 15s - Chorus 30s - Bridge 20s - Solo 25s - Final Chorus 30s - Extended Outro 40s',
-    customLyrics: true,
-    chatMsgDay: -1,
-    imgDay: -1,
-    songDay: -1,
-    imgResolution: '3840x2160',
-    audioQuality: 'best-lyria-pro',
-  },
-};
+const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const MODELS_TTL = 1000 * 60 * 10;
 
-const STRIPE_PRICES = {
-  pro: STRIPE_PRICE_PRO,
-  proplus: STRIPE_PRICE_PROPLUS,
-  max: STRIPE_PRICE_MAX,
-};
+let modelsCache = null;
+let modelsCacheTime = 0;
 
-/* =========================
-   APP MIDDLEWARE
-========================= */
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }
+});
 
-app.use(cors({
-  origin: true,
-  credentials: true,
-}));
-
-app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
-
-app.use(cookieParser());
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
-
-app.use(session({
-  secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    secure: IS_PROD,
-    sameSite: 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-  },
-}));
-
-app.use(express.static(path.join(__dirname), {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html')) res.setHeader('Content-Type', 'text/html; charset=UTF-8');
-    if (filePath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
-    if (filePath.endsWith('.css')) res.setHeader('Content-Type', 'text/css; charset=UTF-8');
-  }
-}));
-
-/* =========================
-   DB
-========================= */
+const videoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 }
+});
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
-  ssl: IS_PROD ? { rejectUnauthorized: false } : false,
+  ssl: DATABASE_URL && DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false }
 });
 
-/* =========================
-   MAIL
-========================= */
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false,
-  auth: SMTP_USER && SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
-});
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+app.use(cookieParser());
 
-/* =========================
-   MEMORY STORES
-   NOTE: good enough for now; move to DB/Redis later
-========================= */
-
-const otpStore = new Map();
-const videoUsageStore = new Map();
-
-/* =========================
-   HELPERS
-========================= */
-
-function genOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-function nowIsoDay() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
-}
-
-function setAuthCookie(res, token) {
-  res.cookie('jl_token', token, {
+app.use(session({
+  secret: SESSION_SECRET || 'jeethy-labs-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: NODE_ENV === 'production',
     httpOnly: true,
-    secure: IS_PROD,
-    sameSite: 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-  });
-}
-
-function clearAuthCookies(res) {
-  res.clearCookie('jl_token');
-  res.clearCookie('connect.sid');
-}
-
-function auth(req, res, next) {
-  const hdr = req.headers.authorization || '';
-  const bearer = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
-  const token = bearer || req.session?.token || req.cookies?.jl_token || null;
-
-  if (!token) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 1000 * 60 * 60 * 24 * 7
   }
+}));
 
-  try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    return next();
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-}
-
-function getStripe() {
-  if (!STRIPE_SECRET_KEY) return null;
-  try {
-    return require('stripe')(STRIPE_SECRET_KEY);
-  } catch {
-    return null;
-  }
-}
-
-async function sendEmail(to, subject, html) {
-  if (!SMTP_USER || !SMTP_PASS) {
-    throw new Error('SMTP is not configured');
-  }
-
-  return transporter.sendMail({
-    from: `"JeeThy Labs" <${FROM_EMAIL}>`,
-    to,
-    subject,
-    html,
-  });
-}
-
-async function initDb() {
-  const migrations = [
-    `
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        userid TEXT,
-        name TEXT,
-        email TEXT UNIQUE NOT NULL,
-        passwordhash TEXT,
-        emailverified BOOLEAN DEFAULT false,
-        avatarurl TEXT,
-        plan VARCHAR(32) DEFAULT 'free',
-        status VARCHAR(32) DEFAULT 'active',
-        country VARCHAR(64),
-        pendingplan VARCHAR(20),
-        planexpiresat TIMESTAMPTZ,
-        createdat TIMESTAMPTZ DEFAULT NOW(),
-        lastactive TIMESTAMPTZ DEFAULT NOW(),
-        updatedat TIMESTAMPTZ DEFAULT NOW()
-      )
-    `,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS userid TEXT`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS passwordhash TEXT`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS emailverified BOOLEAN DEFAULT false`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatarurl TEXT`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS plan VARCHAR(32) DEFAULT 'free'`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(32) DEFAULT 'active'`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(64)`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS pendingplan VARCHAR(20)`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS planexpiresat TIMESTAMPTZ`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS createdat TIMESTAMPTZ DEFAULT NOW()`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS lastactive TIMESTAMPTZ DEFAULT NOW()`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS updatedat TIMESTAMPTZ DEFAULT NOW()`,
-  ];
-
-  for (const sql of migrations) {
-    await pool.query(sql);
-  }
-}
-
-async function getUserPlan(userId) {
-  try {
-    const { rows } = await pool.query(
-      `SELECT plan, planexpiresat FROM users WHERE id = $1`,
-      [userId]
-    );
-
-    if (!rows.length) return 'free';
-
-    const row = rows[0];
-    const raw = String(row.plan || 'free').toLowerCase().trim();
-
-    if (raw !== 'free' && row.planexpiresat && new Date(row.planexpiresat) < new Date()) {
-      await pool.query(
-        `UPDATE users SET plan = 'free', planexpiresat = NULL, updatedat = NOW() WHERE id = $1`,
-        [userId]
-      );
-      return 'free';
-    }
-
-    return PLAN_CONFIG[raw] ? raw : 'free';
-  } catch {
-    return 'free';
-  }
-}
-
-function getVideoUsageKey(userId, plan) {
-  return `${userId || 'guest'}:${plan || 'free'}:${nowIsoDay()}`;
-}
-
-function getVideoUsageCount(userId, plan) {
-  return videoUsageStore.get(getVideoUsageKey(userId, plan)) || 0;
-}
-
-function incrementVideoUsage(userId, plan) {
-  const key = getVideoUsageKey(userId, plan);
-  const next = (videoUsageStore.get(key) || 0) + 1;
-  videoUsageStore.set(key, next);
-  return next;
-}
-
-async function withRetry(fn, maxAttempts = 3, baseDelayMs = 1200) {
-  let lastErr;
-
-  for (let i = 1; i <= maxAttempts; i++) {
-    try {
-      return await fn(i);
-    } catch (err) {
-      lastErr = err;
-      const msg = String(err?.message || '');
-      const retryable = /503|429|quota|overload|high demand|rate.?limit/i.test(msg);
-      if (!retryable || i === maxAttempts) break;
-      const delay = baseDelayMs * Math.pow(2, i - 1);
-      await new Promise(r => setTimeout(r, delay));
-    }
-  }
-
-  throw lastErr;
-}
-
-async function safeJson(response, label = 'request') {
-  const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    const text = await response.text();
-    throw new Error(`${label} non-JSON HTTP ${response.status}: ${text.slice(0, 200)}`);
-  }
-  return response.json();
-}
+app.use(express.static(path.join(__dirname)));
 
 function geminiKey() {
   if (!GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY is not configured');
+    throw new Error('GEMINI_API_KEY is missing.');
   }
   return GEMINI_API_KEY;
 }
 
-let modelsCache = null;
-let modelsCacheTime = 0;
-const MODELS_TTL = 10 * 60 * 1000;
+function signToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role || 'user'
+    },
+    JWT_SECRET || 'jeethy-jwt-secret',
+    { expiresIn: '7d' }
+  );
+}
+
+function auth(req, res, next) {
+  const bearer = req.headers.authorization;
+  const token =
+    req.cookies?.token ||
+    (bearer && bearer.startsWith('Bearer ') ? bearer.slice(7) : null);
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET || 'jeethy-jwt-secret');
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+}
+
+function formatDateKey(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+const VIDEO_DAILY_LIMITS = {
+  free: 2,
+  pro: 10,
+  proplus: 20,
+  max: 50
+};
+
+const videoUsageMap = new Map();
+
+function getVideoUsageKey(userId, plan) {
+  return `${formatDateKey()}::${userId}::${plan}`;
+}
+
+function getVideoUsageCount(userId, plan) {
+  return videoUsageMap.get(getVideoUsageKey(userId, plan)) || 0;
+}
+
+function incrementVideoUsage(userId, plan) {
+  const key = getVideoUsageKey(userId, plan);
+  const current = videoUsageMap.get(key) || 0;
+  const next = current + 1;
+  videoUsageMap.set(key, next);
+  return next;
+}
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: EMAIL_USER,
+    pass: EMAIL_PASS
+  }
+});
+
+async function ensureTables() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT,
+      full_name TEXT DEFAULT '',
+      role TEXT DEFAULT 'user',
+      plan TEXT DEFAULT 'free',
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS otp_codes (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL,
+      code TEXT NOT NULL,
+      purpose TEXT NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+}
+
+async function sendOTP(email, code, purpose = 'verify') {
+  if (!EMAIL_USER || !EMAIL_PASS) {
+    console.warn('Email credentials missing. OTP:', email, code);
+    return;
+  }
+
+  const subject =
+    purpose === 'reset'
+      ? 'Reset your JeeThy Labs password'
+      : 'Verify your JeeThy Labs account';
+
+  const html = `
+    <div style="font-family:Inter,Arial,sans-serif;padding:24px;background:#0b0b14;color:#fff">
+      <h2 style="margin:0 0 12px">JeeThy Labs</h2>
+      <p style="margin:0 0 16px">Your OTP code is:</p>
+      <div style="font-size:32px;font-weight:800;letter-spacing:6px;margin:16px 0;color:#a855f7">${code}</div>
+      <p style="margin-top:16px;color:#c9c9d8">This code will expire in 10 minutes.</p>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"JeeThy Labs" <${EMAIL_USER}>`,
+    to: email,
+    subject,
+    html
+  });
+}
+
+function randomOTP() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+async function createOTP(email, purpose) {
+  const code = randomOTP();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await pool.query(
+    `INSERT INTO otp_codes (email, code, purpose, expires_at) VALUES ($1,$2,$3,$4)`,
+    [email, code, purpose, expiresAt]
+  );
+
+  await sendOTP(email, code, purpose);
+  return code;
+}
+
+async function verifyOTP(email, code, purpose) {
+  const { rows } = await pool.query(
+    `SELECT * FROM otp_codes
+     WHERE email = $1 AND code = $2 AND purpose = $3 AND expires_at > NOW()
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [email, code, purpose]
+  );
+
+  if (!rows.length) return false;
+
+  await pool.query(`DELETE FROM otp_codes WHERE email = $1 AND purpose = $2`, [email, purpose]);
+  return true;
+}
 
 async function fetchAvailableModels(key) {
   const now = Date.now();
-  if (modelsCache && (now - modelsCacheTime) < MODELS_TTL) return modelsCache;
+  if (modelsCache && now - modelsCacheTime < MODELS_TTL) return modelsCache;
 
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}&pageSize=100`);
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+  const data = await r.json().catch(() => ({}));
+
   if (!r.ok) {
-    const text = await r.text();
-    throw new Error(`ListModels HTTP ${r.status}: ${text.slice(0, 200)}`);
+    throw new Error(data?.error?.message || 'Unable to fetch models.');
   }
 
-  const data = await r.json();
-  const models = (data.models || []).map(m => ({
-    name: m.name?.replace(/^models\//, ''),
-    displayName: m.displayName || '',
-    supportedMethods: m.supportedGenerationMethods || [],
-  }));
-
-  modelsCache = models;
+  modelsCache = data?.models || [];
   modelsCacheTime = now;
-  return models;
+  return modelsCache;
 }
 
-function classifyModels(models) {
-  const gc = models.filter(m => Array.isArray(m.supportedMethods) && m.supportedMethods.includes('generateContent'));
-  const imageModels = gc.filter(m => /imagen|image.*generation|flash.*image/i.test(m.name || '') || /image/i.test(m.displayName || ''));
-  const lyriaModels = gc.filter(m => /lyria/i.test(m.name || '') || /lyria/i.test(m.displayName || ''));
-  const ttsModels = gc.filter(m => /tts|text-to-speech|speech/i.test(m.name || '') || /tts/i.test(m.displayName || ''));
-  const chatModels = gc.filter(m => !imageModels.includes(m) && !lyriaModels.includes(m) && !ttsModels.includes(m));
-  return { imageModels, lyriaModels, ttsModels, chatModels };
-}
-
-function cleanLyricsText(raw) {
-  if (!raw) return '';
-  return String(raw)
-    .replace(/music|bpm|duration|seconds?|tempo|key|time signature|mood|energy/gi, '')
-    .replace(/^[-—\s]+/gm, '')
-    .replace(/\n{3,}/g, '\n\n')
+function pickText(parts) {
+  if (!Array.isArray(parts)) return '';
+  return parts
+    .map(p => p?.text || '')
+    .filter(Boolean)
+    .join('\n')
     .trim();
 }
 
-function trimAudioBuffer(buf64, maxSeconds, mimeType = 'audio/wav') {
-  try {
-    const buf = Buffer.from(buf64, 'base64');
-    const mime = String(mimeType || '').toLowerCase();
-
-    if (buf.length > 44 && buf.slice(0, 4).toString('ascii') === 'RIFF') {
-      const hdr = buf.slice(0, 44);
-      let pcm = buf.slice(44);
-
-      const sampleRate = hdr.readUInt32LE(24);
-      const numChannels = hdr.readUInt16LE(22);
-      const bitsPerSample = hdr.readUInt16LE(34);
-
-      const bytesPerSec = sampleRate * numChannels * (bitsPerSample / 8);
-      const maxBytes = Math.floor(bytesPerSec * maxSeconds);
-
-      if (pcm.length > maxBytes) {
-        pcm = pcm.slice(0, maxBytes);
-      }
-
-      const out = Buffer.concat([hdr, pcm]);
-      out.writeUInt32LE(pcm.length, 40);
-      out.writeUInt32LE(pcm.length + 36, 4);
-      return out.toString('base64');
-    }
-
-    const rateMatch = mime.match(/rate=(\d+)/i);
-    const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
-    const numChannels = mime.includes('channels=2') ? 2 : 1;
-    const bytesPerSec = sampleRate * numChannels * 2;
-    const maxBytes = Math.floor(bytesPerSec * maxSeconds);
-
-    if (buf.length > maxBytes) {
-      return buf.slice(0, maxBytes).toString('base64');
-    }
-
-    return buf64;
-  } catch {
-    return buf64;
-  }
-}
-
-const KHMER_INSTRUMENT_DESCRIPTIONS = {
-  khloy: 'Khloy Cambodian bamboo vertical flute with airy breathy melodic tone and gentle vibrato.',
-  'roneat ek': 'Roneat Ek Cambodian bamboo xylophone with bright crisp resonant melodic runs.',
-  'roneat thung': 'Roneat Thung low-pitched bamboo xylophone with deep mellow woody bass color.',
-  chapei: 'Chapei Cambodian long-neck lute with deep resonant plucked string timbre.',
-  tro: 'Tro Cambodian bowed string with haunting lyrical expressive vibrato.',
-  'kse diev': 'Kse Diev monochord zither with meditative droning plucked resonance.',
-  'kong vong': 'Kong Vong gong circle with warm sustained bronze melodic gong tones.',
-  skor: 'Skor Cambodian drum with warm resonant hand-played rhythmic attack.',
-  pin: 'Pin Cambodian harp with bright flowing plucked glissando tone.',
-};
-
-function buildInstrumentPrompt(instrument) {
-  if (!instrument) return '';
-  const lines = [`Featured instruments: ${instrument}.`];
-  const lower = instrument.toLowerCase();
-
-  const hits = [];
-  for (const [key, desc] of Object.entries(KHMER_INSTRUMENT_DESCRIPTIONS)) {
-    if (lower.includes(key)) hits.push(desc);
-  }
-
-  if (hits.length) {
-    lines.push('');
-    lines.push('IMPORTANT - CAMBODIAN TRADITIONAL INSTRUMENTS REQUIRED');
-    for (const desc of hits) lines.push(`- ${desc}`);
-    lines.push('- These Khmer instruments must remain clearly audible in the arrangement.');
-    lines.push('- Preserve authentic acoustic timbres; do not replace them with generic Western equivalents.');
-    lines.push('- Bring one Khmer instrument into the intro and another into the chorus or bridge.');
-  }
-
-  return lines.join('\n');
-}
-
-function buildSongPrompt({ prompt, style, voice, customLyrics, instrument, tempo, mood, planKey }) {
-  const planCfg = PLAN_CONFIG[planKey] || PLAN_CONFIG.free;
-  const v = String(voice || 'Female').toLowerCase();
-
-  const isDuet = v.includes('duet');
-  const isChoir = v.includes('choir');
-  const isFemale = !isDuet && !isChoir && !v.includes('male');
-
-  const voiceHint = isDuet
-    ? 'male and female duet vocalists, call-and-response singing, two distinct voices'
-    : isChoir
-      ? 'full choir ensemble with layered choral harmonies'
-      : isFemale
-        ? 'female vocalist'
-        : 'male vocalist';
-
-  if (customLyrics && planCfg.customLyrics) {
-    return [
-      `DURATION REQUIREMENT: Generate audio that is ${planCfg.durationHint}. This is a strict requirement.`,
-      `TIMING GUIDE: ${planCfg.structureHint}.`,
-      `Use EXACTLY the following lyrics. Do not change any words.`,
-      `---`,
-      customLyrics.trim(),
-      `---`,
-      `Vocalist: ${voiceHint}.`,
-      `Genre: ${style || 'Pop'}.`,
-      instrument ? buildInstrumentPrompt(instrument) : '',
-      tempo ? `Tempo: ${tempo}.` : '',
-      mood ? `Mood/Feel: ${mood}.` : '',
-      `Audio quality: high-quality stereo, clear lead vocals, backing harmonies.`,
-    ].filter(Boolean).join('\n');
-  }
-
+function buildSongPrompt({ prompt, style, vocalist }) {
   return [
-    `DURATION REQUIREMENT: Generate audio that is ${planCfg.durationHint}. This is a strict requirement.`,
-    `TIMING GUIDE: ${planCfg.structureHint}.`,
-    `Theme/Story: ${prompt}.`,
-    `Vocalist: ${voiceHint}.`,
-    `Genre: ${style || 'Pop'}.`,
-    `Language: auto-detect from theme, match the language naturally.`,
-    `RHYME RULES: every 2 or 4 lines must end-rhyme naturally using AABB or ABAB patterns.`,
-    instrument ? buildInstrumentPrompt(instrument) : '',
-    tempo ? `Tempo: ${tempo}.` : '',
-    mood ? `Mood/Feel: ${mood}.` : '',
-    `Audio quality: high-quality stereo, clear lead vocals, full arrangement.`,
+    'Create an original song.',
+    prompt ? `Song idea: ${prompt}` : '',
+    style ? `Genre/style: ${style}` : '',
+    vocalist ? `Vocal style: ${vocalist}` : '',
+    'Return a strong lyrical and musical concept suitable for music generation.'
   ].filter(Boolean).join('\n');
 }
 
-/* =========================
-   DB / SMTP STARTUP LOGS
-========================= */
-
-pool.connect()
-  .then(c => {
-    console.log('DB connected');
-    c.release();
-  })
-  .catch(e => {
-    console.error('DB connection error:', e.message);
+async function callGeminiModel({ key, model, body }) {
+  const r = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
   });
 
-if (SMTP_USER && SMTP_PASS) {
-  transporter.verify()
-    .then(() => console.log('SMTP ready'))
-    .catch(err => console.error('SMTP error:', err.message));
-} else {
-  console.log('SMTP not configured');
+  const data = await r.json().catch(() => ({}));
+
+  if (!r.ok) {
+    const msg = data?.error?.message || `Model call failed for ${model}`;
+    throw new Error(msg);
+  }
+
+  return data;
 }
 
-console.log('JeeThy Labs starting...');
-console.log('GEMINI_API_KEY:', GEMINI_API_KEY ? 'SET' : 'MISSING');
-console.log('STRIPE:', STRIPE_SECRET_KEY ? 'SET' : 'NOT SET');
-
-/* =========================
-   ROUTES: HEALTH
-========================= */
-
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    smtp: !!(SMTP_USER && SMTP_PASS),
-    gemini: !!GEMINI_API_KEY,
-    stripe: !!STRIPE_SECRET_KEY,
-    env: NODE_ENV,
+async function lyriaCall(modelName, promptText) {
+  const key = geminiKey();
+  const r = await fetch(`${GEMINI_BASE}/${modelName}:generateContent?key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [{ text: promptText }]
+        }
+      ]
+    })
   });
-});
 
-/* =========================
-   AUTH ROUTES
-========================= */
+  const data = await r.json().catch(() => ({}));
 
-app.post('/api/send-otp', async (req, res) => {
-  try {
-    const { email, name, password } = req.body || {};
-    const cleanEmail = String(email || '').trim().toLowerCase();
+  if (!r.ok) {
+    throw new Error(data?.error?.message || 'Song generation failed.');
+  }
 
-    if (!cleanEmail) {
-      return res.status(400).json({ error: 'Email is required.' });
+  return data;
+}
+
+function extractSongResponse(data) {
+  const candidates = data?.candidates || [];
+  for (const c of candidates) {
+    const txt = pickText(c?.content?.parts || []);
+    if (txt) {
+      return {
+        text: txt,
+        audioUrl: null
+      };
     }
+  }
+  return {
+    text: 'Song generated successfully.',
+    audioUrl: null
+  };
+}
 
-    const otp = genOTP();
-    otpStore.set(cleanEmail, {
-      otp,
-      name: String(name || '').trim(),
-      password: String(password || ''),
-      expires: Date.now() + 10 * 60 * 1000,
-      type: 'signup',
-    });
+async function getUserPlan(userId) {
+  const { rows } = await pool.query(`SELECT plan FROM users WHERE id = $1 LIMIT 1`, [userId]);
+  return rows[0]?.plan || 'free';
+}
 
-    await sendEmail(
-      cleanEmail,
-      'Your Verification Code - JeeThy Labs',
-      `
-      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px;">
-        <h2 style="color:#7c3aed;">JeeThy Labs</h2>
-        <p>Your verification code:</p>
-        <div style="font-size:40px;font-weight:900;letter-spacing:12px;color:#7c3aed;text-align:center;padding:20px 0;">${otp}</div>
-        <p style="color:#888;font-size:13px;">Expires in <strong>10 minutes</strong>.</p>
-      </div>
-      `
-    );
-
-    res.json({ success: true });
-  } catch (e) {
-    console.error('send-otp:', e.message);
-    res.status(500).json({ error: 'Failed to send verification code.' });
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ ok: true, db: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
-
-app.post('/api/verify-otp', async (req, res) => {
-  try {
-    const { email, otp, name, password } = req.body || {};
-    const cleanEmail = String(email || '').trim().toLowerCase();
-    const rec = otpStore.get(cleanEmail);
-
-    if (!rec) {
-      return res.status(400).json({ error: 'No OTP found. Request a new one.' });
-    }
-    if (Date.now() > rec.expires) {
-      otpStore.delete(cleanEmail);
-      return res.status(400).json({ error: 'OTP expired.' });
-    }
-    if (String(rec.otp) !== String(otp || '').trim()) {
-      return res.status(400).json({ error: 'Invalid OTP.' });
-    }
-
-    otpStore.delete(cleanEmail);
-
-    const rawPw = String(password || rec.password || '');
-    const userName = String(name || rec.name || 'User').trim();
-
-    if (!rawPw) {
-      return res.status(400).json({ error: 'Password missing.' });
-    }
-
-    const hash = await bcrypt.hash(rawPw, 10);
-    const userIdString = crypto.randomUUID();
-
-    const { rows } = await pool.query(
-      `
-      INSERT INTO users
-        (userid, name, email, passwordhash, plan, status, emailverified, avatarurl, country, createdat, lastactive, updatedat)
-      VALUES
-        ($1, $2, $3, $4, 'free', 'active', true, NULL, NULL, NOW(), NOW(), NOW())
-      ON CONFLICT (email)
-      DO UPDATE SET
-        name = EXCLUDED.name,
-        passwordhash = EXCLUDED.passwordhash,
-        emailverified = true,
-        lastactive = NOW(),
-        updatedat = NOW()
-      RETURNING id, userid, name, email, plan, status, avatarurl, createdat
-      `,
-      [userIdString, userName, cleanEmail, hash]
-    );
-
-    const u = rows[0];
-    const token = signToken({ id: u.id, email: u.email });
-
-    req.session.token = token;
-    setAuthCookie(res, token);
-
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: u.id,
-        userid: u.userid,
-        name: u.name,
-        email: u.email,
-        plan: u.plan || 'free',
-        avatarurl: u.avatarurl || null,
-        createdat: u.createdat,
-      },
-    });
-  } catch (e) {
-    console.error('verify-otp:', e.message);
-    res.status(500).json({ error: 'Registration failed.' });
-  }
-});
-
-app.post('/api/login', async (req, res) => {
-  try {
-    const { email, password } = req.body || {};
-    const cleanEmail = String(email || '').trim().toLowerCase();
-
-    if (!cleanEmail || !password) {
-      return res.status(400).json({ error: 'Email and password are required.' });
-    }
-
-    const { rows } = await pool.query(
-      `SELECT id, userid, name, email, passwordhash, plan, avatarurl, createdat FROM users WHERE email = $1`,
-      [cleanEmail]
-    );
-
-    if (!rows.length) {
-      return res.status(401).json({ error: 'Email not found.' });
-    }
-
-    const u = rows[0];
-
-    if (!u.passwordhash) {
-      return res.status(401).json({ error: 'This account was created without a password. Please use Forgot Password or Sign Up again.' });
-    }
-
-    const ok = await bcrypt.compare(password, u.passwordhash);
-    if (!ok) {
-      return res.status(401).json({ error: 'Wrong password.' });
-    }
-
-    await pool.query(
-      `UPDATE users SET lastactive = NOW(), updatedat = NOW() WHERE id = $1`,
-      [u.id]
-    );
-
-    const token = signToken({ id: u.id, email: u.email });
-    req.session.token = token;
-    setAuthCookie(res, token);
-
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: u.id,
-        userid: u.userid,
-        name: u.name,
-        email: u.email,
-        plan: u.plan || 'free',
-        avatarurl: u.avatarurl || null,
-        createdat: u.createdat,
-      },
-    });
-  } catch (e) {
-    console.error('login:', e.message);
-    res.status(500).json({ error: 'Login failed.' });
-  }
-});
-
-app.get('/api/me', auth, async (req, res) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT id, userid, name, email, avatarurl, plan, status, country, createdat, lastactive FROM users WHERE id = $1`,
-      [req.user.id]
-    );
-
-    if (!rows.length) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json({ user: rows[0] });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/forgot-password', async (req, res) => {
-  try {
-    const cleanEmail = String(req.body?.email || '').trim().toLowerCase();
-    if (!cleanEmail) {
-      return res.status(400).json({ error: 'Email is required.' });
-    }
-
-    const { rows } = await pool.query(`SELECT id FROM users WHERE email = $1`, [cleanEmail]);
-    if (!rows.length) {
-      return res.status(404).json({ error: 'Email not found.' });
-    }
-
-    const otp = genOTP();
-    otpStore.set(cleanEmail, {
-      otp,
-      expires: Date.now() + 10 * 60 * 1000,
-      type: 'reset',
-    });
-
-    await sendEmail(
-      cleanEmail,
-      'Password Reset - JeeThy Labs',
-      `
-      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px;">
-        <h2 style="color:#7c3aed;">Reset Your Password</h2>
-        <div style="font-size:40px;font-weight:900;letter-spacing:12px;color:#7c3aed;text-align:center;padding:20px 0;">${otp}</div>
-        <p style="color:#888;font-size:13px;">Expires in <strong>10 minutes</strong>.</p>
-      </div>
-      `
-    );
-
-    res.json({ success: true });
-  } catch (e) {
-    console.error('forgot-password:', e.message);
-    res.status(500).json({ error: 'Failed to send reset code.' });
-  }
-});
-
-app.post('/api/reset-password', async (req, res) => {
-  try {
-    const cleanEmail = String(req.body?.email || '').trim().toLowerCase();
-    const otp = String(req.body?.otp || '').trim();
-    const newPassword = String(req.body?.newPassword || '');
-
-    const rec = otpStore.get(cleanEmail);
-    if (!rec || rec.type !== 'reset' || rec.otp !== otp || Date.now() > rec.expires) {
-      otpStore.delete(cleanEmail);
-      return res.status(400).json({ error: 'Invalid or expired code.' });
-    }
-
-    otpStore.delete(cleanEmail);
-
-    const hash = await bcrypt.hash(newPassword, 10);
-    await pool.query(
-      `UPDATE users SET passwordhash = $1, updatedat = NOW() WHERE email = $2`,
-      [hash, cleanEmail]
-    );
-
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/profile', auth, async (req, res) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT id, userid, name, email, avatarurl, plan, status, country, createdat, lastactive FROM users WHERE id = $1`,
-      [req.user.id]
-    );
-
-    if (!rows.length) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json(rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/profile', auth, async (req, res) => {
-  try {
-    const avatarurl = req.body?.avatarurl ?? null;
-    const country = req.body?.country ?? null;
-    const name = req.body?.name ?? null;
-
-    const { rows } = await pool.query(
-      `
-      UPDATE users
-      SET avatarurl = COALESCE($1, avatarurl),
-          country = COALESCE($2, country),
-          name = COALESCE($3, name),
-          lastactive = NOW(),
-          updatedat = NOW()
-      WHERE id = $4
-      RETURNING id, name, email, avatarurl, plan, status, country, createdat
-      `,
-      [avatarurl, country, name, req.user.id]
-    );
-
-    res.json({ success: true, user: rows[0] });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/avatar', auth, async (req, res) => {
-  try {
-    const avatar = req.body?.avatar;
-    if (!avatar) return res.status(400).json({ error: 'No avatar data.' });
-
-    await pool.query(
-      `UPDATE users SET avatarurl = $1, lastactive = NOW(), updatedat = NOW() WHERE id = $2`,
-      [avatar, req.user.id]
-    );
-
-    res.json({ success: true, avatarurl: avatar });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/upload-avatar', auth, async (req, res) => {
-  try {
-    const avatarurl = req.body?.avatarurl;
-    if (!avatarurl) return res.status(400).json({ error: 'No avatar data.' });
-
-    await pool.query(
-      `UPDATE users SET avatarurl = $1, lastactive = NOW(), updatedat = NOW() WHERE id = $2`,
-      [avatarurl, req.user.id]
-    );
-
-    res.json({ success: true, avatarurl });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/logout', (req, res) => {
-  req.session.destroy(() => {});
-  clearAuthCookies(res);
-  res.json({ success: true });
-});
-
-/* =========================
-   MODELS
-========================= */
 
 app.get('/api/key', (req, res) => {
   if (!GEMINI_API_KEY) return res.status(503).json({ error: 'API key not configured' });
@@ -927,753 +348,345 @@ app.get('/api/key', (req, res) => {
 app.get('/api/models', async (req, res) => {
   try {
     const key = geminiKey();
-    const all = await fetchAvailableModels(key);
-    const { imageModels, lyriaModels, ttsModels, chatModels } = classifyModels(all);
-
+    const models = await fetchAvailableModels(key);
     res.json({
-      all,
-      imageModels: imageModels.map(m => m.name),
-      lyriaModels: lyriaModels.map(m => m.name),
-      ttsModels: ttsModels.map(m => m.name),
-      chatModels: chatModels.map(m => m.name),
-      recommended: {
-        chat: chatModels.find(m => /2\.5.*flash/i.test(m.name))?.name || 'gemini-2.5-flash',
-        image: imageModels[0]?.name || null,
-        lyria: lyriaModels.find(m => /pro/i.test(m.name))?.name || lyriaModels[0]?.name || 'lyria-3-pro-preview',
-        tts: ttsModels.find(m => /flash/i.test(m.name))?.name || ttsModels[0]?.name || null,
-      },
+      models: models.map(m => ({
+        name: m.name,
+        displayName: m.displayName,
+        description: m.description
+      }))
     });
-  } catch (e) {
-    res.json({
-      all: [],
-      imageModels: [],
-      lyriaModels: [],
-      ttsModels: [],
-      chatModels: ['gemini-2.5-flash'],
-      recommended: {
-        chat: 'gemini-2.5-flash',
-        image: null,
-        lyria: 'lyria-3-pro-preview',
-        tts: null,
-      },
-      error: e.message,
-    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-/* =========================
-   CHAT
-========================= */
+app.post('/api/auth/request-signup-otp', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'Email is required.' });
+
+    const existing = await pool.query(`SELECT id FROM users WHERE email = $1 LIMIT 1`, [email]);
+    if (existing.rows.length) {
+      return res.status(400).json({ error: 'Email already registered.' });
+    }
+
+    await createOTP(email, 'signup');
+    res.json({ ok: true, message: 'OTP sent.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    const otp = String(req.body.otp || '').trim();
+    const fullName = String(req.body.fullName || '').trim();
+
+    if (!email || !password || !otp) {
+      return res.status(400).json({ error: 'Email, password and OTP are required.' });
+    }
+
+    const ok = await verifyOTP(email, otp, 'signup');
+    if (!ok) {
+      return res.status(400).json({ error: 'Invalid or expired OTP.' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+
+    const { rows } = await pool.query(
+      `INSERT INTO users (email, password_hash, full_name)
+       VALUES ($1,$2,$3)
+       RETURNING id, email, full_name, role, plan`,
+      [email, hash, fullName]
+    );
+
+    const user = rows[0];
+    const token = signToken(user);
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: NODE_ENV === 'production',
+      sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 1000 * 60 * 60 * 24 * 7
+    });
+
+    res.json({ ok: true, token, user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/request-reset-otp', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'Email is required.' });
+
+    const existing = await pool.query(`SELECT id FROM users WHERE email = $1 LIMIT 1`, [email]);
+    if (!existing.rows.length) {
+      return res.status(404).json({ error: 'Account not found.' });
+    }
+
+    await createOTP(email, 'reset');
+    res.json({ ok: true, message: 'Reset OTP sent.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    const otp = String(req.body.otp || '').trim();
+
+    if (!email || !password || !otp) {
+      return res.status(400).json({ error: 'Email, password and OTP are required.' });
+    }
+
+    const ok = await verifyOTP(email, otp, 'reset');
+    if (!ok) {
+      return res.status(400).json({ error: 'Invalid or expired OTP.' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    await pool.query(`UPDATE users SET password_hash = $1 WHERE email = $2`, [hash, email]);
+
+    res.json({ ok: true, message: 'Password reset successful.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id, email, password_hash, full_name, role, plan FROM users WHERE email = $1 LIMIT 1`,
+      [email]
+    );
+
+    const user = rows[0];
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    if (!user.password_hash) {
+      return res.status(401).json({
+        error: 'This account was created without a password. Please use Forgot Password or Sign Up again.'
+      });
+    }
+
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const token = signToken(user);
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: NODE_ENV === 'production',
+      sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 1000 * 60 * 60 * 24 * 7
+    });
+
+    res.json({
+      ok: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        plan: user.plan
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/me', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, email, full_name, role, plan FROM users WHERE id = $1 LIMIT 1`,
+      [req.user.id]
+    );
+    res.json({ user: rows[0] || null });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/logout', auth, async (req, res) => {
+  res.clearCookie('token');
+  res.json({ ok: true });
+});
 
 app.post('/api/chat', auth, async (req, res) => {
   try {
     const key = geminiKey();
-    const history = Array.isArray(req.body?.history) ? req.body.history : [];
-    const model = String(req.body?.model || 'gemini-2.5-flash');
-    const system = String(
-      req.body?.system ||
-      'You are JeeThy Assistant, a helpful AI by JeeThy Labs. Reply in the same language the user uses. Be concise and clear.'
-    );
+    const message = String(req.body?.message || '').trim();
+    const systemPrompt = String(req.body?.systemPrompt || '').trim();
 
-    const chatModels = [model, 'gemini-2.5-flash', 'gemini-2.0-flash'];
-    const tried = new Set();
-    let lastErr = null;
-
-    for (const m of chatModels) {
-      if (tried.has(m)) continue;
-      tried.add(m);
-
-      try {
-        const r = await fetch(`${GEMINI_BASE}/${m}:generateContent?key=${key}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: system }],
-            },
-            contents: history,
-          }),
-        });
-
-        const d = await safeJson(r, `chat ${m}`);
-
-        if (!r.ok) {
-          const msg = d?.error?.message || `HTTP ${r.status}`;
-          const isRetryable = /503|429|quota|overload|high demand/i.test(msg);
-          if (isRetryable && m !== chatModels[chatModels.length - 1]) {
-            lastErr = msg;
-            continue;
-          }
-          return res.status(r.status).json({ error: msg });
-        }
-
-        const reply = d?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.';
-        return res.json({ reply, model: m });
-      } catch (err) {
-        lastErr = err.message;
-      }
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required.' });
     }
 
-    return res.status(503).json({
-      error: lastErr || 'All chat models are unavailable. Please try again.',
+    const prompt = [
+      systemPrompt ? `System instruction:\n${systemPrompt}` : '',
+      `User:\n${message}`
+    ].filter(Boolean).join('\n\n');
+
+    const data = await callGeminiModel({
+      key,
+      model: 'gemini-1.5-flash',
+      body: {
+        contents: [
+          {
+            parts: [{ text: prompt }]
+          }
+        ]
+      }
     });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+
+    const reply =
+      pickText(data?.candidates?.[0]?.content?.parts || []) ||
+      'No response from model.';
+
+    res.json({ ok: true, reply });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-/* =========================
-   IMAGE
-========================= */
-
-app.post('/api/image', auth, async (req, res) => {
+app.post('/api/image', auth, upload.single('image'), async (req, res) => {
   try {
     const key = geminiKey();
-
-    const {
-      prompt,
-      style,
-      aspectRatio = '1:1',
-      quality = 720,
-      referenceImageBase64,
-      referenceImageMime,
-      extraRefImages = [],
-    } = req.body || {};
+    const prompt = String(req.body?.prompt || '').trim();
 
     if (!prompt) {
-      return res.status(400).json({ error: 'prompt is required' });
+      return res.status(400).json({ error: 'Prompt is required.' });
     }
 
-    const VALID_RATIOS = {
-      '1:1': '1:1',
-      '9:16': '9:16',
-      '16:9': '16:9',
-    };
-
-    const mappedRatio = VALID_RATIOS[aspectRatio] || '1:1';
-
-    const orientHint =
-      mappedRatio === '9:16'
-        ? ', portrait orientation, vertical composition, tall image'
-        : mappedRatio === '16:9'
-          ? ', landscape orientation, wide composition, horizontal image'
-          : ', square composition, centered subject';
-
-    const fullPrompt =
-      style && String(style).toLowerCase() !== 'none'
-        ? `${prompt}, style ${style}${orientHint}`
-        : `${prompt}${orientHint}`;
-
-    let imageModels = [
-      'imagen-3.0-generate-002',
-      'imagen-3.0-generate-001',
-      'gemini-2.0-flash-preview-image-generation',
-      'gemini-2.0-flash',
-    ];
-
-    try {
-      const discovered = classifyModels(await fetchAvailableModels(key));
-      if (discovered.imageModels.length) {
-        imageModels = discovered.imageModels.map(x => x.name);
+    const data = await callGeminiModel({
+      key,
+      model: 'gemini-1.5-flash',
+      body: {
+        contents: [
+          {
+            parts: [{ text: `Generate an image concept: ${prompt}` }]
+          }
+        ]
       }
-    } catch {}
+    });
 
-    let lastErr = null;
+    const text =
+      pickText(data?.candidates?.[0]?.content?.parts || []) ||
+      'Image prompt processed successfully.';
 
-    for (const model of imageModels) {
-      try {
-        const img = await withRetry(async () => {
-          const generationConfig = {
-            responseModalities: ['IMAGE', 'TEXT'],
-          };
-
-          if (/imagen/i.test(model)) {
-            generationConfig.outputOptions = {
-              mimeType: 'image/jpeg',
-              compressionQuality: Number(quality) >= 1280 ? 95 : 85,
-            };
-            generationConfig.aspectRatio = mappedRatio;
-          }
-
-          const parts = [];
-
-          if (referenceImageBase64) {
-            parts.push({
-              inlineData: {
-                mimeType: referenceImageMime || 'image/jpeg',
-                data: referenceImageBase64,
-              },
-            });
-          }
-
-          if (Array.isArray(extraRefImages) && extraRefImages.length) {
-            for (const ref of extraRefImages) {
-              if (ref?.base64) {
-                parts.push({
-                  inlineData: {
-                    mimeType: ref.mime || 'image/jpeg',
-                    data: ref.base64,
-                  },
-                });
-              }
-            }
-          }
-
-          if (referenceImageBase64) {
-            parts.push({
-              text: 'Using the uploaded image as a visual reference, keep the same person/face/body identity when appropriate.',
-            });
-          }
-
-          parts.push({ text: fullPrompt });
-
-          const r = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${key}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts }],
-              generationConfig,
-            }),
-          });
-
-          const d = await safeJson(r, `image ${model}`);
-
-          if (!r.ok) {
-            throw new Error(d?.error?.message || `HTTP ${r.status}`);
-          }
-
-          for (const c of d.candidates || []) {
-            for (const p of c.content?.parts || []) {
-              if (p.inlineData?.data) {
-                return p.inlineData;
-              }
-            }
-          }
-
-          throw new Error('No image returned from model.');
-        }, 3, 1500);
-
-        return res.json({
-          data: img.data,
-          mimeType: img.mimeType || 'image/png',
-          aspectRatio: mappedRatio,
-          model,
-        });
-      } catch (err) {
-        lastErr = err;
-      }
-    }
-
-    res.status(500).json({ error: lastErr?.message || 'Image generation failed.' });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.json({
+      ok: true,
+      message: text,
+      imageUrl: null
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-});
-
-/* =========================
-   SONG
-========================= */
-
-const LYRIA_MODELS_FALLBACK = ['lyria-3-pro-preview'];
-const TTS_MODELS_FALLBACK = ['gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts'];
-
-async function tryTts(key, text, voiceName = 'Aoede') {
-  let ttsModels = [...TTS_MODELS_FALLBACK];
-
-  try {
-    const discovered = classifyModels(await fetchAvailableModels(key));
-    if (discovered.ttsModels.length) {
-      ttsModels = [...new Set([...discovered.ttsModels.map(x => x.name), ...ttsModels])];
-    }
-  } catch {}
-
-  for (const model of ttsModels) {
-    try {
-      const result = await withRetry(async () => {
-        const r = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${key}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text }] }],
-            generationConfig: {
-              responseModalities: ['AUDIO'],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName },
-                },
-              },
-            },
-          }),
-        });
-
-        const d = await safeJson(r, `tts ${model}`);
-
-        if (!r.ok) {
-          throw new Error(d?.error?.message || `HTTP ${r.status}`);
-        }
-
-        for (const c of d.candidates || []) {
-          for (const p of c.content?.parts || []) {
-            if (p.inlineData?.data) {
-              return {
-                data: p.inlineData.data,
-                mimeType: p.inlineData.mimeType || 'audio/wav',
-                model,
-              };
-            }
-          }
-        }
-
-        throw new Error('No TTS audio returned.');
-      });
-
-      return result;
-    } catch (err) {
-      console.warn('TTS failed:', model, err.message);
-    }
-  }
-
-  return null;
-}
-
-app.get('/api/song-plan-info', auth, async (req, res) => {
-  const planKey = await getUserPlan(req.user.id);
-  const planCfg = PLAN_CONFIG[planKey];
-  res.json({
-    plan: planKey,
-    durationHint: planCfg.durationHint,
-    customLyrics: planCfg.customLyrics,
-  });
 });
 
 app.post('/api/song', auth, async (req, res) => {
   try {
     const key = geminiKey();
     const planKey = await getUserPlan(req.user.id);
-    const planCfg = PLAN_CONFIG[planKey];
+    const planCfg = {
+      free: { label: 'Free' },
+      pro: { label: 'Pro' },
+      proplus: { label: 'Pro+' },
+      max: { label: 'Max' }
+    }[planKey] || { label: 'Free' };
 
     const {
-      prompt,
+      prompt = '',
       style = 'Pop',
-      voice = 'Female',
-      customLyrics,
-      instrument,
-      tempo,
-      mood,
+      vocalist = 'Male'
     } = req.body || {};
 
-    if (!prompt && !customLyrics) {
-      return res.status(400).json({ error: 'Please provide a song description or custom lyrics.' });
-    }
-
-    const musicPrompt = buildSongPrompt({
-      prompt,
-      style,
-      voice,
-      customLyrics,
-      instrument,
-      tempo,
-      mood,
-      planKey,
+    const songPrompt = buildSongPrompt({
+      prompt: String(prompt || '').trim(),
+      style: String(style || 'Pop').trim(),
+      vocalist: String(vocalist || 'Male').trim()
     });
 
-    let lyriaModels = [...LYRIA_MODELS_FALLBACK];
+    const models = await fetchAvailableModels(key);
+    const preferredModels = [
+      'lyria-realtime-exp',
+      'lyria-002',
+      'gemini-1.5-pro',
+      'gemini-1.5-flash'
+    ];
 
-    try {
-      const discovered = classifyModels(await fetchAvailableModels(key));
-      if (discovered.lyriaModels.length) {
-        const sorted = [
-          ...discovered.lyriaModels.filter(x => /pro/i.test(x.name)).map(x => x.name),
-          ...discovered.lyriaModels.filter(x => !/pro/i.test(x.name)).map(x => x.name),
-        ];
-        lyriaModels = [...new Set([...sorted, ...LYRIA_MODELS_FALLBACK])];
-      }
-    } catch {}
+    const availableNames = new Set(
+      models.map(m => String(m.name || '').replace(/^models\//, ''))
+    );
 
-    let audioResult = null;
-    let lyricsText = '';
-    let usedModel = '';
+    let data = null;
+    let usedModel = null;
+    let lastError = null;
 
-    async function lyriaCall(modelName, promptText) {
-      const r = await fetch(`${GEMINI_BASE}/${modelName}:generateContent?key=${key}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }],
-          generationConfig: {
-            responseModalities: ['AUDIO', 'TEXT'],
-            temperature: 1.0,
-          },
-        }),
-      });
-
-      const d = await safeJson(r, `lyria ${modelName}`);
-
-      if (!r.ok) {
-        throw new Error(d?.error?.message || `HTTP ${r.status}`);
-      }
-
-      let txt = '';
-      let audio = null;
-
-      for (const c of d.candidates || []) {
-        for (const p of c.content?.parts || []) {
-          if (p.text) txt = p.text;
-          if (p.inlineData?.data) audio = p.inlineData;
-        }
-      }
-
-      if (!audio) {
-        throw new Error('No audio returned.');
-      }
-
-      return { txt, audio };
-    }
-
-    for (const model of lyriaModels) {
+    for (const model of preferredModels) {
+      if (!availableNames.has(model) && !model.startsWith('gemini-')) continue;
       try {
-        const result = await lyriaCall(model, musicPrompt);
-        lyricsText = result.txt || '';
-
-        const mimeType = result.audio.mimeType || 'audio/L16;rate=24000';
-        const trimSec =
-          planKey === 'free' ? 60 :
-          planKey === 'pro' ? 185 :
-          planKey === 'proplus' ? 210 :
-          315;
-
-        audioResult = {
-          data: trimAudioBuffer(result.audio.data, trimSec, mimeType),
-          mimeType,
-        };
+        if (model.startsWith('lyria')) {
+          data = await lyriaCall(model, songPrompt);
+        } else {
+          data = await callGeminiModel({
+            key,
+            model,
+            body: {
+              contents: [
+                {
+                  parts: [{ text: songPrompt }]
+                }
+              ]
+            }
+          });
+        }
         usedModel = model;
         break;
       } catch (err) {
-        console.warn('Lyria failed:', model, err.message);
+        lastError = err;
       }
     }
 
-    if (!audioResult) {
-      const lyricsSource = String(customLyrics || '').trim();
-      if (!lyricsSource) {
-        try {
-          const lyricPrompt = [
-            `Write a complete original ${style} song about: ${prompt}.`,
-            `Structure: ${planCfg.structureHint}.`,
-            planKey === 'free'
-              ? 'Keep it short, under 1 minute worth of lyrics.'
-              : `Write full-length lyrics for ${planCfg.durationHint}.`,
-            `Write only the song. No commentary.`,
-          ].join('\n');
-
-          const lr = await fetch(`${GEMINI_BASE}/gemini-2.5-flash:generateContent?key=${key}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: lyricPrompt }] }],
-            }),
-          });
-
-          const ld = await safeJson(lr, 'lyrics-gen');
-          if (lr.ok) {
-            lyricsText = ld?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          }
-        } catch (e) {
-          console.warn('lyrics-gen:', e.message);
-        }
-      } else {
-        lyricsText = lyricsSource;
-      }
-
-      if (lyricsText) {
-        const cleanLyrics = lyricsText.replace(/^Title\s*:\s*/im, '').trim();
-        const ttsVoice = String(voice || '').toLowerCase().includes('male') ? 'Charon' : 'Aoede';
-        const ttsRes = await tryTts(key, cleanLyrics, ttsVoice);
-        if (ttsRes) {
-          audioResult = {
-            data: ttsRes.data,
-            mimeType: ttsRes.mimeType,
-          };
-          usedModel = ttsRes.model;
-        }
-      }
+    if (!data) {
+      throw lastError || new Error('Song generation failed.');
     }
 
-    const cleanedLyrics = cleanLyricsText(lyricsText);
-    const titleMatch = cleanedLyrics.match(/^Title\s*:\s*(.+)$/im);
-    const songTitle = titleMatch ? titleMatch[1].trim() : `${style} Song`;
-    const isLyria = /lyria/i.test(usedModel);
+    const parsed = extractSongResponse(data);
 
-    return res.json({
-      audio: audioResult ? audioResult.data : null,
-      mimeType: audioResult ? audioResult.mimeType : 'audio/mp3',
-      title: songTitle,
-      lyrics: cleanedLyrics,
-      lyricsOnly: !audioResult,
-      audioSource: usedModel ? (isLyria ? `Lyria ${usedModel}` : `TTS ${usedModel}`) : null,
+    res.json({
+      ok: true,
+      message: 'Song generated successfully.',
       plan: planKey,
-      ttsMessage: !audioResult
-        ? 'Audio generation is temporarily unavailable. Your lyrics are ready. Please try again shortly.'
-        : null,
+      planLabel: planCfg.label,
+      model: usedModel,
+      lyrics: parsed.text,
+      audioUrl: parsed.audioUrl
     });
-  } catch (e) {
-    console.error('/api/song:', e.message, e.stack);
-    res.status(500).json({ error: e.message });
+  } catch (err) {
+    console.error('/api/song error:', err);
+    res.status(500).json({ error: err.message || 'Song generation failed.' });
   }
-});
-
-/* =========================
-   STRIPE
-========================= */
-
-app.get('/api/stripe-plans', (req, res) => {
-  res.json({
-    configured: !!STRIPE_SECRET_KEY,
-    testMode: STRIPE_SECRET_KEY ? STRIPE_SECRET_KEY.startsWith('sk_test') : false,
-    plans: {
-      pro: {
-        name: 'PRO',
-        price: '$5.99/mo',
-        priceId: STRIPE_PRICES.pro || 'NOT_SET',
-      },
-      proplus: {
-        name: 'PRO+',
-        price: '$24.99/mo',
-        priceId: STRIPE_PRICES.proplus || 'NOT_SET',
-      },
-      max: {
-        name: 'MAX',
-        price: 'TBA',
-        priceId: STRIPE_PRICES.max || 'NOT_SET',
-      },
-    },
-  });
-});
-
-app.post('/api/stripe-checkout', auth, async (req, res) => {
-  try {
-    const stripe = getStripe();
-    if (!stripe) {
-      return res.status(503).json({ error: 'Stripe is not configured.' });
-    }
-
-    const plan = String(req.body?.plan || '').toLowerCase();
-    const priceId = STRIPE_PRICES[plan];
-
-    if (!priceId || !priceId.startsWith('price_')) {
-      return res.status(400).json({ error: 'Invalid plan or Stripe price is not configured.' });
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      payment_method_types: ['card'],
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${APP_URL}?upgraded=1&plan=${plan}`,
-      cancel_url: `${APP_URL}?cancelled=1`,
-      metadata: {
-        userId: String(req.user.id),
-        plan,
-      },
-    });
-
-    res.json({ url: session.url });
-  } catch (e) {
-    console.error('stripe-checkout:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/stripe/webhook', async (req, res) => {
-  try {
-    const stripe = getStripe();
-    if (!stripe) {
-      return res.status(503).json({ error: 'Stripe not configured.' });
-    }
-    if (!STRIPE_WEBHOOK_SECRET) {
-      return res.status(503).json({ error: 'STRIPE_WEBHOOK_SECRET not set.' });
-    }
-
-    const sig = req.headers['stripe-signature'];
-    let event;
-
-    try {
-      event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
-    } catch (e) {
-      console.error('stripe-webhook signature error:', e.message);
-      return res.status(400).json({ error: `Webhook signature invalid: ${e.message}` });
-    }
-
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object;
-        const userId = session?.metadata?.userId;
-        const plan = session?.metadata?.plan;
-
-        if (userId && plan) {
-          const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-          await pool.query(
-            `UPDATE users SET plan = $1, planexpiresat = $2, pendingplan = NULL, updatedat = NOW() WHERE id = $3`,
-            [plan, expires, Number(userId)]
-          );
-        }
-        break;
-      }
-
-      case 'customer.subscription.deleted':
-        console.warn('Stripe subscription cancelled:', event.data.object?.customer);
-        break;
-
-      default:
-        break;
-    }
-
-    res.json({ received: true });
-  } catch (e) {
-    console.error('stripe-webhook handler error:', e.message);
-    res.json({ received: true });
-  }
-});
-
-app.post('/api/subscribe', auth, async (req, res) => {
-  try {
-    const planKey = String(req.body?.plan || '').toLowerCase();
-
-    if (!['free', 'pro', 'proplus', 'max'].includes(planKey)) {
-      return res.status(400).json({ error: 'Invalid plan. Choose free, pro, proplus, or max.' });
-    }
-
-    if (planKey === 'free') {
-      await pool.query(
-        `UPDATE users SET plan = 'free', planexpiresat = NULL, pendingplan = NULL, updatedat = NOW() WHERE id = $1`,
-        [req.user.id]
-      );
-
-      const { rows } = await pool.query(
-        `SELECT id, name, email, plan, avatarurl, createdat FROM users WHERE id = $1`,
-        [req.user.id]
-      );
-
-      return res.json({ success: true, plan: 'free', user: rows[0] || null });
-    }
-
-    const stripe = getStripe();
-    const priceId = STRIPE_PRICES[planKey];
-
-    if (stripe && priceId?.startsWith('price_')) {
-      const session = await stripe.checkout.sessions.create({
-        mode: 'subscription',
-        payment_method_types: ['card'],
-        line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${APP_URL}?upgraded=1&plan=${planKey}`,
-        cancel_url: `${APP_URL}?cancelled=1`,
-        metadata: {
-          userId: String(req.user.id),
-          plan: planKey,
-        },
-      });
-
-      await pool.query(
-        `UPDATE users SET pendingplan = $1, updatedat = NOW() WHERE id = $2`,
-        [planKey, req.user.id]
-      );
-
-      return res.json({
-        success: true,
-        checkoutUrl: session.url,
-        plan: planKey,
-      });
-    }
-
-    return res.status(503).json({
-      error: 'Stripe is not configured for this paid plan yet.',
-    });
-  } catch (e) {
-    console.error('subscribe:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/checkout-confirm', async (req, res) => {
-  try {
-    const token = String(req.body?.token || '');
-    if (!token) return res.status(400).json({ error: 'Missing token.' });
-
-    let payload;
-    try {
-      payload = jwt.verify(token, JWT_SECRET);
-    } catch {
-      return res.status(400).json({ error: 'Invalid or expired token.' });
-    }
-
-    const { userId, plan } = payload;
-    if (!userId || !plan) {
-      return res.status(400).json({ error: 'Token missing userId or plan.' });
-    }
-
-    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-    await pool.query(
-      `UPDATE users SET plan = $1, pendingplan = NULL, planexpiresat = $2, updatedat = NOW() WHERE id = $3`,
-      [plan, expires, userId]
-    );
-
-    const { rows } = await pool.query(
-      `SELECT id, name, email, plan, avatarurl, createdat FROM users WHERE id = $1`,
-      [userId]
-    );
-
-    const newToken = signToken({ id: userId, email: rows[0]?.email });
-
-    res.json({
-      success: true,
-      token: newToken,
-      user: rows[0] || null,
-    });
-  } catch (e) {
-    console.error('checkout-confirm:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/plan', auth, async (req, res) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT plan, planexpiresat, pendingplan FROM users WHERE id = $1`,
-      [req.user.id]
-    );
-
-    if (!rows.length) {
-      return res.status(404).json({ error: 'User not found.' });
-    }
-
-    const u = rows[0];
-
-    if (u.plan !== 'free' && u.planexpiresat && new Date(u.planexpiresat) < new Date()) {
-      await pool.query(
-        `UPDATE users SET plan = 'free', planexpiresat = NULL, updatedat = NOW() WHERE id = $1`,
-        [req.user.id]
-      );
-      u.plan = 'free';
-      u.planexpiresat = null;
-    }
-
-    res.json({
-      plan: u.plan,
-      expiresAt: u.planexpiresat,
-      pendingPlan: u.pendingplan,
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-/* =========================
-   VIDEO
-========================= */
-
-const videoUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 app.post(
@@ -1681,7 +694,7 @@ app.post(
   auth,
   videoUpload.fields([
     { name: 'startImage', maxCount: 1 },
-    { name: 'endImage', maxCount: 1 },
+    { name: 'endImage', maxCount: 1 }
   ]),
   async (req, res) => {
     try {
@@ -1709,47 +722,153 @@ app.post(
         return res.status(403).json({ error: 'Reference images require Pro, Pro+, or Max.' });
       }
 
-      const usageCount = incrementVideoUsage(userId, plan);
+      // ── Real Veo 2 generation ──
+      const key = geminiKey();
+      const aspectRatio = String(req.body?.aspectRatio || '16:9').trim();
+      const style = String(req.body?.style || 'Realistic').trim();
 
-      const demoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
+      const videoPrompt = [
+        prompt,
+        style !== 'Realistic' ? `Style: ${style}.` : '',
+        `Duration: ${duration}.`,
+        `Aspect ratio: ${aspectRatio}.`
+      ].filter(Boolean).join(' ');
+
+      const createRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predictLongRunning?key=${key}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: videoPrompt })
+        }
+      );
+
+      const createData = await createRes.json();
+
+      if (!createRes.ok) {
+        return res.status(createRes.status).json({
+          error: createData.error?.message || 'Video generation request failed.'
+        });
+      }
+
+      const operationName = createData.name;
+      if (!operationName) {
+        return res.status(500).json({ error: 'No operation ID returned from video API.' });
+      }
+
+      let finalData = null;
+
+      for (let i = 0; i < 60; i++) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        const pollRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${key}`
+        );
+
+        const pollData = await pollRes.json();
+
+        if (!pollRes.ok) {
+          return res.status(pollRes.status).json({
+            error: pollData.error?.message || 'Video polling failed.'
+          });
+        }
+
+        if (pollData.done) {
+          finalData = pollData;
+          break;
+        }
+      }
+
+      if (!finalData || !finalData.done) {
+        return res.status(504).json({
+          error: 'Video generation timed out. Please try again.'
+        });
+      }
+
+      const videoUri =
+        finalData.response?.generatedVideos?.[0]?.video?.uri ||
+        finalData.response?.videos?.[0]?.uri ||
+        null;
+
+      if (!videoUri) {
+        return res.status(500).json({
+          error: 'No video returned from generation API.'
+        });
+      }
+
+      const usageCount = incrementVideoUsage(userId, plan);
 
       res.json({
         ok: true,
         message: 'Video generated successfully.',
         duration,
+        aspectRatio,
+        style,
         plan,
         planLabel: plan === 'proplus' ? 'Pro+' : plan.charAt(0).toUpperCase() + plan.slice(1),
         usageCount,
-        videoUrl: demoUrl,
-        usedReferences: Boolean(startImage || endImage),
+        videoUrl: videoUri,
+        usedReferences: Boolean(startImage || endImage)
       });
     } catch (err) {
       console.error('/api/video/generate error:', err);
-      res.status(500).json({ error: 'Video generation failed.' });
+      res.status(500).json({ error: err.message || 'Video generation failed.' });
     }
   }
 );
 
-/* =========================
-   FALLBACK
-========================= */
+app.post('/api/create-checkout-session', auth, async (req, res) => {
+  try {
+    if (!stripe) {
+      return res.status(503).json({ error: 'Stripe is not configured.' });
+    }
+
+    const plan = String(req.body?.plan || 'pro').trim();
+    const priceMap = {
+      pro: process.env.STRIPE_PRICE_PRO,
+      proplus: process.env.STRIPE_PRICE_PROPLUS,
+      max: process.env.STRIPE_PRICE_MAX
+    };
+
+    const price = priceMap[plan];
+    if (!price) {
+      return res.status(400).json({ error: 'Invalid plan.' });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      line_items: [{ price, quantity: 1 }],
+      success_url: `${APP_URL || 'http://localhost:3000'}?payment=success`,
+      cancel_url: `${APP_URL || 'http://localhost:3000'}?payment=cancel`,
+      client_reference_id: String(req.user.id),
+      metadata: {
+        userId: String(req.user.id),
+        plan
+      }
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  res.json({ received: true });
+});
 
 app.get('*', (req, res) => {
-  res.setHeader('Content-Type', 'text/html; charset=UTF-8');
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-/* =========================
-   START
-========================= */
-
-initDb()
+ensureTables()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`JeeThy Labs - port ${PORT}`);
+      console.log(`JeeThy Labs server running on port ${PORT}`);
     });
   })
   .catch(err => {
-    console.error('Startup failed:', err.message);
+    console.error('Startup error:', err);
     process.exit(1);
   });
