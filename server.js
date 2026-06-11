@@ -1841,28 +1841,6 @@ app.post(
   }
 );
 
-
-/* ===== VIDEO STREAM PROXY ===== */
-app.get('/api/video/stream/:token', async (req, res) => {
-  const entry = _videoCache.get(req.params.token);
-  if (!entry || entry.expires < Date.now())
-    return res.status(404).json({ error: 'Video token expired. Please regenerate.' });
-  try {
-    const sep = entry.uri.includes('?') ? '&' : '?';
-    const upstream = await fetch(entry.uri + sep + 'key=' + entry.key,
-      req.headers.range ? { headers: { Range: req.headers.range } } : {});
-    if (!upstream.ok) return res.status(upstream.status).send(await upstream.text());
-    res.setHeader('Content-Type', upstream.headers.get('content-type') || 'video/mp4');
-    res.setHeader('Accept-Ranges','bytes');
-    res.setHeader('Cache-Control','no-store');
-    res.setHeader('Access-Control-Allow-Origin','*');
-    const cl = upstream.headers.get('content-length');
-    if (cl) res.setHeader('Content-Length', cl);
-    const cr = upstream.headers.get('content-range');
-    if (cr) { res.setHeader('Content-Range', cr); res.status(206); }
-    upstream.body.pipe(res);
-  } catch(err) { res.status(500).json({ error: err.message }); }
-});
 /* =========================
    FALLBACK
 ========================= */
