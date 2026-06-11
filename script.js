@@ -381,18 +381,30 @@ function goToPanel(index) {
 }
 
 function initSwipe() {
-  const wrap = document.getElementById('panelsWrap');
+  const wrap = document.getElementById("panelsWrap");
   if (!wrap) return;
-  let startX = 0, startY = 0;
-  wrap.addEventListener('touchstart', function(e){ startX=e.touches[0].clientX; startY=e.touches[0].clientY; }, {passive:true});
-  wrap.addEventListener('touchend', function(e){
-    var dx = e.changedTouches[0].clientX - startX;
-    var dy = e.changedTouches[0].clientY - startY;
+  let _sx = 0, _sy = 0, _tracking = false;
+  wrap.addEventListener("touchstart", e => {
+    _sx = touchStartX = e.touches[0].clientX;
+    _sy = touchStartY = e.touches[0].clientY;
+    _tracking = true;
+  }, { passive: true });
+  wrap.addEventListener("touchmove", e => {
+    if (!_tracking) return;
+    const dx = e.touches[0].clientX - _sx;
+    const dy = e.touches[0].clientY - _sy;
+    if (Math.abs(dx) > Math.abs(dy) + 10) e.preventDefault();
+  }, { passive: false });
+  wrap.addEventListener("touchend", e => {
+    if (!_tracking) return;
+    _tracking = false;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
       if (dx < 0 && currentPanel < TOTAL_PANELS - 1) goToPanel(currentPanel + 1);
-      else if (dx > 0 && currentPanel > 0) goToPanel(currentPanel - 1);
+      if (dx > 0 && currentPanel > 0) goToPanel(currentPanel - 1);
     }
-  }, {passive:true});
+  }, { passive: true });
 }
 
 // ===================== AUTH MODAL =====================
@@ -1945,7 +1957,7 @@ function updateVideoUI() {
     const s = document.getElementById("videoStartPreview");
     const e = document.getElementById("videoEndPreview");
     if (s) s.textContent = "Upgrade to Pro to use start image";
-    if (e) e.textContent = "End image currently disabled to avoid model errors";
+    if (e) e.textContent = "No file selected";
     if (startInput) startInput.value = "";
     if (endInput) endInput.value = "";
   }
@@ -1958,96 +1970,126 @@ function selectVideoDuration(value, el) {
 }
 
 function handleVideoRefUpload(kind, event) {
-  var file = event && event.target && event.target.files && event.target.files[0];
-  if (!file) return;
-  var P = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
-  if ((P.refImages || 0) < 1) { showToast('Reference images require Pro plan or higher.','error'); openPlanModal(); return; }
-  videoRefs[kind] = file;
-  var previewEl = document.getElementById('videoStartPreview');
-  var reader = new FileReader();
-  reader.onload = function(e2) {
-    if (!previewEl) return;
-    previewEl.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;">'
-      + '<img src="'+e2.target.result+'" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid rgba(34,211,238,.35);" />'
-      + '<div><div style="font-size:12px;color:#22d3ee;font-weight:600;">'+file.name+'</div>'
-      + '<button type="button" onclick="clearVideoRef(''+kind+'')" style="margin-top:4px;font-size:11px;color:#f87171;background:none;border:none;cursor:pointer;padding:0;"><i class="fas fa-times"></i> Remove</button>'
-      + '</div></div>';
-  };
-  reader.readAsDataURL(file);
-}
-function clearVideoRef(kind) {
-  videoRefs[kind] = null;
-  var p = document.getElementById('videoStartPreview');
-  if (p) p.textContent = 'No file selected';
-  var inp = document.getElementById('videoStartImage');
-  if (inp) inp.value = '';
-}
-
-
-async function generateVideo() {
-  if (!checkQuota()) return;
-  var prompt = (document.getElementById('videoPrompt') && document.getElementById('videoPrompt').value || '').trim();
-  if (!prompt) { showToast('Please enter a video prompt.','error'); return; }
-  var btn    = document.getElementById('videoGenBtn');
-  var aspect = (document.querySelector('#videoAspectGroup .chip.active') || {}).dataset && document.querySelector('#videoAspectGroup .chip.active').dataset.value || '9:16';
-  var style  = ((document.querySelector('#videoStyleGroup .chip.active') || {}).textContent || 'Realistic').trim();
-  var dur    = videoDuration || '8s';
-  var full   = style !== 'Realistic' ? style + ' style. ' + prompt : prompt;
-  btn.disabled = true;
-  btn.innerHTML = '<div style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px;"></div>Generating…';
-  var resultEl = document.getElementById('videoResult');
-  var statusEl = document.getElementById('videoStatusText');
-  var playerEl = document.getElementById('videoPlayer');
-  var dlBtn    = document.getElementById('videoDownloadBtn');
-  if (resultEl) resultEl.style.display = 'block';
-  if (statusEl) statusEl.innerHTML = '<div style="width:10px;height:10px;border-radius:50%;border:2px solid #22d3ee;border-top-color:transparent;animation:spin .8s linear infinite;flex-shrink:0;"></div>&nbsp;Generating video (1–3 min)…';
-  if (playerEl) { playerEl.src=''; playerEl.style.display='none'; }
-  if (dlBtn) dlBtn.style.display='none';
-  try {
-    var fd = new FormData();
-    fd.append('prompt', full);
-    fd.append('duration', dur);
-    fd.append('aspect', aspect);
-    if (videoRefs.start) fd.append('startImage', videoRefs.start, videoRefs.start.name);
-    var headers = {};
-    var tok = authToken || window._jlToken;
-    try { tok = tok || localStorage.getItem('jl_token'); } catch(e){}
-    if (tok) headers['Authorization'] = 'Bearer ' + tok;
-    var res  = await fetch('/api/video/generate', {method:'POST', body:fd, headers:headers, credentials:'include'});
-    var data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || 'Video generation failed.');
-    if (statusEl) statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:#4ade80;margin-right:6px;"></i>Video ready!';
-    if (playerEl && data.videoUrl) {
-      playerEl.style.display='block';
-      playerEl.src = data.videoUrl;
-      playerEl.load();
-      playerEl.play().catch(function(){});
+  if (!canUseVideoReferences()) {
+    showUpgradeModal("pro", "Reference images (start/end frame) require Pro, Pro+, or Max plan.");
+    if (event && event.target) event.target.value = "";
+    return;
+  }
+  const file = event?.target?.files?.[0];
+  videoRefs[kind] = file || null;
+  const previewId = kind === "start" ? "videoStartPreview" : "videoEndPreview";
+  const preview = document.getElementById(previewId);
+  if (preview) {
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        preview.innerHTML = `<img src="${ev.target.result}" alt="${kind} frame"
+          style="max-width:100%;max-height:60px;border-radius:6px;object-fit:cover;margin-top:4px;display:block;">
+          <span style="font-size:11px;color:var(--text2)">${file.name}</span>`;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      preview.innerHTML = "No file selected";
     }
-    if (dlBtn) { dlBtn._videoUrl = data.videoUrl; dlBtn.style.display='flex'; }
-    var usageEl = document.getElementById('video-usage-text');
-    if (usageEl && data.usageCount != null) {
-      var lim = (window.VIDEO_PLAN_LIMITS || {})[userPlan] || 1;
-      usageEl.textContent = 'Used ' + data.usageCount + '/' + lim + ' videos today';
-    }
-    incrementRequest();
-  } catch(err) {
-    if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle-exclamation" style="color:#f87171;margin-right:6px;"></i>' + escapeHtml(err.message);
-    if (playerEl) playerEl.style.display='none';
-    showToast(err.message || 'Video generation failed.', 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Video';
   }
 }
-function downloadVideo() {
-  var dlBtn = document.getElementById('videoDownloadBtn');
-  var url = dlBtn && dlBtn._videoUrl;
-  if (!url) { showToast('No video to download.','error'); return; }
-  var a = document.createElement('a');
-  a.href = url; a.download = 'jeethy-video-' + Date.now() + '.mp4';
-  a.target = '_blank'; document.body.appendChild(a); a.click(); a.remove();
-}
 
+async function generateVideo() {
+  const promptEl = document.getElementById("videoPrompt");
+  const btn = document.getElementById("videoGenBtn");
+  const prompt = (promptEl?.value || "").trim();
+  if (!prompt) return showToast("Please enter a video prompt", "error");
+
+  const remaining = getRemainingVideoQuota();
+  if (remaining <= 0) {
+    showUpgradeModal(userPlan === "free" ? "pro" : "proplus", "You reached your daily video limit. Upgrade to continue generating more videos.");
+    return;
+  }
+
+  const refsAllowed = canUseVideoReferences();
+  if (!refsAllowed && videoRefs.start) {
+    showUpgradeModal("pro", "Reference images (start/end frame) require Pro, Pro+, or Max plan.");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("prompt", prompt);
+  fd.append("duration", videoDuration);
+  fd.append("plan", userPlan);
+  // âœ… FIX: Send aspect ratio to server
+  const _aspectChip = document.querySelector("#videoAspectGroup .chip.active, .video-aspect-chips .chip.active, [data-group='videoAspect'] .chip.active");
+  const _aspectVal  = _aspectChip?.dataset?.value || _aspectChip?.textContent?.trim().replace(/\s+/g,"") || "16:9";
+  fd.append("aspect", _aspectVal);
+  if (videoRefs.start) fd.append("startImage", videoRefs.start);
+
+  const oldHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+  try {
+    const res = await fetch("/api/video/generate", {
+      method: "POST",
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      body: fd
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Video generation failed");
+
+    const nextCount = Number.isFinite(data.usageCount) ? data.usageCount : getVideoUsageToday() + 1;
+    setVideoUsageToday(nextCount);
+    updateVideoUI();
+
+    const result = document.getElementById("videoResult");
+    const player = document.getElementById("videoPlayer");
+    const status = document.getElementById("videoStatusText");
+    const dl     = document.getElementById("videoDownloadBtn");
+
+    if (player && data.videoUrl) {
+      player.pause();
+      player.removeAttribute("src");
+      player.removeAttribute("controlslist");
+      player.load();
+      player.src = data.videoUrl;
+      player.setAttribute("playsinline", "true");
+      player.setAttribute("webkit-playsinline", "true");
+      player.load();
+    }
+    if (dl && data.videoUrl) {
+      dl.onclick = async (e) => {
+        e.preventDefault();
+        try {
+          showToast("Preparing download...", "success");
+          const r = await fetch(data.videoUrl, {
+            headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+          });
+          if (!r.ok) throw new Error("fetch failed");
+          const blob = await r.blob();
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `jeethy-video-${Date.now()}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          showToast("Download started! ✓", "success");
+        } catch(ex) { window.open(data.videoUrl, "_blank"); }
+      };
+      dl.href = data.videoUrl;
+      dl.style.opacity = "1";
+      dl.style.pointerEvents = "auto";
+    }
+    if (status) status.innerHTML = `<i class="fas fa-circle-check"></i> ${data.message || "Video ready"} · Preview below`;
+    if (result) {
+      result.style.display = "block";
+      setTimeout(() => result.scrollIntoView({ behavior: "smooth", block: "nearest" }), 150);
+    }
+    if (player) player.play().catch(() => {});
+    showToast("Video generated! ✓", "success");
+  } catch (err) {
+    showToast(err.message || "Unable to generate video", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = oldHtml;
+  }
+}
 
 function resetVideoForm() {
   const prompt = document.getElementById("videoPrompt");
@@ -2063,8 +2105,8 @@ function resetVideoForm() {
   if (player) player.removeAttribute("src");
   if (startInput) startInput.value = "";
   if (endInput) endInput.value = "";
-  if (startPreview) startPreview.textContent = canUseVideoReferences() ? "No file selected" : "Upgrade to Pro to use start image";
-  if (endPreview) endPreview.textContent = "End image currently disabled to avoid model errors";
+  if (startPreview) startPreview.textContent = "No file selected";
+  if (endPreview) endPreview.textContent = "No file selected";
   videoRefs = { start: null, end: null };
   selectVideoDuration("8s", document.querySelector('#videoDurationChips .chip[data-value="8s"]'));
 }
