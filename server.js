@@ -1862,8 +1862,10 @@ app.get('/api/video/stream/:token', async (req, res) => {
     const targetUrl = entry.uri.includes('?') ? entry.uri : `${entry.uri}?key=${entry.key}`;
     const videoRes  = await fetch(targetUrl);
     if (!videoRes.ok) return res.status(502).json({ error: 'Failed to fetch video from Veo.' });
-    res.setHeader('Content-Type', videoRes.headers.get('content-type') || 'video/mp4');
+    res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Content-Disposition', 'inline; filename="jeethy-video.mp4"');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', 'no-store');
     const { Readable } = require('stream');
     Readable.fromWeb(videoRes.body).pipe(res);
