@@ -1947,7 +1947,7 @@ function updateVideoUI() {
     const s = document.getElementById("videoStartPreview");
     const e = document.getElementById("videoEndPreview");
     if (s) s.textContent = "Upgrade to Pro to use start image";
-    if (e) e.textContent = "Upgrade to Pro to use end image";
+    if (e) e.textContent = "End image currently disabled to avoid model errors";
     if (startInput) startInput.value = "";
     if (endInput) endInput.value = "";
   }
@@ -1998,7 +1998,6 @@ async function generateVideo() {
   const _aspectVal  = _aspectChip?.dataset?.value || _aspectChip?.textContent?.trim().replace(/\s+/g,"") || "16:9";
   fd.append("aspect", _aspectVal);
   if (videoRefs.start) fd.append("startImage", videoRefs.start);
-  if (videoRefs.end) fd.append("endImage", videoRefs.end);
 
   const oldHtml = btn.innerHTML;
   btn.disabled = true;
@@ -2034,8 +2033,9 @@ async function generateVideo() {
       dl.target = "_blank";
       dl.rel = "noopener noreferrer";
     }
-    if (status) status.innerHTML = `<i class="fas fa-circle-check"></i> ${data.message || `Video ready Â· ${data.planLabel || userPlan} plan`}`;
+    if (status) status.innerHTML = `<i class="fas fa-circle-check"></i> ${data.message || `Video ready Â· ${data.planLabel || userPlan} plan`} Â· Preview available below`;
     if (result) result.style.display = "block";
+    if (player) player.play().catch(() => {});
     showToast("Video generated successfully", "success");
   } catch (err) {
     showToast(err.message || "Unable to generate video", "error");
@@ -2060,7 +2060,7 @@ function resetVideoForm() {
   if (startInput) startInput.value = "";
   if (endInput) endInput.value = "";
   if (startPreview) startPreview.textContent = canUseVideoReferences() ? "No file selected" : "Upgrade to Pro to use start image";
-  if (endPreview) endPreview.textContent = canUseVideoReferences() ? "No file selected" : "Upgrade to Pro to use end image";
+  if (endPreview) endPreview.textContent = "End image currently disabled to avoid model errors";
   videoRefs = { start: null, end: null };
   selectVideoDuration("8s", document.querySelector('#videoDurationChips .chip[data-value="8s"]'));
 }
