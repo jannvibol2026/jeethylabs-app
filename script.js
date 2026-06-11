@@ -376,7 +376,7 @@ function goToPanel(index) {
   const track = document.getElementById("panelsTrack");
   const tabs = document.querySelectorAll(".tab-bar .tab");
   currentPanel = Math.max(0, Math.min(index, TOTAL_PANELS - 1));
-  if (track) track.style.transform = `translateX(-${currentPanel * 100}%)`;
+  if (track) track.style.transform = `translateX(-${currentPanel * 100}vw)`;
   tabs.forEach((tab, i) => tab.classList.toggle("active", i === currentPanel));
 }
 
@@ -1971,7 +1971,7 @@ function selectVideoDuration(value, el) {
 
 function handleVideoRefUpload(kind, event) {
   if (!canUseVideoReferences()) {
-    showUpgradeModal("pro", "Reference images (start/end frame) require Pro, Pro+, or Max plan.");
+    showUpgradeModal("pro", "Reference images require Pro, Pro+, or Max plan.");
     if (event && event.target) event.target.value = "";
     return;
   }
@@ -1985,11 +1985,11 @@ function handleVideoRefUpload(kind, event) {
       reader.onload = ev => {
         preview.innerHTML = `<img src="${ev.target.result}" alt="${kind} frame"
           style="max-width:100%;max-height:60px;border-radius:6px;object-fit:cover;margin-top:4px;display:block;">
-          <span style="font-size:11px;color:var(--text2)">${file.name}</span>`;
+          <span style="font-size:11px;color:var(--text2,#797876)">${file.name}</span>`;
       };
       reader.readAsDataURL(file);
     } else {
-      preview.innerHTML = "No file selected";
+      preview.textContent = "No file selected";
     }
   }
 }
@@ -2007,8 +2007,8 @@ async function generateVideo() {
   }
 
   const refsAllowed = canUseVideoReferences();
-  if (!refsAllowed && videoRefs.start) {
-    showUpgradeModal("pro", "Reference images (start/end frame) require Pro, Pro+, or Max plan.");
+  if (!refsAllowed && (videoRefs.start || videoRefs.end)) {
+    showUpgradeModal("pro", "Reference images are available on Pro, Pro+, and Max only.");
     return;
   }
 
@@ -2042,7 +2042,6 @@ async function generateVideo() {
     const player = document.getElementById("videoPlayer");
     const status = document.getElementById("videoStatusText");
     const dl     = document.getElementById("videoDownloadBtn");
-
     if (player && data.videoUrl) {
       player.pause();
       player.removeAttribute("src");
@@ -2120,12 +2119,14 @@ function initPanelLayout() {
   const track = document.getElementById("panelsTrack");
   if (!track) return;
   track.style.display = "flex";
-  track.style.width = `${TOTAL_PANELS * 100}%`;
+  track.style.width = `${TOTAL_PANELS * 100}vw`;
   track.style.maxWidth = "none";
   track.style.gridTemplateColumns = "none";
   document.querySelectorAll(".panel").forEach((panel, i, arr) => {
-    panel.style.flex = `0 0 ${100 / TOTAL_PANELS}%`;
-    panel.style.maxWidth = `${100 / TOTAL_PANELS}%`;
+    panel.style.flex = "0 0 100vw";
+    panel.style.width = "100vw";
+    panel.style.maxWidth = "100vw";
+    panel.style.minWidth = "0";
     panel.style.borderRight = i === arr.length - 1 ? "none" : "1px solid var(--border)";
   });
   goToPanel(typeof currentPanel === "number" ? currentPanel : 0);
