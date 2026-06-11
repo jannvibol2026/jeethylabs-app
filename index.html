@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
+
 .chip-other{border-color:#38bdf8;color:#38bdf8}
 .chip-other.active{background:#38bdf8;color:#0f172a}
 .chip-sm{font-size:14px !important;padding:9px 15px !important}
@@ -430,118 +431,90 @@
 
       </div>
     </section>
-
     <!-- ═══ VIDEO ═══ -->
     <section class="panel panel-video">
       <div class="panel-inner panel-inner-scroll">
 
+        <!-- Header -->
         <div class="panel-header">
-          <div class="panel-icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">
-            <i class="fas fa-video"></i>
+          <div class="panel-icon" style="background:rgba(239,68,68,.15);">
+            <i class="fas fa-video" style="color:#ef4444;"></i>
           </div>
           <div>
-            <h2 class="panel-title">Video Generate</h2>
-            <p class="panel-subtitle">Create AI videos from text &amp; images</p>
+            <div class="panel-title">Video Generate</div>
+            <div class="panel-subtitle">Create AI videos from text</div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <span id="video-plan-badge" style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;border:1.5px solid #9ca3af;color:#9ca3af;display:none;"></span>
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Video Description</label>
-          <textarea id="videoPrompt" class="form-textarea"
-            placeholder="Describe your video: scene, characters, camera movement, lighting..." rows="4"></textarea>
+        <!-- Usage -->
+        <div id="video-usage-text" style="font-size:12px;color:#6b7280;margin-bottom:14px;"></div>
+
+        <!-- Prompt -->
+        <label class="field-label">VIDEO DESCRIPTION</label>
+        <textarea id="videoPrompt" class="field-input" rows="3"
+          placeholder="Describe your video scene…"
+          style="resize:vertical;min-height:80px;"></textarea>
+
+        <!-- Aspect Ratio -->
+        <label class="field-label" style="margin-top:14px;">ASPECT RATIO</label>
+        <div id="videoAspectGroup" class="chip-row">
+          <button class="chip active" data-value="16:9" onclick="selectChip(this,'videoAspectGroup')">&#x1F4FA; 16:9 Landscape</button>
+          <button class="chip" data-value="9:16" onclick="selectChip(this,'videoAspectGroup')">&#x1F4F1; 9:16 Portrait</button>
+          <button class="chip" data-value="1:1" onclick="selectChip(this,'videoAspectGroup')">&#x1F7E6; 1:1 Square</button>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Aspect Ratio</label>
-          <div class="chip-group" id="videoAspectGroup">
-            <button class="chip active" data-value="16:9" onclick="selectChip(this,'videoAspectGroup')">
-              <i class="fas fa-display"></i> 16:9 Landscape
-            </button>
-            <button class="chip" data-value="9:16" onclick="selectChip(this,'videoAspectGroup')">
-              <i class="fas fa-mobile-screen"></i> 9:16 Portrait
-            </button>
-            <button class="chip" data-value="1:1" onclick="selectChip(this,'videoAspectGroup')">
-              <i class="fas fa-square"></i> 1:1 Square
-            </button>
-          </div>
+        <!-- Duration -->
+        <label class="field-label" style="margin-top:14px;">DURATION</label>
+        <div id="videoDurationChips" class="chip-row">
+          <button class="chip active" data-value="8s" onclick="selectVideoDuration('8s',this)">&#x23F1; 8s</button>
+          <button class="chip" data-value="10s" onclick="selectVideoDuration('10s',this)">&#x23F1; 10s</button>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Duration</label>
-          <div class="chip-group" id="videoDurationChips">
-            <button class="chip" data-value="5s" onclick="selectVideoDuration('5s',this)">5s</button>
-            <button class="chip active" data-value="8s" onclick="selectVideoDuration('8s',this)">8s</button>
-            <button class="chip" data-value="10s" onclick="selectVideoDuration('10s',this)">10s</button>
-          </div>
+        <!-- Style -->
+        <label class="field-label" style="margin-top:14px;">STYLE</label>
+        <div id="videoStyleGroup" class="chip-row">
+          <button class="chip active" onclick="selectChip(this,'videoStyleGroup')">&#x1F3A8; Realistic</button>
+          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">&#x1F5BC;&#xFE0F; Cinematic</button>
+          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">&#x1F4F7; Anime</button>
+          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">&#x1F3A8; Classic</button>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Style</label>
-          <div class="chip-group" id="videoStyleGroup">
-            <button class="chip active" data-value="Realistic" onclick="selectChip(this,'videoStyleGroup')">
-              <i class="fas fa-camera"></i> Realistic
-            </button>
-            <button class="chip" data-value="Cartoon" onclick="selectChip(this,'videoStyleGroup')">
-              <i class="fas fa-paintbrush"></i> Cartoon
-            </button>
-            <button class="chip" data-value="Anime" onclick="selectChip(this,'videoStyleGroup')">
-              <i class="fas fa-star"></i> Anime
-            </button>
-            <button class="chip" data-value="Cinematic" onclick="selectChip(this,'videoStyleGroup')">
-              <i class="fas fa-film"></i> Cinematic
-            </button>
-            <button class="chip" data-value="Other" onclick="selectChip(this,'videoStyleGroup')">
-              <i class="fas fa-sliders"></i> Other
-            </button>
-          </div>
+        <!-- Reference Images (Pro+) -->
+        <div style="margin-top:16px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);">
+          <div style="font-size:12px;color:#a78bfa;font-weight:700;letter-spacing:.5px;margin-bottom:10px;">&#x1F5BC;&#xFE0F; REFERENCE IMAGES (Pro / Pro+ / Max)</div>
+          <div id="videoRefPlanNote" style="font-size:12px;color:#6b7280;margin-bottom:12px;"></div>
+
+          <label class="field-label">START FRAME</label>
+          <div id="videoStartPreview" style="font-size:12px;color:#9ca3af;margin-bottom:6px;">No file selected</div>
+          <input type="file" id="videoStartImage" accept="image/*" style="width:100%;margin-bottom:10px;"
+            onchange="handleVideoRefUpload('start',event)">
+
+          <label class="field-label">END FRAME</label>
+          <div id="videoEndPreview" style="font-size:12px;color:#9ca3af;margin-bottom:6px;">No file selected</div>
+          <input type="file" id="videoEndImage" accept="image/*" style="width:100%;"
+            onchange="handleVideoRefUpload('end',event)">
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Reference Images
-            <span style="font-size:11px;color:var(--text-muted)">(PRO — optional)</span>
-          </label>
-          <div id="videoRefPlanNote" style="font-size:11px;color:#a855f7;margin-bottom:8px;"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div>
-              <label class="form-label" style="font-size:11px;margin-bottom:4px;">Start Frame</label>
-              <div onclick="document.getElementById('videoStartImage').click()"
-                style="border:1.5px dashed var(--border);border-radius:10px;padding:16px 8px;text-align:center;cursor:pointer;background:var(--surface2);">
-                <i class="fas fa-image" style="font-size:18px;color:var(--text-muted);display:block;margin-bottom:4px;"></i>
-                <span id="videoStartPreview" style="font-size:11px;color:var(--text-muted);">Tap to upload</span>
-              </div>
-              <input type="file" id="videoStartImage" accept="image/*" style="display:none"
-                onchange="handleVideoRefUpload('start',event)"/>
-            </div>
-            <div>
-              <label class="form-label" style="font-size:11px;margin-bottom:4px;">End Frame</label>
-              <div onclick="document.getElementById('videoEndImage').click()"
-                style="border:1.5px dashed var(--border);border-radius:10px;padding:16px 8px;text-align:center;cursor:pointer;background:var(--surface2);">
-                <i class="fas fa-image" style="font-size:18px;color:var(--text-muted);display:block;margin-bottom:4px;"></i>
-                <span id="videoEndPreview" style="font-size:11px;color:var(--text-muted);">Tap to upload</span>
-              </div>
-              <input type="file" id="videoEndImage" accept="image/*" style="display:none"
-                onchange="handleVideoRefUpload('end',event)"/>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-          <span id="video-plan-badge" class="song-plan-badge"></span>
-          <span id="video-usage-text" class="song-duration-hint"></span>
-        </div>
-
-        <button class="btn-generate btn-purple" id="videoGenBtn" onclick="generateVideo()">
-          <i class="fas fa-wand-magic-sparkles"></i> Generate Video
+        <!-- Generate Button -->
+        <button id="videoGenBtn" class="gen-btn" style="margin-top:18px;background:linear-gradient(135deg,#ef4444,#dc2626);"
+          onclick="generateVideo()">
+          <i class="fas fa-video"></i> Generate Video
         </button>
 
-        <p id="videoStatusText" style="font-size:12px;color:var(--text-muted);margin-top:8px;min-height:18px;"></p>
-
-        <div id="videoResult" class="results-wrap" style="display:none;margin-top:12px;">
+        <!-- Result -->
+        <div id="videoResult" style="display:none;margin-top:18px;">
+          <div id="videoStatusText" style="font-size:13px;color:#6b7280;margin-bottom:10px;"></div>
           <video id="videoPlayer" controls playsinline
-            style="width:100%;border-radius:14px;background:#000;max-height:420px;"></video>
-          <button id="videoDownloadBtn" class="btn-generate btn-cyan" style="margin-top:10px;width:100%;">
+            style="width:100%;border-radius:14px;background:#000;max-height:320px;">
+            Your browser does not support video.
+          </video>
+          <a id="videoDownloadBtn" download="jeethy-video.mp4"
+            style="display:block;margin-top:10px;text-align:center;padding:10px;background:rgba(239,68,68,.15);color:#ef4444;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;">
             <i class="fas fa-download"></i> Download Video
-          </button>
+          </a>
         </div>
 
       </div>
