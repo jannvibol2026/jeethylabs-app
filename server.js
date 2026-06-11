@@ -1857,15 +1857,30 @@ app.get('/api/video/stream/:token', async (req, res) => {
   }
   try {
     const targetUrl = entry.uri.includes('?') ? entry.uri : `${entry.uri}?key=${entry.key}`;
-    const videoRes  = await fetch(targetUrl);
+    // Buffer full video to support Range requests (required for mobile browser playback)
+    const videoRes = await fetch(targetUrl);
     if (!videoRes.ok) return res.status(502).json({ error: 'Failed to fetch video from Veo.' });
+    const buffer = Buffer.from(await videoRes.arrayBuffer());
+    const total  = buffer.length;
+    const rangeHeader = req.headers['range'];
     res.setHeader('Content-Type', 'video/mp4');
-    res.setHeader('Content-Disposition', 'inline; filename="jeethy-video.mp4"');
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 'no-store');
-    const { Readable } = require('stream');
-    Readable.fromWeb(videoRes.body).pipe(res);
+    if (rangeHeader) {
+      const parts = rangeHeader.replace(/bytes=/, '').split('-');
+      const start  = parseInt(parts[0], 10);
+      const end    = parts[1] ? parseInt(parts[1], 10) : total - 1;
+      const chunk  = end - start + 1;
+      res.setHeader('Content-Range',  `bytes ${start}-${end}/${total}`);
+      res.setHeader('Content-Length', chunk);
+      return res.status(206).end(buffer.slice(start, end + 1));
+    } else {
+      res.setHeader('Content-Length', total);
+      res.setHeader('Content-Disposition', 'inline; filename="jeethy-video.mp4"');
+      return res.status(200).end(buffer);
+    }
   } catch (err) {
     console.error('[video/stream] error:', err.message);
     res.status(500).json({ error: err.message || 'Stream error.' });
