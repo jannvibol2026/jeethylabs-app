@@ -2,7 +2,7 @@
 
 const VIDEO_PLAN_LIMITS = { free: 1, pro: 3, proplus: 10, max: Infinity };
 const TOTAL_PANELS = 4;
-let videoDuration = "5s";
+let videoDuration = "8s";
 let videoRefs = { start: null, end: null };
 
 // ======================= MODELS =======================
@@ -2049,7 +2049,7 @@ function resetVideoForm() {
   if (startPreview) startPreview.textContent = canUseVideoReferences() ? "No file selected" : "Upgrade to Pro to use start image";
   if (endPreview) endPreview.textContent = canUseVideoReferences() ? "No file selected" : "Upgrade to Pro to use end image";
   videoRefs = { start: null, end: null };
-  selectVideoDuration("5s", document.querySelector('#videoDurationChips .chip[data-value="5s"]'));
+  selectVideoDuration("8s", document.querySelector('#videoDurationChips .chip[data-value="8s"]'));
 }
 
 window.addEventListener("load", () => {
