@@ -414,7 +414,7 @@ function cleanLyricsText(raw) {
   if (!raw) return '';
   return String(raw)
     .replace(/music|bpm|duration|seconds?|tempo|key|time signature|mood|energy/gi, '')
-    .replace(/^[-â€”\s]+/gm, '')
+    .replace(/^[-Ã¢â‚¬â€\s]+/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
@@ -1680,13 +1680,23 @@ app.get('/api/plan', auth, async (req, res) => {
 ========================= */
 
 const VIDEO_MODELS_FALLBACK = ['veo-2.0-generate-001', 'veo-3.0-generate-preview'];
+
+// In-memory video proxy cache (token -> {uri, key, expires})
+const _videoCache = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _videoCache.entries()) {
+    if (v.expires < now) _videoCache.delete(k);
+  }
+}, 5 * 60 * 1000);
+
 const VEO_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 async function pollVideoOperation(operationName, key, maxWaitMs = 300000) {
   const start = Date.now();
   while (Date.now() - start < maxWaitMs) {
     await new Promise(r => setTimeout(r, 8000));
-    const r = await fetch(`${VEO_BASE}/${operationName}?key=${key}`);
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${key}`);
     if (!r.ok) {
       const t = await r.text();
       throw new Error(`Poll HTTP ${r.status}: ${t.slice(0, 300)}`);
@@ -1746,7 +1756,7 @@ async function generateVideoVeo(key, prompt, aspectRatio, startImageBuf, startIm
 }
 
 /* =========================
-   VIDEO â€” Real Veo API
+   VIDEO Ã¢â‚¬â€ Real Veo API
 ========================= */
 
 const videoUpload = multer({
@@ -1768,8 +1778,9 @@ app.post(
       const duration = String(req.body?.duration || '8s').trim();
       // Accept 'aspect', 'aspectRatio', or no-colon formats like '169'/'916'/'11'
       const aspect   = String(req.body?.aspect || req.body?.aspectRatio || '16:9').trim();
-      // Always use server-side plan from JWT â€” never trust client-sent plan
-      const plan     = String(req.user?.plan || 'free').trim().toLowerCase();
+      // Always use server-side plan from JWT Ã¢â‚¬â€ never trust client-sent plan
+      // FIX: fetch plan from DB (JWT can be stale after upgrade)
+      const plan = await getUserPlan(req.user.id);
       const startImage = req.files?.startImage?.[0] || null;
       const endImage   = req.files?.endImage?.[0]   || null;
 
@@ -1787,7 +1798,7 @@ app.post(
       if (!refsAllowed && (startImage || endImage))
         return res.status(403).json({ error: 'Reference images require Pro, Pro+, or Max plan.' });
 
-      // Aspect ratio â€” support colon and no-colon formats
+      // Aspect ratio Ã¢â‚¬â€ support colon and no-colon formats
       const ASPECT_MAP = {
         '16:9': '16:9', '9:16': '9:16', '1:1': '1:1',
         '169':  '16:9', '916':  '9:16', '11':  '1:1',
@@ -1806,8 +1817,10 @@ app.post(
 
       const usageCount = incrementVideoUsage(userId, plan);
 
-      // Append key if URI has no query string
-      const videoUrl = videoUri.includes('?') ? videoUri : `${videoUri}?key=${key}`;
+      // FIX: Proxy video through server â€” don't expose API key to client
+      const videoToken = require('crypto').randomBytes(16).toString('hex');
+      _videoCache.set(videoToken, { uri: videoUri, key, expires: Date.now() + 10 * 60 * 1000 });
+      const videoUrl = `/api/video/stream/${videoToken}`;
 
       res.json({
         ok: true,
@@ -1831,6 +1844,31 @@ app.post(
 /* =========================
    FALLBACK
 ========================= */
+
+
+/* =========================
+   VIDEO STREAM PROXY
+========================= */
+app.get('/api/video/stream/:token', async (req, res) => {
+  const entry = _videoCache.get(req.params.token);
+  if (!entry || entry.expires < Date.now()) {
+    _videoCache.delete(req.params.token);
+    return res.status(410).json({ error: 'Video link expired. Please regenerate.' });
+  }
+  try {
+    const targetUrl = entry.uri.includes('?') ? entry.uri : `${entry.uri}?key=${entry.key}`;
+    const videoRes  = await fetch(targetUrl);
+    if (!videoRes.ok) return res.status(502).json({ error: 'Failed to fetch video from Veo.' });
+    res.setHeader('Content-Type', videoRes.headers.get('content-type') || 'video/mp4');
+    res.setHeader('Content-Disposition', 'inline; filename="jeethy-video.mp4"');
+    res.setHeader('Cache-Control', 'no-store');
+    const { Readable } = require('stream');
+    Readable.fromWeb(videoRes.body).pipe(res);
+  } catch (err) {
+    console.error('[video/stream] error:', err.message);
+    res.status(500).json({ error: err.message || 'Stream error.' });
+  }
+});
 
 app.get('*', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=UTF-8');
