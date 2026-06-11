@@ -1679,7 +1679,7 @@ app.get('/api/plan', auth, async (req, res) => {
    VEO VIDEO HELPERS
 ========================= */
 
-const VIDEO_MODELS_FALLBACK = ['veo-2.0-generate-001', 'veo-3.0-generate-preview'];
+const VIDEO_MODELS_FALLBACK = ['veo-3.0-generate-preview', 'veo-2.0-generate-001'];
 
 // In-memory video proxy cache (token -> {uri, key, expires})
 const _videoCache = new Map();
@@ -1714,7 +1714,7 @@ async function pollVideoOperation(operationName, key, maxWaitMs = 300000) {
   throw new Error('Video generation timed out (5 min). Please try again.');
 }
 
-async function generateVideoVeo(key, prompt, aspectRatio, startImageBuf, startImageMime, endImageBuf, endImageMime) {
+async function generateVideoVeo(key, prompt, aspectRatio, durationSeconds, startImageBuf, startImageMime, endImageBuf, endImageMime) {
   let lastErr = null;
   for (const model of VIDEO_MODELS_FALLBACK) {
     try {
@@ -1731,7 +1731,8 @@ async function generateVideoVeo(key, prompt, aspectRatio, startImageBuf, startIm
           mimeType: endImageMime || 'image/jpeg',
         };
       }
-      const parameters = { aspectRatio: aspectRatio || '16:9', sampleCount: 1 };
+      const durSec = Number.isFinite(durationSeconds) && durationSeconds > 0 ? durationSeconds : 8;
+      const parameters = { aspectRatio: aspectRatio || '16:9', sampleCount: 1, durationSeconds: durSec };
 
       const result = await withRetry(async () => {
         const r = await fetch(`${VEO_BASE}/models/${model}:predictLongRunning?key=${key}`, {
@@ -1809,8 +1810,10 @@ app.post(
       console.log(`[video/generate] user=${userId} plan=${plan} prompt="${prompt.slice(0, 60)}" aspect=${aspectRatio}`);
 
       // Call real Veo API
+      const durStr = String(req.body?.duration || '8s').trim();
+      const durationSeconds = parseInt(durStr, 10) || 8; // "8s"->8, "10s"->10
       const { videoUri, model } = await generateVideoVeo(
-        key, prompt, aspectRatio,
+        key, prompt, aspectRatio, durationSeconds,
         startImage?.buffer || null, startImage?.mimetype || null,
         endImage?.buffer   || null, endImage?.mimetype   || null,
       );
