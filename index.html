@@ -436,73 +436,60 @@
       <div class="panel-inner panel-inner-scroll">
 
         <div class="panel-header">
-          <div class="panel-icon" style="background:rgba(239,68,68,.15);">
-            <i class="fas fa-video" style="color:#ef4444;"></i>
-          </div>
+          <div class="panel-icon green"><i class="fas fa-video"></i></div>
           <div>
             <div class="panel-title">Video Generate</div>
-            <div class="panel-subtitle">Create short AI clips with a cleaner mobile layout</div>
+            <div class="panel-subtitle">Create short AI videos with the same clean layout as Image and Song</div>
           </div>
           <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
             <span id="video-plan-badge" style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;border:1.5px solid #9ca3af;color:#9ca3af;display:none;"></span>
           </div>
         </div>
 
-        <div class="video-card">
-          <div class="video-section-title">Prompt</div>
-          <textarea id="videoPrompt" class="field-input" rows="4" placeholder="Example: A stylish girl walking through neon city lights, cinematic camera movement, soft wind, detailed face, realistic lighting." style="resize:vertical;min-height:96px;"></textarea>
+        <label class="field-label">PROMPT</label>
+        <textarea id="videoPrompt" class="field-input video-textarea" rows="4" placeholder="Describe the video you want to create..."></textarea>
+
+        <label class="field-label">ASPECT RATIO</label>
+        <div id="videoAspectGroup" class="chip-row">
+          <button class="chip active" data-value="9:16" onclick="selectChip(this,'videoAspectGroup')">9:16 Portrait</button>
+          <button class="chip" data-value="16:9" onclick="selectChip(this,'videoAspectGroup')">16:9 Landscape</button>
+          <button class="chip" data-value="1:1" onclick="selectChip(this,'videoAspectGroup')">1:1 Square</button>
         </div>
 
-        <div class="video-grid-2">
-          <div class="video-card">
-            <div class="video-section-title">Aspect Ratio</div>
-            <div id="videoAspectGroup" class="video-chip-row">
-              <button class="chip active" data-value="9:16" onclick="selectChip(this,'videoAspectGroup')">9:16 Portrait</button>
-              <button class="chip" data-value="16:9" onclick="selectChip(this,'videoAspectGroup')">16:9 Landscape</button>
-              <button class="chip" data-value="1:1" onclick="selectChip(this,'videoAspectGroup')">1:1 Square</button>
-            </div>
-          </div>
-
-          <div class="video-card">
-            <div class="video-section-title">Duration</div>
-            <div id="videoDurationChips" class="video-chip-row">
-              <button class="chip active" data-value="8s" onclick="selectVideoDuration('8s',this)">8 seconds</button>
-              <button class="chip" data-value="10s" onclick="selectVideoDuration('10s',this)">10 seconds</button>
-            </div>
-            <div class="video-help">Use 8s for faster generation. Use 10s for a longer clip.</div>
-          </div>
+        <label class="field-label">DURATION</label>
+        <div id="videoDurationChips" class="chip-row">
+          <button class="chip active" data-value="8s" onclick="selectVideoDuration('8s',this)">8 seconds</button>
+          <button class="chip" data-value="10s" onclick="selectVideoDuration('10s',this)">10 seconds</button>
         </div>
 
-        <div class="video-card">
-          <div class="video-section-title">Style</div>
-          <div id="videoStyleGroup" class="video-chip-row">
-            <button class="chip active" onclick="selectChip(this,'videoStyleGroup')">Realistic</button>
-            <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Cinematic</button>
-            <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Anime</button>
-            <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Classic</button>
-          </div>
+        <label class="field-label">STYLE</label>
+        <div id="videoStyleGroup" class="chip-row">
+          <button class="chip active" onclick="selectChip(this,'videoStyleGroup')">Realistic</button>
+          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Cinematic</button>
+          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Anime</button>
+          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Classic</button>
         </div>
 
-        <div class="video-card">
-          <div class="video-section-title">Reference Images</div>
-          <div id="video-usage-text" class="video-note" style="margin-bottom:10px;"></div>
-          <div id="videoRefPlanNote" class="video-note" style="margin-bottom:12px;"></div>
-          <div class="video-grid-2">
-            <div class="video-upload-box">
-              <div class="field-label">Start frame</div>
-              <div id="videoStartPreview" class="video-preview-text">No file selected</div>
-              <input type="file" id="videoStartImage" accept="image/*" style="width:100%;" onchange="handleVideoRefUpload('start',event)">
-            </div>
-            <div class="video-upload-box">
-              <div class="field-label">End frame</div>
-              <div id="videoEndPreview" class="video-preview-text">No file selected</div>
-              <input type="file" id="videoEndImage" accept="image/*" style="width:100%;" onchange="handleVideoRefUpload('end',event)">
-            </div>
+        <label class="field-label">REFERENCE IMAGE (PRO)</label>
+        <div id="video-usage-text" class="video-inline-note"></div>
+        <div id="videoRefPlanNote" class="video-inline-note" style="margin-bottom:10px;"></div>
+
+        <div class="video-ref-card">
+          <div class="video-ref-block">
+            <div class="video-ref-title">START FRAME</div>
+            <div id="videoStartPreview" class="video-ref-preview">No file selected</div>
+            <input type="file" id="videoStartImage" accept="image/*" onchange="handleVideoRefUpload('start',event)">
+          </div>
+          <div class="video-ref-divider"></div>
+          <div class="video-ref-block video-ref-disabled">
+            <div class="video-ref-title">END FRAME</div>
+            <div id="videoEndPreview" class="video-ref-preview">Temporarily disabled to prevent API errors</div>
+            <input type="file" id="videoEndImage" accept="image/*" disabled>
           </div>
         </div>
 
         <button id="videoGenBtn" class="gen-btn video-generate-btn" onclick="generateVideo()">
-          <i class="fas fa-video"></i> Generate Video
+          <i class="fas fa-magic"></i> Generate Video
         </button>
 
         <div id="videoResult" class="video-result-card">
@@ -515,7 +502,7 @@
               <i class="fas fa-download"></i> Download Video
             </a>
           </div>
-          <div class="video-help">If preview does not play on your phone, tap Download Video and open the mp4 file directly.</div>
+          <div class="video-help">Preview should play below after generation. If your phone blocks playback, tap Download Video and open the mp4 file.</div>
         </div>
 
       </div>
