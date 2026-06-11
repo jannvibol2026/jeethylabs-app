@@ -105,12 +105,11 @@
 
 
 <style>
-.panels-track{width:400% !important;display:flex !important;grid-template-columns:none !important;transform:translateX(0);}
-.panel{flex:0 0 25% !important;max-width:25% !important;}
-@media (min-width:1024px){
-  .panels-wrap{overflow:hidden !important;justify-content:stretch !important;}
-  .panels-track{display:flex !important;width:400% !important;max-width:none !important;gap:0 !important;transform:translateX(0);}
-  .panel{flex:0 0 25% !important;max-width:25% !important;border-right:1px solid var(--border);}
+.panels-track{display:flex !important;width:400% !important;will-change:transform;transition:transform .35s cubic-bezier(.4,0,.2,1) !important;}
+.panel{flex:0 0 25% !important;max-width:25% !important;min-width:0;}
+@media(min-width:1024px){
+  .panels-wrap{overflow:hidden !important;}
+  .panel{border-right:1px solid var(--border);}
   .panel:last-child{border-right:none;}
 }
 </style>
@@ -434,23 +433,34 @@
     <!-- ═══ VIDEO ═══ -->
     <section class="panel panel-video">
       <div class="panel-inner panel-inner-scroll">
+
         <div class="panel-header">
-          <div class="panel-icon cyan"><i class="fas fa-video"></i></div>
-          <div><div class="panel-title">Video Generate</div><div class="panel-subtitle">Create short AI videos from text or image</div></div>
+          <div class="panel-icon green"><i class="fas fa-video"></i></div>
+          <div>
+            <div class="panel-title">Video Generate</div>
+            <div class="panel-subtitle">Create short AI videos with the same clean layout as Image and Song</div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <span id="video-plan-badge" style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;border:1.5px solid #9ca3af;color:#9ca3af;;"></span>
+          </div>
         </div>
+
         <label class="field-label">PROMPT</label>
-        <textarea id="videoPrompt" class="field-input video-textarea" placeholder="Describe the video scene, mood, subject, movement..."></textarea>
+        <textarea id="videoPrompt" class="field-input video-textarea" rows="4" placeholder="Describe the video you want to create..." style="color:#e2e0dc;background:rgba(255,255,255,.07);caret-color:#e2e0dc;"></textarea>
+
         <label class="field-label">ASPECT RATIO</label>
         <div id="videoAspectGroup" class="chip-row">
           <button class="chip active" data-value="9:16" onclick="selectChip(this,'videoAspectGroup')">9:16 Portrait</button>
           <button class="chip" data-value="16:9" onclick="selectChip(this,'videoAspectGroup')">16:9 Landscape</button>
           <button class="chip" data-value="1:1" onclick="selectChip(this,'videoAspectGroup')">1:1 Square</button>
         </div>
+
         <label class="field-label">DURATION</label>
         <div id="videoDurationChips" class="chip-row">
           <button class="chip active" data-value="8s" onclick="selectVideoDuration('8s',this)">8 seconds</button>
           <button class="chip" data-value="10s" onclick="selectVideoDuration('10s',this)">10 seconds</button>
         </div>
+
         <label class="field-label">STYLE</label>
         <div id="videoStyleGroup" class="chip-row">
           <button class="chip active" onclick="selectChip(this,'videoStyleGroup')">Realistic</button>
@@ -458,35 +468,42 @@
           <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Anime</button>
           <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Classic</button>
         </div>
-        <label class="field-label">START FRAME <span style="font-size:10px;font-weight:400;color:var(--text2);text-transform:none;letter-spacing:0;margin-left:6px;">Pro+ &bull; Image &rarr; Video</span></label>
-        <div id="videoStartPreview" style="font-size:12px;color:#64748b;margin-bottom:6px;">No file selected</div>
-        <button type="button" class="video-ref-upload-btn" onclick="document.getElementById('videoStartImage').click()">
-          <i class="fas fa-image"></i>&nbsp; Choose Start Image
-        </button>
-        <input type="file" id="videoStartImage" accept="image/jpeg,image/png,image/webp" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" onchange="handleVideoRefUpload('start',event)">
-        <div id="video-usage-text" style="font-size:11px;color:#64748b;margin-top:8px;text-align:right;"></div>
-        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px 14px;margin-top:4px;">
-          <p style="font-size:12px;color:#64748b;line-height:1.75;margin:0;">
-            <i class="fas fa-circle-info" style="color:#22d3ee;margin-right:5px;"></i><strong style="color:#94a3b8;">No image</strong> &rarr; generates video from prompt only.<br>
-            <span style="margin-left:18px;"><i class="fas fa-circle-info" style="color:#a855f7;margin-right:5px;"></i><strong style="color:#94a3b8;">With image</strong> &rarr; animates your image using prompt.</span>
-          </p>
-        </div>
-        <button id="videoGenBtn" class="video-generate-btn" onclick="generateVideo()">
-          <i class="fas fa-wand-magic-sparkles"></i> Generate Video
-        </button>
-        <div id="videoResult">
-          <div id="videoStatusText" style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#a5f3fc;margin-bottom:10px;padding:8px 14px;background:rgba(34,211,238,.08);border-radius:999px;width:fit-content;">
-            <div style="width:10px;height:10px;border-radius:50%;border:2px solid #22d3ee;border-top-color:transparent;animation:spin .8s linear infinite;flex-shrink:0;"></div>
-            Preparing video&hellip;
+
+        <label class="field-label">REFERENCE IMAGE (PRO)</label>
+        <div id="video-usage-text" class="video-inline-note"></div>
+        <div id="videoRefPlanNote" class="video-inline-note" style="margin-bottom:10px;"></div>
+
+        <div class="video-ref-card">
+          <div class="video-ref-block">
+            <div class="video-ref-title">START FRAME</div>
+            <div id="videoStartPreview" class="video-ref-preview">No file selected</div>
+            <input type="file" id="videoStartImage" accept="image/*" onchange="handleVideoRefUpload('start',event)">
           </div>
-          <div style="border-radius:14px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,.09);">
+          <div class="video-ref-divider"></div>
+          <div class="video-ref-block video-ref-disabled">
+            <div class="video-ref-title">END FRAME</div>
+            <div id="videoEndPreview" class="video-ref-preview">No file selected</div>
+            <input type="file" id="videoEndImage" accept="image/*" onchange="handleVideoRefUpload('end',event)" />
+          </div>
+        </div>
+
+        <button id="videoGenBtn" class="btn-generate video-generate-btn" onclick="generateVideo()">
+          <i class="fas fa-magic"></i> Generate Video
+        </button>
+
+        <div id="videoResult" class="video-result-card">
+          <div id="videoStatusText" class="video-status-pill">Preparing video…</div>
+          <div class="video-player-shell">
             <video id="videoPlayer" controls playsinline preload="metadata"></video>
           </div>
-          <button id="videoDownloadBtn" class="video-download-btn" style="display:none;" onclick="downloadVideo()">
-            <i class="fas fa-download"></i> Download Video
-          </button>
-          <p style="font-size:11px;color:#475569;text-align:center;margin-top:8px;line-height:1.5;">If video doesn&apos;t play, tap <strong style="color:#94a3b8;">Download</strong> and open the mp4 file.</p>
+          <div class="video-actions">
+            <a id="videoDownloadBtn" class="video-download-btn" download="jeethy-video.mp4">
+              <i class="fas fa-download"></i> Download Video
+            </a>
+          </div>
+          <div class="video-help">Preview should play below after generation. If your phone blocks playback, tap Download Video and open the mp4 file.</div>
         </div>
+
       </div>
     </section>
   </div>
