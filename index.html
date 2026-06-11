@@ -435,91 +435,91 @@
     <section class="panel panel-video">
       <div class="panel-inner panel-inner-scroll">
 
-        <!-- Header -->
         <div class="panel-header">
           <div class="panel-icon" style="background:rgba(239,68,68,.15);">
             <i class="fas fa-video" style="color:#ef4444;"></i>
           </div>
           <div>
             <div class="panel-title">Video Generate</div>
-            <div class="panel-subtitle">Create AI videos from text</div>
+            <div class="panel-subtitle">Create short AI clips with a cleaner mobile layout</div>
           </div>
           <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
             <span id="video-plan-badge" style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;border:1.5px solid #9ca3af;color:#9ca3af;display:none;"></span>
           </div>
         </div>
 
-        <!-- Usage -->
-        <div id="video-usage-text" style="font-size:12px;color:#6b7280;margin-bottom:14px;"></div>
-
-        <!-- Prompt -->
-        <label class="field-label">VIDEO DESCRIPTION</label>
-        <textarea id="videoPrompt" class="field-input" rows="3"
-          placeholder="Describe your video scene…"
-          style="resize:vertical;min-height:80px;"></textarea>
-
-        <!-- Aspect Ratio -->
-        <label class="field-label" style="margin-top:14px;">ASPECT RATIO</label>
-        <div id="videoAspectGroup" class="chip-row">
-          <button class="chip active" data-value="16:9" onclick="selectChip(this,'videoAspectGroup')">&#x1F4FA; 16:9 Landscape</button>
-          <button class="chip" data-value="9:16" onclick="selectChip(this,'videoAspectGroup')">&#x1F4F1; 9:16 Portrait</button>
-          <button class="chip" data-value="1:1" onclick="selectChip(this,'videoAspectGroup')">&#x1F7E6; 1:1 Square</button>
+        <div class="video-card">
+          <div class="video-section-title">Prompt</div>
+          <textarea id="videoPrompt" class="field-input" rows="4" placeholder="Example: A stylish girl walking through neon city lights, cinematic camera movement, soft wind, detailed face, realistic lighting." style="resize:vertical;min-height:96px;"></textarea>
         </div>
 
-        <!-- Duration -->
-        <label class="field-label" style="margin-top:14px;">DURATION</label>
-        <div id="videoDurationChips" class="chip-row">
-          <button class="chip active" data-value="8s" onclick="selectVideoDuration('8s',this)">&#x23F1; 8s</button>
-          <button class="chip" data-value="10s" onclick="selectVideoDuration('10s',this)">&#x23F1; 10s</button>
+        <div class="video-grid-2">
+          <div class="video-card">
+            <div class="video-section-title">Aspect Ratio</div>
+            <div id="videoAspectGroup" class="video-chip-row">
+              <button class="chip active" data-value="9:16" onclick="selectChip(this,'videoAspectGroup')">9:16 Portrait</button>
+              <button class="chip" data-value="16:9" onclick="selectChip(this,'videoAspectGroup')">16:9 Landscape</button>
+              <button class="chip" data-value="1:1" onclick="selectChip(this,'videoAspectGroup')">1:1 Square</button>
+            </div>
+          </div>
+
+          <div class="video-card">
+            <div class="video-section-title">Duration</div>
+            <div id="videoDurationChips" class="video-chip-row">
+              <button class="chip active" data-value="8s" onclick="selectVideoDuration('8s',this)">8 seconds</button>
+              <button class="chip" data-value="10s" onclick="selectVideoDuration('10s',this)">10 seconds</button>
+            </div>
+            <div class="video-help">Use 8s for faster generation. Use 10s for a longer clip.</div>
+          </div>
         </div>
 
-        <!-- Style -->
-        <label class="field-label" style="margin-top:14px;">STYLE</label>
-        <div id="videoStyleGroup" class="chip-row">
-          <button class="chip active" onclick="selectChip(this,'videoStyleGroup')">&#x1F3A8; Realistic</button>
-          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">&#x1F5BC;&#xFE0F; Cinematic</button>
-          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">&#x1F4F7; Anime</button>
-          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">&#x1F3A8; Classic</button>
+        <div class="video-card">
+          <div class="video-section-title">Style</div>
+          <div id="videoStyleGroup" class="video-chip-row">
+            <button class="chip active" onclick="selectChip(this,'videoStyleGroup')">Realistic</button>
+            <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Cinematic</button>
+            <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Anime</button>
+            <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Classic</button>
+          </div>
         </div>
 
-        <!-- Reference Images (Pro+) -->
-        <div style="margin-top:16px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);">
-          <div style="font-size:12px;color:#a78bfa;font-weight:700;letter-spacing:.5px;margin-bottom:10px;">&#x1F5BC;&#xFE0F; REFERENCE IMAGES (Pro / Pro+ / Max)</div>
-          <div id="videoRefPlanNote" style="font-size:12px;color:#6b7280;margin-bottom:12px;"></div>
-
-          <label class="field-label">START FRAME</label>
-          <div id="videoStartPreview" style="font-size:12px;color:#9ca3af;margin-bottom:6px;">No file selected</div>
-          <input type="file" id="videoStartImage" accept="image/*" style="width:100%;margin-bottom:10px;"
-            onchange="handleVideoRefUpload('start',event)">
-
-          <label class="field-label">END FRAME</label>
-          <div id="videoEndPreview" style="font-size:12px;color:#9ca3af;margin-bottom:6px;">No file selected</div>
-          <input type="file" id="videoEndImage" accept="image/*" style="width:100%;"
-            onchange="handleVideoRefUpload('end',event)">
+        <div class="video-card">
+          <div class="video-section-title">Reference Images</div>
+          <div id="video-usage-text" class="video-note" style="margin-bottom:10px;"></div>
+          <div id="videoRefPlanNote" class="video-note" style="margin-bottom:12px;"></div>
+          <div class="video-grid-2">
+            <div class="video-upload-box">
+              <div class="field-label">Start frame</div>
+              <div id="videoStartPreview" class="video-preview-text">No file selected</div>
+              <input type="file" id="videoStartImage" accept="image/*" style="width:100%;" onchange="handleVideoRefUpload('start',event)">
+            </div>
+            <div class="video-upload-box">
+              <div class="field-label">End frame</div>
+              <div id="videoEndPreview" class="video-preview-text">No file selected</div>
+              <input type="file" id="videoEndImage" accept="image/*" style="width:100%;" onchange="handleVideoRefUpload('end',event)">
+            </div>
+          </div>
         </div>
 
-        <!-- Generate Button -->
-        <button id="videoGenBtn" class="gen-btn" style="margin-top:18px;background:linear-gradient(135deg,#ef4444,#dc2626);"
-          onclick="generateVideo()">
+        <button id="videoGenBtn" class="gen-btn video-generate-btn" onclick="generateVideo()">
           <i class="fas fa-video"></i> Generate Video
         </button>
 
-        <!-- Result -->
-        <div id="videoResult" style="display:none;margin-top:18px;">
-          <div id="videoStatusText" style="font-size:13px;color:#6b7280;margin-bottom:10px;"></div>
-          <video id="videoPlayer" controls playsinline
-            style="width:100%;border-radius:14px;background:#000;max-height:320px;">
-            Your browser does not support video.
-          </video>
-          <a id="videoDownloadBtn" download="jeethy-video.mp4"
-            style="display:block;margin-top:10px;text-align:center;padding:10px;background:rgba(239,68,68,.15);color:#ef4444;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;">
-            <i class="fas fa-download"></i> Download Video
-          </a>
+        <div id="videoResult" class="video-result-card">
+          <div id="videoStatusText" class="video-status-pill">Preparing video…</div>
+          <div class="video-player-shell">
+            <video id="videoPlayer" controls playsinline preload="metadata" controlsList="nodownload"></video>
+          </div>
+          <div class="video-actions">
+            <a id="videoDownloadBtn" class="video-download-btn" download="jeethy-video.mp4">
+              <i class="fas fa-download"></i> Download Video
+            </a>
+          </div>
+          <div class="video-help">If preview does not play on your phone, tap Download Video and open the mp4 file directly.</div>
         </div>
 
       </div>
     </section>
-
   </div>
 </main>
 
