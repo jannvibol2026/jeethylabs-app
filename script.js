@@ -1993,6 +1993,10 @@ async function generateVideo() {
   fd.append("prompt", prompt);
   fd.append("duration", videoDuration);
   fd.append("plan", userPlan);
+  // ✅ FIX: Send aspect ratio to server
+  const _aspectChip = document.querySelector("#videoAspectGroup .chip.active, .video-aspect-chips .chip.active, [data-group='videoAspect'] .chip.active");
+  const _aspectVal  = _aspectChip?.dataset?.value || _aspectChip?.textContent?.trim().replace(/\s+/g,"") || "16:9";
+  fd.append("aspect", _aspectVal);
   if (videoRefs.start) fd.append("startImage", videoRefs.start);
   if (videoRefs.end) fd.append("endImage", videoRefs.end);
 
