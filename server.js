@@ -1726,10 +1726,7 @@ async function generateVideoVeo(key, prompt, aspectRatio, durationSeconds, start
         };
       }
       if (endImageBuf) {
-        instance.lastFrame = {
-          bytesBase64Encoded: endImageBuf.toString('base64'),
-          mimeType: endImageMime || 'image/jpeg',
-        };
+        console.warn('Ignoring end image for Veo request because this model configuration does not support lastFrame in the current app flow.');
       }
       const durSec = Number.isFinite(durationSeconds) && durationSeconds > 0 ? durationSeconds : 8;
       const parameters = { aspectRatio: aspectRatio || '16:9', sampleCount: 1, durationSeconds: durSec };
@@ -1833,7 +1830,7 @@ app.post(
         planLabel: plan === 'proplus' ? 'Pro+' : plan.charAt(0).toUpperCase() + plan.slice(1),
         usageCount,
         videoUrl,
-        usedReferences: Boolean(startImage || endImage),
+        usedReferences: Boolean(startImage),
         model,
       });
 
