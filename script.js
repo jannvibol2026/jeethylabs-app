@@ -2020,9 +2020,21 @@ async function generateVideo() {
     const player = document.getElementById("videoPlayer");
     const status = document.getElementById("videoStatusText");
     const dl = document.getElementById("videoDownloadBtn");
-    if (player && data.videoUrl) player.src = data.videoUrl;
-    if (dl && data.videoUrl) dl.href = data.videoUrl;
-    if (status) status.textContent = data.message || `Video ready Â· ${data.planLabel || userPlan} plan`;
+    if (player && data.videoUrl) {
+      player.pause();
+      player.removeAttribute("src");
+      player.load();
+      player.src = data.videoUrl;
+      player.setAttribute("playsinline", "true");
+      player.setAttribute("webkit-playsinline", "true");
+      player.load();
+    }
+    if (dl && data.videoUrl) {
+      dl.href = data.videoUrl;
+      dl.target = "_blank";
+      dl.rel = "noopener noreferrer";
+    }
+    if (status) status.innerHTML = `<i class="fas fa-circle-check"></i> ${data.message || `Video ready Â· ${data.planLabel || userPlan} plan`}`;
     if (result) result.style.display = "block";
     showToast("Video generated successfully", "success");
   } catch (err) {
@@ -2043,6 +2055,7 @@ function resetVideoForm() {
   const endPreview = document.getElementById("videoEndPreview");
   if (prompt) prompt.value = "";
   if (result) result.style.display = "none";
+  if (player) { player.pause(); player.removeAttribute("src"); player.load(); }
   if (player) player.removeAttribute("src");
   if (startInput) startInput.value = "";
   if (endInput) endInput.value = "";
