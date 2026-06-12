@@ -230,6 +230,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   setWelcomeTime();
   initSwipe();
+  goToPanel(0);
   renderPlanBadge();
   initPlanFeatures();
   await fetchOwnerKey();
@@ -247,6 +248,7 @@ function enforceAuthGate() {
   showPanelOverlay("panel-chat",  "chat");
   showPanelOverlay("panel-image", "image");
   showPanelOverlay("panel-song",  "song");
+  showPanelOverlay("panel-video", "video");
 }
 
 function showPanelOverlay(panelClass, action) {
@@ -264,8 +266,8 @@ function showPanelOverlay(panelClass, action) {
     gap:16px;backdrop-filter:blur(6px);
     border-radius:inherit;
   `;
-  const icon  = action === "chat" ? "fa-comments" : action === "image" ? "fa-image" : "fa-music";
-  const label = action === "chat" ? "AI Assistant" : action === "image" ? "Image Generator" : "Song Generator";
+  const icon  = action === "chat" ? "fa-comments" : action === "image" ? "fa-image" : action === "video" ? "fa-film" : "fa-music";
+  const label = action === "chat" ? "AI Assistant" : action === "image" ? "Image Generator" : action === "video" ? "Video Generator" : "Song Generator";
   overlay.innerHTML = `
     <div style="width:64px;height:64px;border-radius:50%;background:rgba(124,58,237,.18);border:2px solid rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center;">
       <i class="fas ${icon}" style="font-size:24px;color:#a855f7;"></i>
@@ -290,6 +292,8 @@ function showPanelOverlay(panelClass, action) {
 
 function removeAuthGate() {
   document.querySelectorAll(".auth-gate-overlay").forEach(el => el.remove());
+  const _vBtn = document.getElementById("videoGenBtn");
+  if (_vBtn) { _vBtn.disabled = false; _vBtn.style.opacity = ""; _vBtn.style.pointerEvents = ""; }
   const chatInput   = document.getElementById("chatInput");
   const chatSendBtn = document.getElementById("chatSendBtn");
   if (chatInput)   { chatInput.disabled = false; chatInput.placeholder = "Type a message..."; }
@@ -376,7 +380,33 @@ function goToPanel(index) {
   const track = document.getElementById("panelsTrack");
   const tabs = document.querySelectorAll(".tab-bar .tab");
   currentPanel = Math.max(0, Math.min(index, TOTAL_PANELS - 1));
-  if (track) { const _tx=`translateX(-${currentPanel*100}vw)`;track.style.transform=_tx;track.style.webkitTransform=_tx; }
+  if (track) {
+    const isDesktop = window.innerWidth >= 1024;
+    if (!isDesktop) {
+      track.style.display = "flex";
+      track.style.width = (TOTAL_PANELS * 100) + "vw";
+      document.querySelectorAll(".panel").forEach(function(p) {
+        p.style.flex = "0 0 100vw";
+        p.style.width = "100vw";
+        p.style.maxWidth = "100vw";
+      });
+      const tx = "translateX(-" + (currentPanel * 100) + "vw)";
+      track.style.transform = tx;
+      track.style.webkitTransform = tx;
+    } else {
+      track.style.display = "grid";
+      track.style.gridTemplateColumns = "repeat(" + TOTAL_PANELS + ", 1fr)";
+      track.style.width = "100%";
+      track.style.maxWidth = "1600px";
+      track.style.transform = "none";
+      track.style.webkitTransform = "none";
+      document.querySelectorAll(".panel").forEach(function(p) {
+        p.style.flex = "";
+        p.style.width = "";
+        p.style.maxWidth = "";
+      });
+    }
+  }
   tabs.forEach((tab, i) => tab.classList.toggle("active", i === currentPanel));
 }
 
@@ -405,10 +435,7 @@ function initSwipe() {
       if (dx > 0 && currentPanel > 0) goToPanel(currentPanel - 1);
     }
   }, { passive: true });
-  // Ensure layout correct for swipe on mobile
-  var _swTrack=document.getElementById("panelsTrack");
-  if(_swTrack){_swTrack.style.display="flex";_swTrack.style.width=(TOTAL_PANELS*100)+"vw";}
-  document.querySelectorAll(".panel").forEach(function(p){p.style.flex="0 0 100vw";p.style.width="100vw";p.style.maxWidth="100vw";});
+  window.addEventListener("resize", function() { goToPanel(currentPanel); });
 }
 
 // ===================== AUTH MODAL =====================
@@ -590,6 +617,7 @@ function onLoginSuccess(user, runPending) {
   updateNavAvatar(user);
   removeAuthGate();
   closeAuthModal();
+  setTimeout(function(){ goToPanel(currentPanel); }, 80);
   if (runPending) {
     const action = pendingAction; pendingAction = null;
     if (action === "chat")  setTimeout(() => _sendChat(),      100);
@@ -1647,6 +1675,25 @@ function escapeHtml(t = "") {
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
+function downloadVideo() {
+  const url = window._lastVideoUrl;
+  if (!url) { showToast("No video yet — generate one first", "error"); return; }
+  showToast("Preparing download…", "success");
+  fetch(url, { credentials: "include" })
+    .then(function(r) { if (!r.ok) throw new Error("fetch failed"); return r.blob(); })
+    .then(function(blob) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "jeethy-video-" + Date.now() + ".mp4";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      showToast("Download started ✓", "success");
+    })
+    .catch(function() {
+      if (url) window.open(url, "_blank");
+      showToast("Tap & hold video to save", "success");
+    });
+}
+
 function showToast(msg, type = "info") {
   const t = document.createElement("div");
   t.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:${type === "error" ? "#ef4444" : "#10b981"};color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:99999;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;animation:msgIn 0.3s ease;`;
@@ -1999,6 +2046,7 @@ function handleVideoRefUpload(kind, event) {
 }
 
 async function generateVideo() {
+  if (!currentUser) { openAuthModal("video"); return; }
   const promptEl = document.getElementById("videoPrompt");
   const btn = document.getElementById("videoGenBtn");
   const prompt = (promptEl?.value || "").trim();
@@ -2024,8 +2072,7 @@ async function generateVideo() {
   const _aspectChip = document.querySelector("#videoAspectGroup .chip.active, .video-aspect-chips .chip.active, [data-group='videoAspect'] .chip.active");
   const _aspectVal  = _aspectChip?.dataset?.value || _aspectChip?.textContent?.trim().replace(/\s+/g,"") || "16:9";
   fd.append("aspect", _aspectVal);
-  const _hasRef=!!(videoRefs.start);
-  if(_hasRef){fd.append("startImage",videoRefs.start);fd.append("useRefImage","true");}else{fd.append("useRefImage","false");}
+  if (videoRefs.start) fd.append("startImage", videoRefs.start);
 
   const oldHtml = btn.innerHTML;
   btn.disabled = true;
@@ -2052,15 +2099,34 @@ async function generateVideo() {
       player.removeAttribute("src");
       player.removeAttribute("controlslist");
       player.load();
-      window._lastVideoUrl=data.videoUrl; window._lastVideoToken=authToken||null;
-      player.src=data.videoUrl;
-      player.setAttribute("playsinline","");
-      player.setAttribute("webkit-playsinline","");
-      player.setAttribute("x5-playsinline","");
+      player.src = data.videoUrl;
+      player.setAttribute("playsinline", "true");
+      player.setAttribute("webkit-playsinline", "true");
       player.load();
-      player.play().catch(()=>{});
     }
-    if (dl) { dl.style.display="inline-flex"; dl.style.opacity="1"; dl.style.pointerEvents="auto"; }
+    if (dl && data.videoUrl) {
+      dl.onclick = async (e) => {
+        e.preventDefault();
+        try {
+          showToast("Preparing download...", "success");
+          const r = await fetch(data.videoUrl, {
+            headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+          });
+          if (!r.ok) throw new Error("fetch failed");
+          const blob = await r.blob();
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `jeethy-video-${Date.now()}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          showToast("Download started! ✓", "success");
+        } catch(ex) { window.open(data.videoUrl, "_blank"); }
+      };
+      dl.href = data.videoUrl;
+      dl.style.opacity = "1";
+      dl.style.pointerEvents = "auto";
+    }
     if (status) status.innerHTML = `<i class="fas fa-circle-check"></i> ${data.message || "Video ready"} · Preview below`;
     if (result) {
       result.style.display = "block";
@@ -2074,23 +2140,6 @@ async function generateVideo() {
     btn.disabled = false;
     btn.innerHTML = oldHtml;
   }
-}
-
-// FIX: blob-based download for mobile
-function downloadVideo() {
-  var url = window._lastVideoUrl;
-  if (!url) { showToast("No video yet", "error"); return; }
-  showToast("Preparing download…", "success");
-  fetch(url, { headers: window._lastVideoToken ? { Authorization: "Bearer "+window._lastVideoToken } : {} })
-    .then(function(r){ if(!r.ok) throw new Error("fail"); return r.blob(); })
-    .then(function(blob){
-      var a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "jeethy-video-"+Date.now()+".mp4";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      showToast("Download started! ✓", "success");
-    })
-    .catch(function(){ window.open(url,"_blank"); showToast("Tap & hold to save video", "success"); });
 }
 
 function resetVideoForm() {
