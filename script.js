@@ -378,31 +378,35 @@ function renderPlanBadge() {
 // ===================== PANEL NAV =====================
 function goToPanel(index) {
   const track = document.getElementById("panelsTrack");
-  const tabs = document.querySelectorAll(".tab-bar .tab");
+  const tabs  = document.querySelectorAll(".tab-bar .tab");
   currentPanel = Math.max(0, Math.min(index, TOTAL_PANELS - 1));
   if (track) {
     const isDesktop = window.innerWidth >= 1024;
     if (!isDesktop) {
-      track.style.display = "flex";
-      track.style.width = (TOTAL_PANELS * 100) + "vw";
+      // Mobile: flex slide
+      track.style.display    = "flex";
+      track.style.width      = (TOTAL_PANELS * 100) + "vw";
+      track.style.transition = "transform .35s cubic-bezier(.4,0,.2,1)";
       document.querySelectorAll(".panel").forEach(function(p) {
-        p.style.flex = "0 0 100vw";
-        p.style.width = "100vw";
+        p.style.flex     = "0 0 100vw";
+        p.style.width    = "100vw";
         p.style.maxWidth = "100vw";
       });
       const tx = "translateX(-" + (currentPanel * 100) + "vw)";
-      track.style.transform = tx;
-      track.style.webkitTransform = tx;
+      track.style.transform        = tx;
+      track.style.webkitTransform  = tx;
     } else {
-      track.style.display = "grid";
-      track.style.gridTemplateColumns = "repeat(" + TOTAL_PANELS + ", 1fr)";
-      track.style.width = "100%";
-      track.style.maxWidth = "1600px";
-      track.style.transform = "none";
-      track.style.webkitTransform = "none";
+      // Desktop: grid — all 4 panels visible
+      track.style.display               = "grid";
+      track.style.gridTemplateColumns   = "repeat(" + TOTAL_PANELS + ", 1fr)";
+      track.style.width                 = "100%";
+      track.style.maxWidth              = "1600px";
+      track.style.transform             = "none";
+      track.style.webkitTransform       = "none";
+      track.style.transition            = "none";
       document.querySelectorAll(".panel").forEach(function(p) {
-        p.style.flex = "";
-        p.style.width = "";
+        p.style.flex     = "";
+        p.style.width    = "";
         p.style.maxWidth = "";
       });
     }
