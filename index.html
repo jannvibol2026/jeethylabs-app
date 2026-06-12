@@ -430,16 +430,18 @@
       <div class="panel-inner panel-inner-scroll">
 
         <div class="panel-header">
-          <div class="panel-icon cyan"><i class="fas fa-film"></i></div>
-          <div style="flex:1;min-width:0;overflow:hidden;">
+          <div class="panel-icon green"><i class="fas fa-video"></i></div>
+          <div>
             <div class="panel-title">Video Generate</div>
-            <div class="panel-subtitle">Create short AI videos</div>
+            <div class="panel-subtitle">Create short AI videos with the same clean layout as Image and Song</div>
           </div>
-          <span id="video-plan-badge" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;border:1.5px solid #22d3ee;color:#22d3ee;display:none;white-space:nowrap;flex-shrink:0;"></span>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <span id="video-plan-badge" style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;border:1.5px solid #9ca3af;color:#9ca3af;display:none;"></span>
+          </div>
         </div>
 
         <label class="field-label">PROMPT</label>
-        <textarea id="videoPrompt" class="field-input video-textarea" rows="4" placeholder="Describe the video you want to create..."></textarea>
+        <textarea id="videoPrompt" class="field-input video-textarea" rows="4" placeholder="Describe the video you want to create..." style="color:#e2e0dc;background:rgba(255,255,255,.07);caret-color:#e2e0dc;"></textarea>
 
         <label class="field-label">ASPECT RATIO</label>
         <div id="videoAspectGroup" class="chip-row">
@@ -470,35 +472,29 @@
           <div class="video-ref-block">
             <div class="video-ref-title">START FRAME</div>
             <div id="videoStartPreview" class="video-ref-preview">No file selected</div>
-            <label for="videoStartImage" class="upload-label" onclick="event.stopPropagation()">
-              <i class="fas fa-image"></i> Choose Image
-            </label>
-            <input type="file" id="videoStartImage" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" onchange="handleVideoRefUpload('start',event)">
+            <input type="file" id="videoStartImage" accept="image/*" onchange="handleVideoRefUpload('start',event)">
           </div>
           <div class="video-ref-divider"></div>
-          <div class="video-ref-block video-ref-disabled" id="videoEndBlock">
+          <div class="video-ref-block video-ref-disabled">
             <div class="video-ref-title">END FRAME</div>
             <div id="videoEndPreview" class="video-ref-preview">No file selected</div>
-            <label for="videoEndImage" class="upload-label" onclick="event.stopPropagation()">
-              <i class="fas fa-image"></i> Choose Image
-            </label>
-            <input type="file" id="videoEndImage" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" onchange="handleVideoRefUpload('end',event)">
+            <input type="file" id="videoEndImage" accept="image/*" onchange="handleVideoRefUpload('end',event)">
           </div>
         </div>
 
-        <button id="videoGenBtn" class="btn-generate btn-cyan video-generate-btn" onclick="generateVideo()">
-          <i class="fas fa-wand-magic-sparkles"></i> Generate Video
+        <button id="videoGenBtn" class="gen-btn video-generate-btn" onclick="generateVideo()">
+          <i class="fas fa-magic"></i> Generate Video
         </button>
 
         <div id="videoResult" class="video-result-card">
           <div id="videoStatusText" class="video-status-pill">Preparing video…</div>
           <div class="video-player-shell">
-            <video id="videoPlayer" controls playsinline webkit-playsinline x5-playsinline x5-video-player-type="h5" preload="metadata" style="width:100%;display:block;background:#000;border-radius:10px;"></video>
+            <video id="videoPlayer" controls playsinline preload="metadata"></video>
           </div>
           <div class="video-actions">
-            <button id="videoDownloadBtn" class="video-download-btn" onclick="downloadVideo()" style="display:none;">
+            <a id="videoDownloadBtn" class="video-download-btn" download="jeethy-video.mp4">
               <i class="fas fa-download"></i> Download Video
-            </button>
+            </a>
           </div>
           <div class="video-help">Preview should play below after generation. If your phone blocks playback, tap Download Video and open the mp4 file.</div>
         </div>
