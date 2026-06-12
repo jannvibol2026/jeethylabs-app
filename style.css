@@ -1013,55 +1013,148 @@ audio{
 }
 
 
-/* ═══════════════════════════════════════════════
-   JEETHYLABS v7 — ALL FIXES
-   ═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   JEETHYLABS v8 — FULL FIX
+   ═══════════════════════════════════════════ */
 
-/* DESKTOP: 4 panels side by side */
-@media (min-width:1024px){
-  .panels-wrap{overflow:visible!important;position:fixed!important;top:var(--nav);bottom:var(--tab);left:0;right:0;display:flex!important;align-items:stretch;justify-content:center;}
-  .panels-track{display:grid!important;grid-template-columns:repeat(4,1fr)!important;width:100%!important;max-width:1600px!important;transform:none!important;-webkit-transform:none!important;height:100%!important;gap:0!important;}
-  .panel{flex:unset!important;width:auto!important;max-width:none!important;min-width:0!important;height:100%!important;overflow:hidden!important;border-right:1px solid var(--border);}
-  .panel:last-child{border-right:none!important;}
+/* ── MOBILE (default): 1 panel at a time, swipe ── */
+.panels-wrap {
+  overflow: hidden !important;
+  position: fixed !important;
+  top: var(--nav);
+  bottom: var(--tab);
+  left: 0; right: 0;
+}
+.panels-track {
+  display: flex !important;
+  width: 400vw !important;
+  height: 100% !important;
+  transition: transform .35s cubic-bezier(.4,0,.2,1) !important;
+  will-change: transform;
+}
+.panel {
+  flex: 0 0 100vw !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
 }
 
-/* MOBILE: swipe panels */
-@media (max-width:1023px){
-  .panels-wrap{overflow:hidden!important;position:fixed!important;top:var(--nav);bottom:var(--tab);left:0;right:0;}
-  .panels-track{display:flex!important;width:400vw!important;height:100%!important;}
-  .panel{flex:0 0 100vw!important;width:100vw!important;max-width:100vw!important;min-width:0!important;height:100%!important;overflow:hidden!important;}
+/* ── DESKTOP 1024px+: all 4 panels side by side ── */
+@media (min-width: 1024px) {
+  .panels-wrap {
+    overflow: visible !important;
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: center !important;
+  }
+  .panels-track {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    width: 100% !important;
+    max-width: 1600px !important;
+    transform: none !important;
+    -webkit-transform: none !important;
+    transition: none !important;
+    height: 100% !important;
+    gap: 0 !important;
+  }
+  .panel {
+    flex: unset !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    border-right: 1px solid var(--border);
+  }
+  .panel:last-child { border-right: none !important; }
+  /* Tab bar full width on desktop */
+  .tab-bar {
+    left: 0 !important;
+    transform: none !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+  }
 }
 
-/* VIDEO BUTTON — CYAN */
-.video-generate-btn,#videoGenBtn{
-  background:linear-gradient(135deg,#06b6d4,#22d3ee)!important;
-  color:#04131a!important;box-shadow:0 8px 20px rgba(34,211,238,.25)!important;border:none!important;
+/* ── VIDEO BUTTON — CYAN ── */
+.video-generate-btn, #videoGenBtn {
+  background: linear-gradient(135deg, #06b6d4, #22d3ee) !important;
+  color: #04131a !important;
+  box-shadow: 0 8px 20px rgba(34,211,238,.25) !important;
+  border: none !important;
 }
-.video-generate-btn i,#videoGenBtn i{color:#04131a!important;}
-.video-generate-btn:hover,#videoGenBtn:hover{filter:brightness(1.08)!important;transform:translateY(-1px)!important;}
-.video-generate-btn:disabled,#videoGenBtn:disabled{opacity:.55!important;pointer-events:none!important;transform:none!important;}
-
-/* VIDEO DOWNLOAD BUTTON — CYAN */
-.video-download-btn{background:linear-gradient(135deg,#06b6d4,#0891b2)!important;color:#fff!important;border:none!important;}
-.video-download-btn:hover{filter:brightness(1.1)!important;}
-
-/* VIDEO STATUS PILL — CYAN */
-.video-status-pill{background:rgba(34,211,238,.12)!important;color:#a5f3fc!important;}
-
-/* VIDEO TEXTAREA — always visible text */
-#videoPrompt,.video-textarea{
-  color:#e2e0dc!important;-webkit-text-fill-color:#e2e0dc!important;
-  background:rgba(255,255,255,.07)!important;caret-color:#e2e0dc!important;
+.video-generate-btn i, #videoGenBtn i { color: #04131a !important; }
+.video-generate-btn:hover, #videoGenBtn:hover {
+  filter: brightness(1.08) !important;
+  transform: translateY(-1px) !important;
 }
-#videoPrompt::placeholder,.video-textarea::placeholder{
-  color:rgba(156,163,175,.55)!important;-webkit-text-fill-color:rgba(156,163,175,.55)!important;
+.video-generate-btn:disabled, #videoGenBtn:disabled {
+  opacity: .55 !important;
+  pointer-events: none !important;
+  transform: none !important;
 }
 
-/* PANEL HEADER — no overflow, 100/day fits */
-.panel-header{overflow:hidden!important;display:flex!important;align-items:center!important;gap:8px!important;padding-bottom:4px!important;flex-wrap:nowrap!important;min-width:0!important;}
-.panel-header>div:nth-child(2){flex:1;min-width:0;overflow:hidden;}
-.panel-title{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important;}
-.panel-subtitle{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font-size:11px!important;max-width:100%!important;}
+/* ── VIDEO DOWNLOAD — CYAN ── */
+.video-download-btn {
+  background: linear-gradient(135deg, #06b6d4, #0891b2) !important;
+  color: #fff !important;
+  border: none !important;
+}
+.video-status-pill {
+  background: rgba(34,211,238,.12) !important;
+  color: #a5f3fc !important;
+}
 
-/* AUTH GATE OVERLAY */
-.auth-gate-overlay{position:absolute!important;inset:0!important;z-index:50!important;border-radius:inherit;}
+/* ── VIDEO TEXTAREA — always visible text ── */
+#videoPrompt, .video-textarea {
+  color: #e2e0dc !important;
+  -webkit-text-fill-color: #e2e0dc !important;
+  background: rgba(255,255,255,.07) !important;
+  caret-color: #e2e0dc !important;
+}
+#videoPrompt::placeholder, .video-textarea::placeholder {
+  color: rgba(156,163,175,.55) !important;
+  -webkit-text-fill-color: rgba(156,163,175,.55) !important;
+}
+
+/* ── PANEL HEADER — no 100/day overflow ── */
+.panel-header {
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding-bottom: 4px !important;
+  flex-wrap: nowrap !important;
+  min-width: 0 !important;
+}
+.panel-header > div:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; }
+.panel-title {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.panel-subtitle {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-size: 11px !important;
+}
+
+/* ── AUTH GATE OVERLAY ── */
+.auth-gate-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 50 !important;
+  border-radius: inherit;
+}
+
+/* ── PLAN FEATURES OVERLAY FIX (top-left) ── */
+#ppPlanFeatures, .pp-feat-row, .plan-feat-row {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
