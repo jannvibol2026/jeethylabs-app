@@ -612,7 +612,7 @@ app.post('/api/send-otp', async (req, res) => {
       otp,
       name: String(name || '').trim(),
       password: String(password || ''),
-      expires: Date.now() + 10 * 60 * 1000,
+      expires: Date.now() + 60 * 60 * 1000,
       type: 'signup',
     });
 
@@ -797,7 +797,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const otp = genOTP();
     otpStore.set(cleanEmail, {
       otp,
-      expires: Date.now() + 10 * 60 * 1000,
+      expires: Date.now() + 60 * 60 * 1000,
       type: 'reset',
     });
 
@@ -1819,7 +1819,7 @@ app.post(
 
       // FIX: Proxy video through server â€” don't expose API key to client
       const videoToken = require('crypto').randomBytes(16).toString('hex');
-      _videoCache.set(videoToken, { uri: videoUri, key, expires: Date.now() + 10 * 60 * 1000 });
+      _videoCache.set(videoToken, { uri: videoUri, key, expires: Date.now() + 60 * 60 * 1000 });
       const videoUrl = `/api/video/stream/${videoToken}`;
 
       res.json({
@@ -1878,7 +1878,8 @@ app.get('/api/video/stream/:token', async (req, res) => {
       return res.status(206).end(buffer.slice(start, end + 1));
     } else {
       res.setHeader('Content-Length', total);
-      res.setHeader('Content-Disposition', 'inline; filename="jeethy-video.mp4"');
+      const isDownload = req.query.dl === "1";
+    res.setHeader('Content-Disposition', isDownload ? 'attachment; filename="jeethy-video.mp4"' : 'inline; filename="jeethy-video.mp4"');
       return res.status(200).end(buffer);
     }
   } catch (err) {
