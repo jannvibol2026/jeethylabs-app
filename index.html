@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>JeeThy Labs - App</title>
+<link rel="stylesheet" href="style.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+
+.chip-other{border-color:#38bdf8;color:#38bdf8}
+.chip-other.active{background:#38bdf8;color:#0f172a}
+.chip-sm{font-size:14px !important;padding:9px 15px !important}
+.khmer-chip{border-color:#a78bfa !important;color:#a78bfa !important}
+.khmer-chip.active{background:#a78bfa !important;color:#fff !important}
+
+/* ── Other Genre Modal — right-panel always ── */
+.other-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.72);
+  z-index: 9998;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.other-modal-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  width: min(100vw, 420px);
+  height: 100%;
+  z-index: 9999;
+  background: #161513;
+  border-radius: 20px 0 0 20px;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -12px 0 60px rgba(0,0,0,.8);
+  animation: slideInRight .25s cubic-bezier(.16,1,.3,1);
+}
+@media (min-width: 640px) {
+  .other-modal-panel { width: min(580px, 58vw); }
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.other-modal-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  flex-shrink: 0;
+}
+.other-modal-back {
+  background: rgba(255,255,255,.08);
+  border: none;
+  color: #ccc;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 10px;
+  line-height: 1;
+}
+.other-modal-title { font-size: 17px; font-weight: 700; color: #e2e0dc; }
+.modal-inner-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 18px 56px;
+  box-sizing: border-box;
+  width: 100%;
+}
+.modal-inner-scroll .chip { font-size: 14px; padding: 10px 16px; }
+.modal-inner-scroll .chip-sm { font-size: 13px; padding: 9px 14px; }
+.modal-section-label {
+  font-size: 11px; color: #60a5fa;
+  letter-spacing: .7px; text-transform: uppercase;
+  margin-bottom: 10px; opacity: .9;
+}
+@media (min-width: 640px) {
+  .other-modal-topbar { padding: 28px 28px 18px; }
+  .other-modal-title { font-size: 20px; }
+  .other-modal-back { font-size: 17px; padding: 10px 16px; }
+  .modal-inner-scroll { padding: 22px 28px 56px; }
+  .modal-inner-scroll .chip { font-size: 15px; padding: 11px 18px; }
+  .modal-inner-scroll .chip-sm { font-size: 14px; padding: 10px 16px; }
+  .modal-section-label { font-size: 12px; margin-bottom: 12px; }
+}
+</style>
+
+<style>
+.plan-card.plan-proplus { border-color: rgba(168,85,247,.4); }
+.plan-card.plan-proplus.selected { border-color: #a855f7; box-shadow: 0 0 0 2px rgba(168,85,247,.3); }
+.plan-card.plan-proplus .plan-check { color: #a855f7; }
+</style>
+
+
+
+<style>
+.panels-track{display:flex !important;width:400vw !important;will-change:transform;transition:transform .35s cubic-bezier(.4,0,.2,1) !important;}
+.panel{flex:0 0 100vw !important;width:100vw !important;max-width:100vw !important;min-width:0 !important;}
+</style>
+
+</head>
+<body>
+
+<!-- NAV -->
+<header class="app-nav">
+  <a href="https://jeethylabs.site" class="nav-home"><i class="fas fa-arrow-left"></i></a>
+  <div class="nav-brand">
+    <span class="brand-jee">JeeThy</span><span class="brand-labs">Labs</span><span class="brand-tag">App</span>
+  </div>
+  <div class="nav-actions">
+    <button class="plan-badge-btn" id="planBadge" onclick="openPlanModal()">Free</button>
+    <button class="nav-settings-btn" onclick="openSettings()"><i class="fas fa-gear"></i></button>
+    <div class="user-profile-wrap" id="userProfileWrap" style="display:none">
+      <button class="user-avatar-btn" id="userAvatarBtn" type="button" onclick="toggleDropdown(event)"><span></span></button>
+      <div class="profile-dropdown" id="profileDropdown">
+        <div class="pd-header">
+          <div class="pd-av" id="pdAv"></div>
+          <div class="pd-info">
+            <div class="pd-name" id="pdName"></div>
+            <div class="pd-email" id="pdEmail"></div>
+            <span class="pd-badge" id="pdBadge">Free</span>
+          </div>
+        </div>
+        <div class="pd-body">
+          <button class="pd-btn" onclick="closeDd();openProfileSheet();">
+            <i class="fas fa-user-circle"></i> My Profile
+          </button>
+          <button class="pd-signout" onclick="closeDd();doLogout()"><i class="fas fa-right-from-bracket"></i> Sign Out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- TABS -->
+<nav class="tab-bar">
+  <button class="tab active" onclick="goToPanel(0)"><i class="fas fa-brain"></i><span>AI Assistant</span></button>
+  <button class="tab" onclick="goToPanel(1)"><i class="fas fa-palette"></i><span>Image</span></button>
+  <button class="tab" onclick="goToPanel(2)"><i class="fas fa-music"></i><span>Song</span></button>
+  <button class="tab" onclick="goToPanel(3)"><i class="fas fa-video"></i><span>Video</span></button>
+</nav>
+
+<!-- PANELS -->
+<main class="panels-wrap" id="panelsWrap">
+  <div class="panels-track" id="panelsTrack">
+
+    <!-- ═══ CHAT ═══ -->
+    <section class="panel panel-chat">
+      <div class="panel-inner">
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg msg-bot">
+            <div class="msg-avatar"><i class="fas fa-brain"></i></div>
+            <div class="msg-bubble">
+              <p>Hello! I'm <strong>JeeThy Assistant</strong>, your smart AI helper.</p>
+              <p>Sign in to start chatting! &#x1F44B;</p>
+              <span class="msg-time" id="welcomeTime"></span>
+            </div>
+          </div>
+        </div>
+        <!-- Chat toolbar: file upload, export, force khmer, system prompt -->
+        <div id="chatToolbar" style="display:flex;gap:8px;padding:6px 12px 0;flex-wrap:wrap;align-items:center;">
+
+          <button id="chatExportBtn" title="Export chat" onclick="exportChat()"
+            style="display:none;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text2);font-size:12px;cursor:pointer;align-items:center;gap:5px;">
+            <i class="fas fa-file-export"></i> Export
+          </button>
+          <button id="chatForceKhmerBtn" title="Force Khmer response" onclick="toggleForceKhmer(this)"
+            style="display:none;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text2);font-size:12px;cursor:pointer;align-items:center;gap:5px;">
+            <span style="font-size:14px;">🇰🇭</span> ភាសាខ្មែរ
+          </button>
+        </div>
+        <!-- System prompt (Pro+ only) -->
+        <div id="chatSystemPromptWrap" style="display:none;padding:4px 12px;">
+          <textarea id="chatSystemPrompt" placeholder="System prompt (e.g. You are a helpful Khmer assistant...)"
+            rows="2" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text1);font-size:12px;resize:vertical;box-sizing:border-box;"></textarea>
+        </div>
+        <!-- File preview -->
+        <div id="chatFilePreview" style="display:none;padding:4px 12px 0;">
+          <div style="background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.3);border-radius:8px;padding:6px 10px;font-size:12px;color:#a855f7;display:flex;align-items:center;gap:8px;">
+            <i class="fas fa-file"></i>
+            <span id="chatFilePreviewName">file.jpg</span>
+            <button onclick="clearChatFile()" style="margin-left:auto;background:none;border:none;color:#a855f7;cursor:pointer;font-size:14px;">×</button>
+          </div>
+        </div>
+        <input type="file" id="chatFileInput" accept="image/*,.pdf,.txt,.doc,.docx"
+          style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"
+          onchange="handleChatFileUpload(event)"/>
+        <div class="chat-input-wrap">
+          <div class="chat-input-box">
+            <button id="chatFileUploadBtn" title="Attach file" onclick="openChatFileUpload()"
+              style="display:none;flex-shrink:0;background:none;border:none;width:38px;min-height:38px;align-items:center;justify-content:center;color:var(--text2);font-size:18px;cursor:pointer;padding:0;margin-left:4px;">
+              <i class="fas fa-paperclip"></i>
+            </button>
+            <textarea id="chatInput" class="chat-textarea" placeholder="Type your message..."
+              rows="1" oninput="autoResize(this)" onkeydown="handleChatKey(event)"></textarea>
+            <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+          <p class="chat-hint">Powered by Google Gemini &middot; JeeThy Labs</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ IMAGE ═══ -->
+    <section class="panel panel-image">
+      <div class="panel-inner panel-inner-scroll">
+        <div class="panel-header">
+          <div class="panel-icon cyan"><i class="fas fa-palette"></i></div>
+          <div>
+            <h2 class="panel-title">Image Generate</h2>
+            <p class="panel-subtitle">Turn text into stunning visuals</p>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Prompt</label>
+          <textarea id="imgPrompt" class="form-textarea"
+            placeholder="Describe the image you want to create..." rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Style</label>
+          <div class="chip-group" id="imgStyleGroup">
+            <button class="chip active" onclick="selectChip(this,'imgStyleGroup')">Realistic</button>
+            <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Cartoon</button>
+            <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Anime</button>
+            <button class="chip" onclick="selectChip(this,'imgStyleGroup')">Other</button>
+          </div>
+        </div>
+        <!-- Negative Prompt (Pro+) --><div class="form-group">
+          <label class="form-label">Aspect Ratio</label>
+          <div class="chip-group" id="imgRatioGroup">
+            <button class="chip active" onclick="selectChip(this,'imgRatioGroup')">1:1</button>
+            <button class="chip" onclick="selectChip(this,'imgRatioGroup')">9:16</button>
+            <button class="chip" onclick="selectChip(this,'imgRatioGroup')">16:9</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group half">
+            <label class="form-label">Quality</label>
+            <div class="chip-group" id="imgQualityGroup">
+              <button class="chip active" data-quality="720" onclick="selectChip(this,'imgQualityGroup')">Standard</button>
+              <button class="chip pro-locked" data-quality="1280" onclick="selectChip(this,'imgQualityGroup')">HD <span class="pro-badge">PRO</span></button>
+              <button class="chip pro-locked" data-quality="2048" onclick="selectChip(this,'imgQualityGroup')">2K <span class="pro-badge" style="background:linear-gradient(90deg,#a855f7,#7c3aed)">PRO+</span></button>
+            </div>
+          </div>
+          <div class="form-group half">
+            <label class="form-label">Quantity</label>
+            <div class="chip-group" id="imgQtyGroup">
+              <button class="chip active" onclick="selectChip(this,'imgQtyGroup')">1</button>
+              <button class="chip" onclick="selectChip(this,'imgQtyGroup')">2</button>
+              <button class="chip" onclick="selectChip(this,'imgQtyGroup')">4</button>
+            </div>
+          </div>
+        </div>
+        <!-- ── Reference Image Upload ── -->
+        <div class="form-group" id="refImgSection">
+          <label class="form-label" style="display:flex;align-items:center;gap:6px;">
+            Reference Image
+            <span style="font-size:10px;color:var(--text2);font-weight:400">(optional)</span>
+            <span class="pro-badge" style="font-size:10px;vertical-align:middle">PRO</span>
+            <span id="refImgCountLabel" style="font-size:10px;color:var(--text2);margin-left:auto"></span>
+          </label>
+          <div id="refImgDropZone" onclick="openRefImgUpload()"
+            style="border:2px dashed var(--border);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:rgba(255,255,255,.03)">
+            <div id="refImgPlaceholder">
+              <i class="fas fa-image" style="font-size:22px;color:var(--text2);margin-bottom:6px;display:block"></i>
+              <span style="font-size:12px;color:var(--text2)">Tap to upload reference image</span><br>
+              <span id="refImgHint" style="font-size:11px;color:var(--text2);opacity:.6">Pro: 1 image &nbsp;|&nbsp; Pro+/Max: up to 4 images</span>
+            </div>
+            <div id="refImgPreview" style="display:none;flex-wrap:wrap;gap:4px;justify-content:flex-start;padding:4px 0"></div>
+          </div>
+          <input type="file" id="refImgInput"
+  accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
+  style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"
+  onchange="handleRefImgUpload(event)"/>
+        </div>
+        <button class="btn-generate btn-cyan" id="imgGenBtn" onclick="generateImage()">
+          <i class="fas fa-wand-magic-sparkles"></i> Generate Image
+        </button>
+        <div class="results-wrap" id="imgResults"></div>
+      </div>
+    </section>
+
+    <!-- ═══ SONG ═══ -->
+    <section class="panel panel-song">
+      <div class="panel-inner panel-inner-scroll">
+
+        <!-- Header -->
+        <div class="panel-header">
+          <div class="panel-icon green"><i class="fas fa-music"></i></div>
+          <div>
+            <h2 class="panel-title">Song Generate</h2>
+            <p class="panel-subtitle">Create original music from text</p>
+          </div>
+        </div>
+
+        <!-- Song Description -->
+        <div class="form-group">
+          <label class="form-label">Song Description</label>
+          <textarea id="songPrompt" class="form-textarea"
+            placeholder="Describe the song: mood, theme, story, or paste your lyrics here..." rows="4"></textarea>
+        </div>
+
+        <!-- Genre / Style — "Other" renamed to "Custom" -->
+        <div class="form-group">
+          <label class="form-label">Genre / Style</label>
+          <div class="chip-group" id="songStyleGroup">
+            <button class="chip active" onclick="selectChip(this,'songStyleGroup')">Pop</button>
+            <button class="chip" onclick="selectChip(this,'songStyleGroup')">Rock</button>
+            <button class="chip" onclick="selectChip(this,'songStyleGroup')">Jazz</button>
+            <button class="chip chip-other" id="chipOtherStyle" onclick="openOtherStyleModal()">
+              <i class="fas fa-th-large" style="font-size:11px"></i> Other
+            </button>
+            <button class="chip chip-custom" id="chipCustomStyle" onclick="selectChipCustom(this)">
+              <i class="fas fa-sliders" style="font-size:11px"></i> Custom
+            </button>
+          </div>
+
+<!-- /modal-inner-scroll -->
+
+          <!-- Custom pop-up panel: Instrument / Tempo / Mood — shown only when Custom chip active -->
+          <div id="custom-style-panel" class="custom-style-panel" style="display:none;">
+            <div class="custom-style-grid">
+              <div class="form-group">
+                <label class="form-label" style="font-size:10px;display:flex;align-items:center;gap:6px;">
+                  <i class="fas fa-guitar" style="opacity:.7"></i>Instrument
+                  <span style="font-size:9px;color:#a855f7;opacity:.8;">(max 3)</span>
+                </label>
+                <!-- Khmer section -->
+                <div style="font-size:9px;color:#a78bfa;letter-spacing:.5px;margin-bottom:4px;text-transform:uppercase;opacity:.8;">🇰🇭 Khmer</div>
+                <div class="chip-group chip-group-sm" id="songInstrumentGroup" style="margin-bottom:6px;">
+                  <button class="chip chip-sm chip-multi active" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Auto</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" data-value="Khloy Cambodian bamboo vertical flute, breathy airy tone" onclick="toggleMultiChip(this,'songInstrumentGroup')">ខ្លុយ (Khloy)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" data-value="Roneat Ek Cambodian bamboo xylophone, bright melodic leading instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">រនាតឯក (Roneat Ek)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" data-value="Chapei Cambodian long-neck lute, deep resonant plucked string" onclick="toggleMultiChip(this,'songInstrumentGroup')">ចាប៉ី (Chapei)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" data-value="Tro Cambodian spike fiddle, bowed string, haunting lyrical tone" onclick="toggleMultiChip(this,'songInstrumentGroup')">ទ្រ (Tro)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" data-value="Kse Diev Cambodian monochord zither, ancient resonant drone string" onclick="toggleMultiChip(this,'songInstrumentGroup')">សាដៀវ (Sadiev)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" data-value="Kong Vong Thom Cambodian large gong circle, deep resonant percussive" onclick="toggleMultiChip(this,'songInstrumentGroup')">គងធំ (Kong Thom)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" data-value="Skor Cambodian barrel drum, rhythmic traditional percussion" onclick="toggleMultiChip(this,'songInstrumentGroup')">ស្គរ (Skor)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" data-value="Roneat Thung Cambodian low-pitched bamboo xylophone, deep melodic percussion" onclick="toggleMultiChip(this,'songInstrumentGroup')">រនាតធំ (Roneat Thom)</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" data-value="Pin Cambodian harp, ancient plucked string, ethereal flowing melody" onclick="toggleMultiChip(this,'songInstrumentGroup')">ពិណ (Pin)</button>
+                </div>
+                <!-- Western section -->
+                <div style="font-size:9px;color:#60a5fa;letter-spacing:.5px;margin-bottom:4px;text-transform:uppercase;opacity:.8;">🌍 Western</div>
+                <div class="chip-group chip-group-sm">
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Guitar</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Piano</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Violin</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Drum</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Bass</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Flute</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Saxophone</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Cello</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Trumpet</button>
+                  <button class="chip chip-sm chip-multi" data-multi="instrument" onclick="toggleMultiChip(this,'songInstrumentGroup')">Synthesizer</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-size:10px"><i class="fas fa-gauge-high" style="margin-right:4px;opacity:.7"></i>Tempo</label>
+                <div class="chip-group chip-group-sm" id="songTempoGroup">
+                  <button class="chip chip-sm active" onclick="selectChip(this,'songTempoGroup')">Auto</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songTempoGroup')">Slow</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songTempoGroup')">Medium</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songTempoGroup')">Fast</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-size:10px"><i class="fas fa-face-smile" style="margin-right:4px;opacity:.7"></i>Mood</label>
+                <div class="chip-group chip-group-sm" id="songMoodGroup">
+                  <button class="chip chip-sm active" onclick="selectChip(this,'songMoodGroup')">Auto</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Happy</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Romantic</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Energetic</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Melancholic</button>
+                  <button class="chip chip-sm" onclick="selectChip(this,'songMoodGroup')">Epic</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vocalist -->
+        <div class="form-group">
+          <label class="form-label">Vocalist</label>
+          <div class="chip-group" id="songVoiceGroup">
+            <button class="chip active" onclick="selectChip(this,'songVoiceGroup')">
+              <i class="fas fa-venus"></i> Female
+            </button>
+            <button class="chip" onclick="selectChip(this,'songVoiceGroup')">
+              <i class="fas fa-mars"></i> Male
+            </button>
+            <button class="chip pro-locked" data-voice="duet" onclick="selectChip(this,'songVoiceGroup')">
+              <i class="fas fa-venus-mars"></i> Duet <span class="pro-badge" style="background:linear-gradient(90deg,#a855f7,#7c3aed);font-size:9px">PRO+</span>
+            </button>
+            <button class="chip pro-locked" data-voice="choir" onclick="selectChip(this,'songVoiceGroup')">
+              <i class="fas fa-users"></i> Choir <span class="pro-badge" style="background:linear-gradient(90deg,#a855f7,#7c3aed);font-size:9px">PRO+</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Plan badge + duration hint -->
+        <div class="song-plan-row">
+          <span id="song-plan-badge" class="song-plan-badge"></span>
+          <span id="song-duration-hint" class="song-duration-hint"></span>
+        </div>
+
+        <!-- Generate Button -->
+        <button class="btn-generate btn-green" id="songGenBtn" onclick="generateSong()">
+          <i class="fas fa-wand-magic-sparkles"></i> Generate Song
+        </button>
+
+        <!-- Results -->
+        <div class="results-wrap" id="songResults"></div>
+
+      </div>
+    </section>
+    <!-- ═══ VIDEO ═══ -->
+    <section class="panel panel-video">
+      <div class="panel-inner panel-inner-scroll">
+
+        <div class="panel-header">
+          <div class="panel-icon cyan"><i class="fas fa-film"></i></div>
+          <div style="flex:1;min-width:0;overflow:hidden;">
+            <div class="panel-title">Video Generate</div>
+            <div class="panel-subtitle">Create short AI videos</div>
+          </div>
+          <span id="video-plan-badge" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;border:1.5px solid #22d3ee;color:#22d3ee;display:none;white-space:nowrap;flex-shrink:0;"></span>
+        </div>
+
+        <label class="field-label">PROMPT</label>
+        <textarea id="videoPrompt" class="field-input video-textarea" rows="4" placeholder="Describe the video you want to create..."></textarea>
+
+        <label class="field-label">ASPECT RATIO</label>
+        <div id="videoAspectGroup" class="chip-row">
+          <button class="chip active" data-value="9:16" onclick="selectChip(this,'videoAspectGroup')">9:16 Portrait</button>
+          <button class="chip" data-value="16:9" onclick="selectChip(this,'videoAspectGroup')">16:9 Landscape</button>
+          <button class="chip" data-value="1:1" onclick="selectChip(this,'videoAspectGroup')">1:1 Square</button>
+        </div>
+
+        <label class="field-label">DURATION</label>
+        <div id="videoDurationChips" class="chip-row">
+          <button class="chip active" data-value="8s" onclick="selectVideoDuration('8s',this)">8 seconds</button>
+          <button class="chip" data-value="10s" onclick="selectVideoDuration('10s',this)">10 seconds</button>
+        </div>
+
+        <label class="field-label">STYLE</label>
+        <div id="videoStyleGroup" class="chip-row">
+          <button class="chip active" onclick="selectChip(this,'videoStyleGroup')">Realistic</button>
+          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Cinematic</button>
+          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Anime</button>
+          <button class="chip" onclick="selectChip(this,'videoStyleGroup')">Classic</button>
+        </div>
+
+        <label class="field-label">REFERENCE IMAGE (PRO)</label>
+        <div id="video-usage-text" class="video-inline-note"></div>
+        <div id="videoRefPlanNote" class="video-inline-note" style="margin-bottom:10px;"></div>
+
+        <div class="video-ref-card">
+          <div class="video-ref-block">
+            <div class="video-ref-title">START FRAME</div>
+            <div id="videoStartPreview" class="video-ref-preview">No file selected</div>
+            <label for="videoStartImage" class="upload-label" onclick="event.stopPropagation()">
+              <i class="fas fa-image"></i> Choose Image
+            </label>
+            <input type="file" id="videoStartImage" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" onchange="handleVideoRefUpload('start',event)">
+          </div>
+          <div class="video-ref-divider"></div>
+          <div class="video-ref-block video-ref-disabled" id="videoEndBlock">
+            <div class="video-ref-title">END FRAME</div>
+            <div id="videoEndPreview" class="video-ref-preview">No file selected</div>
+            <label for="videoEndImage" class="upload-label" onclick="event.stopPropagation()">
+              <i class="fas fa-image"></i> Choose Image
+            </label>
+            <input type="file" id="videoEndImage" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" onchange="handleVideoRefUpload('end',event)">
+          </div>
+        </div>
+
+        <button id="videoGenBtn" class="btn-generate btn-cyan video-generate-btn" onclick="generateVideo()">
+          <i class="fas fa-wand-magic-sparkles"></i> Generate Video
+        </button>
+
+        <div id="videoResult" class="video-result-card">
+          <div id="videoStatusText" class="video-status-pill">Preparing video…</div>
+          <div class="video-player-shell">
+            <video id="videoPlayer" controls playsinline webkit-playsinline x5-playsinline x5-video-player-type="h5" preload="metadata" style="width:100%;display:block;background:#000;border-radius:10px;"></video>
+          </div>
+          <div class="video-actions">
+            <button id="videoDownloadBtn" class="video-download-btn" onclick="downloadVideo()" style="display:none;">
+              <i class="fas fa-download"></i> Download Video
+            </button>
+          </div>
+          <div class="video-help">Preview should play below after generation. If your phone blocks playback, tap Download Video and open the mp4 file.</div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ═══════════ MODALS (outside <main>) ═══════════ -->
+
+<!-- Upgrade Modal (Custom Lyrics lock) -->
+<div id="upgrade-modal" class="upgrade-modal-overlay" style="display:none">
+  <div class="upgrade-modal-box">
+    <div style="font-size:36px;margin-bottom:12px;">&#x1F680;</div>
+    <h3 class="upgrade-modal-title">Upgrade Required</h3>
+    <p id="upgrade-modal-message" class="upgrade-modal-msg"></p>
+    <button class="btn-generate btn-purple"
+      onclick="document.getElementById('upgrade-modal').style.display='none'"
+      style="width:100%;margin-top:0;">
+      Got it
+    </button>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header">
+      <h3><i class="fas fa-lock"></i> Sign in to continue</h3>
+      <button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" style="gap:10px">
+      <div style="display:flex;gap:6px;background:var(--surface2);border:1px solid var(--border);padding:4px;border-radius:30px;">
+        <button id="authTabLogin" onclick="switchAuthTab('login')"
+          style="flex:1;padding:8px;border-radius:30px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;">Login</button>
+        <button id="authTabSignup" onclick="switchAuthTab('signup')"
+          style="flex:1;padding:8px;border-radius:30px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#9ca3af;">Sign Up</button>
+      </div>
+      <div id="authMsg" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;"></div>
+      <form id="authLoginForm" onsubmit="submitLogin(event)" style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label class="form-label">Email</label>
+          <input type="email" id="authLoginEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
+        </div>
+        <div>
+          <label class="form-label">Password</label>
+          <input type="password" id="authLoginPass" class="form-input" placeholder="Your password" required autocomplete="current-password"/>
+        </div>
+        <button type="submit" id="authLoginBtn" class="btn-generate btn-purple" style="margin-bottom:0">
+          <i class="fas fa-arrow-right-to-bracket"></i> Login
+        </button>
+      </form>
+      <form id="authSignupForm" onsubmit="submitSignup(event)" style="display:none;flex-direction:column;gap:10px;">
+        <div>
+          <label class="form-label">Full Name</label>
+          <input type="text" id="authSignupName" class="form-input" placeholder="Your name" required autocomplete="name"/>
+        </div>
+        <div>
+          <label class="form-label">Email</label>
+          <input type="email" id="authSignupEmail" class="form-input" placeholder="you@example.com" required autocomplete="email"/>
+        </div>
+        <div>
+          <label class="form-label">Password</label>
+          <input type="password" id="authSignupPass" class="form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password"/>
+        </div>
+        <button type="submit" id="authSignupBtn" class="btn-generate btn-purple" style="margin-bottom:0">
+          <i class="fas fa-paper-plane"></i> Send Verification Code
+        </button>
+      </form>
+      <div id="authOtpForm" style="display:none;flex-direction:column;gap:12px;">
+        <div style="text-align:center;padding:8px 0;">
+          <i class="fas fa-envelope-circle-check" style="font-size:2rem;color:#a855f7;margin-bottom:8px;display:block;"></i>
+          <p style="font-size:13px;color:#9ca3af;margin:0;">Code &#x200B;&#x1794;&#x17B6;&#x1793;&#x1795;&#x17D2;&#x1789;&#x17BE;&#x179F;&#x200B;&#x178F;&#x17C4;</p>
+          <p id="otpEmailDisplay" style="font-size:14px;font-weight:700;color:#fff;margin:4px 0 0;"></p>
+        </div>
+        <div>
+          <label class="form-label">Verification Code (6 digits)</label>
+          <input type="text" id="authOtpInput" class="form-input" placeholder="_ _ _ _ _ _"
+            maxlength="6" inputmode="numeric"
+            style="text-align:center;font-size:1.5rem;font-weight:700;letter-spacing:0.4em;"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" onclick="backToSignup()" class="btn-generate"
+            style="flex:1;margin-bottom:0;background:var(--surface2);color:#9ca3af;">
+            <i class="fas fa-arrow-left"></i> Back
+          </button>
+          <button type="button" onclick="submitOtp()" id="authOtpBtn" class="btn-generate btn-purple" style="flex:2;margin-bottom:0">
+            <i class="fas fa-check-circle"></i> Verify &amp; Create Account
+          </button>
+        </div>
+        <div style="text-align:center;">
+          <button type="button" onclick="resendOtp()" id="resendOtpBtn"
+            style="background:none;border:none;color:#a855f7;font-size:12px;cursor:pointer;text-decoration:underline;">Resend code</button>
+          <span id="resendTimer" style="font-size:12px;color:#9ca3af;display:none;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PLAN MODAL -->
+<div class="modal-overlay" id="planModal">
+  <div class="modal-box modal-plan-new">
+    <div class="modal-header">
+      <h3><i class="fas fa-crown"></i> Choose Your Plan</h3>
+      <button class="modal-close" onclick="closePlanModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body modal-plan-body">
+      <p class="modal-desc" style="margin-bottom:14px">Powered by JeeThy Labs · Google Gemini AI</p>
+
+      <!-- FREE -->
+      <div class="plan-card-v2" data-plan="free" onclick="selectPlan('free')">
+        <div class="pcv2-left">
+          <div class="pcv2-name">Free</div>
+          <div class="pcv2-price-row"><span class="pcv2-price">$0</span></div>
+          <div class="pcv2-desc">Try all tools, no credit card needed</div>
+        </div>
+        <div class="pcv2-right">
+          <div class="pcv2-features">
+            <div class="pcv2-feat"><i class="fas fa-comments"></i> 20 Chat msg/day</div>
+            <div class="pcv2-feat"><i class="fas fa-image"></i> 5 Images/day (720px)</div>
+            <div class="pcv2-feat"><i class="fas fa-music"></i> 3 Songs/day (~55s)</div>
+            <div class="pcv2-feat pcv2-no"><i class="fas fa-xmark"></i> No watermark removal</div>
+            <div class="pcv2-feat pcv2-no"><i class="fas fa-xmark"></i> Custom API key</div>
+          </div>
+        </div>
+        <div class="pcv2-check"><i class="fas fa-circle-check"></i></div>
+      </div>
+
+      <!-- PRO -->
+      <div class="plan-card-v2 pcv2-pro" data-plan="pro" onclick="selectPlan('pro')">
+        <div class="pcv2-badge">⭐ Popular</div>
+        <div class="pcv2-left">
+          <div class="pcv2-name">Pro</div>
+          <div class="pcv2-price-row"><span class="pcv2-price pcv2-price-pro">$5.99</span><span class="pcv2-period">/mo</span></div>
+          <div class="pcv2-desc">For creators who need more power</div>
+        </div>
+        <div class="pcv2-right">
+          <div class="pcv2-features">
+            <div class="pcv2-feat"><i class="fas fa-comments"></i> 100 Chat msg/day</div>
+            <div class="pcv2-feat"><i class="fas fa-image"></i> 25 Images/day (HD 1024px)</div>
+            <div class="pcv2-feat"><i class="fas fa-music"></i> 15 Songs/day (~3 min)</div>
+            <div class="pcv2-feat"><i class="fas fa-file-export"></i> Export chat history</div>
+            <div class="pcv2-feat"><i class="fas fa-pen-nib"></i> Custom lyrics support</div>
+            <div class="pcv2-feat"><i class="fas fa-droplet-slash"></i> No watermark on images</div>
+          </div>
+        </div>
+        <div class="pcv2-check"><i class="fas fa-circle-check"></i></div>
+      </div>
+
+      <!-- PRO+ -->
+      <div class="plan-card-v2 pcv2-proplus" data-plan="proplus" onclick="selectPlan('proplus')">
+        <div class="pcv2-badge pcv2-badge-proplus">🔥 Best Value</div>
+        <div class="pcv2-left">
+          <div class="pcv2-name" style="color:#d8b4fe">Pro+</div>
+          <div class="pcv2-price-row"><span class="pcv2-price pcv2-price-proplus">$24.99</span><span class="pcv2-period">/mo</span></div>
+          <div class="pcv2-desc">Unlimited creativity, full access</div>
+        </div>
+        <div class="pcv2-right">
+          <div class="pcv2-features">
+            <div class="pcv2-feat"><i class="fas fa-infinity"></i> Unlimited Chat</div>
+            <div class="pcv2-feat"><i class="fas fa-image"></i> 150 Images/day (2K · 2048px)</div>
+            <div class="pcv2-feat"><i class="fas fa-music"></i> 100 Songs/day (~3:15 min)</div>
+            <div class="pcv2-feat"><i class="fas fa-users-line"></i> Duet &amp; Choir vocals</div>
+            <div class="pcv2-feat"><i class="fas fa-khanda"></i> Khmer Premium genres</div>
+            <div class="pcv2-feat"><i class="fas fa-robot"></i> System Prompt / AI role</div>
+            <div class="pcv2-feat"><i class="fas fa-file-pdf"></i> Export PDF/TXT chat</div>
+            <div class="pcv2-feat"><i class="fas fa-images"></i> Reference image (4 imgs)</div>
+          </div>
+        </div>
+        <div class="pcv2-check"><i class="fas fa-circle-check"></i></div>
+      </div>
+
+      <!-- MAX -->
+      <div class="plan-card-v2 pcv2-max" data-plan="max" style="opacity:.55;pointer-events:none;">
+        <div class="pcv2-badge pcv2-badge-max">🔜 Coming Soon</div>
+        <div class="pcv2-left">
+          <div class="pcv2-name" style="color:#fbbf24">Max</div>
+          <div class="pcv2-price-row"><span class="pcv2-price" style="color:#fbbf24;font-size:15px">TBA</span></div>
+          <div class="pcv2-desc">Ultimate plan · Priority access</div>
+        </div>
+        <div class="pcv2-right">
+          <div class="pcv2-features">
+            <div class="pcv2-feat"><i class="fas fa-infinity"></i> Unlimited Everything</div>
+            <div class="pcv2-feat"><i class="fas fa-image"></i> 4K Images (3840×2160)</div>
+            <div class="pcv2-feat"><i class="fas fa-music"></i> Songs ~4:25–5:25 min</div>
+            <div class="pcv2-feat"><i class="fas fa-waveform-lines"></i> Lyria Pro audio</div>
+            <div class="pcv2-feat"><i class="fas fa-bolt"></i> Priority generation</div>
+          </div>
+        </div>
+        <div class="pcv2-check"><i class="fas fa-circle-check"></i></div>
+      </div>
+
+      <div id="proSettingsInModal" style="display:none">
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="modal-link">Get a free Google AI key &rarr;</a>
+      </div>
+    </div><!-- end modal-plan-body -->
+    <div class="modal-plan-footer">
+      <button class="btn-generate btn-purple" onclick="confirmPlan()" style="width:100%;margin:0">
+        <i class="fas fa-check"></i> Confirm Plan
+      </button>
+    </div>
+  </div><!-- end modal-box -->
+</div><!-- end planModal -->
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fas fa-gear"></i> Account Settings</h3>
+      <button class="modal-close" onclick="closeSettings()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">JeeThy Labs' owner key is used by default. Enable below to use your own API key.</p>
+      <div class="settings-toggle-row">
+  <span class="settings-label"><i class="fas fa-key"></i> Use my own API key</span>
+  <div id="ownKeyToggleBtn" onclick="toggleOwnKey()" style="width:44px;height:24px;border-radius:24px;position:relative;flex-shrink:0;background:rgba(255,255,255,.12);border:1px solid var(--border);transition:background .2s,border-color .2s;cursor:pointer">
+    <div id="ownKeyKnob" style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform .2s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>
+  </div>
+</div>
+      <div id="customKeySection" style="display:none">
+        <div class="form-group" style="margin-top:12px">
+          <label class="form-label">Your Google AI API Key</label>
+          <input type="password" id="customKeyInput" class="form-input" placeholder="AIza..." autocomplete="off"/>
+        </div>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="modal-link">Get a free key at Google AI Studio &rarr;</a><div style="margin-top:8px;font-size:12px;color:var(--text2);line-height:1.5;">Coming soon: secure custom API key storage in database for Pro, Pro+ and Max users.</div>
+      </div>
+      <button class="btn-generate btn-cyan" onclick="saveSettings()" style="margin-top:16px">
+        <i class="fas fa-check"></i> Save Settings
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- UPGRADE MODAL (quota) -->
+<div class="modal-overlay" id="upgradeModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fas fa-bolt"></i> Quota Reached</h3>
+      <button class="modal-close" onclick="closeUpgradeModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc" id="upgradeModalDesc">Upgrade your plan to unlock this feature.</p>
+      <div class="upgrade-card">
+        <div class="upgrade-icon"><i class="fas fa-crown"></i></div>
+        <div class="upgrade-text">
+          <strong class="upgrade-plan-name">Upgrade to Pro</strong>
+          <span class="upgrade-plan-desc">100 chat msg/day · $5.99/mo</span>
+        </div>
+      </div>
+      <button class="btn-generate btn-purple btn-upgrade-confirm" onclick="upgradeNow()" style="margin-top:16px">
+        👑 Upgrade to Pro
+      </button>
+      <button class="btn-outline" onclick="closeUpgradeModal()">Maybe later</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE SHEET -->
+<div id="ppOverlay" onclick="closePPif(event)">
+  <div id="ppSheet">
+    <span class="pp-handle"></span>
+    <div class="pp-hdr">
+      <h3><i class="fas fa-user-circle"></i> My Profile</h3>
+      <button class="pp-closebtn" onclick="closeProfileSheet()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="pp-body2">
+      <div class="pp-hero">
+        <div style="position:relative;width:82px;height:82px;">
+          <div id="ppAvatarEl" onclick="document.getElementById('ppFileInput').click()">
+            <span id="ppInitial">?</span>
+          </div>
+          <div class="pp-cam"><i class="fas fa-camera"></i></div>
+        </div>
+        <input type="file" id="ppFileInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)"/>
+        <div id="ppHeroName" style="font-size:19px;font-weight:700;color:#fff;text-align:center;"></div>
+        <div id="ppHeroEmail" style="font-size:12px;color:#9ca3af;margin-top:-6px;text-align:center;"></div>
+        <span id="ppPlanBadge"
+          style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
+                 padding:3px 12px;border-radius:20px;text-transform:uppercase;
+                 background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.4);">
+          <i class="fas fa-star"></i> Free Plan
+        </span>
+      </div>
+      <div class="pp-infocard">
+        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-user"></i> Name</span><span class="pp-val" id="ppInfoName">&mdash;</span></div>
+        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-envelope"></i> Email</span><span class="pp-val" id="ppInfoEmail">&mdash;</span></div>
+        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-crown"></i> Plan</span><span class="pp-val" id="ppInfoPlan">Free</span></div>
+        <div class="pp-row"><span class="pp-lbl"><i class="fas fa-calendar"></i> Member Since</span><span class="pp-val" id="ppInfoJoined">&mdash;</span></div>
+      </div>
+      <div class="pp-usagecard">
+        <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;
+                    letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+          <i class="fas fa-chart-bar"></i> Session Usage
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#9ca3af;margin-bottom:5px;">
+          <span>Requests Used</span>
+          <span id="ppUsageCount" style="color:#fff;font-weight:600;">0 / 10</span>
+        </div>
+        <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;">
+          <div id="ppUsageBar" style="height:100%;border-radius:3px;width:0%;background:#a855f7;transition:width .6s;"></div>
+        </div>
+      </div>
+      <div class="pp-upgrade-banner" id="ppUpgradeBanner"
+        onclick="closeProfileSheet();setTimeout(()=>openPlanModal(),200)">
+        <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#a855f7,#22d3ee);
+                    display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0;">
+          <i class="fas fa-crown"></i>
+        </div>
+        <div>
+          <strong style="font-size:13px;display:block;color:#fff;">Upgrade to Pro</strong>
+          <span style="font-size:11px;color:#9ca3af;">100 requests &middot; $9.99/mo</span>
+        </div>
+      </div>
+      <button onclick="closeProfileSheet();doLogout()"
+        style="width:100%;padding:11px;border-radius:12px;background:rgba(239,68,68,.08);
+               border:1px solid rgba(239,68,68,.2);color:#f87171;font-family:var(--font);
+               font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;
+               justify-content:center;gap:8px;">
+        <i class="fas fa-right-from-bracket"></i> Sign Out
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ជំនួស v=2.1 ដោយ v=2.2 -->
+<script src="script.js?v=2.4"></script>
+<script src="song-plan.js?v=2.4"></script>
+
+
+<!-- OTHER GENRE MODAL -->
+<!-- BACKDROP -->
+<div id="otherStyleBackdrop" onclick="closeOtherStyleModal()" class="other-modal-backdrop" style="display:none;"></div>
+
+<!-- OTHER STYLE BOTTOM SHEET -->
+<div id="otherStyleModal" class="other-modal-panel" style="display:none;">
+<div class="other-modal-topbar">
+<button onclick="closeOtherStyleModal()" class="other-modal-back"><i class="fas fa-arrow-left"></i></button>
+<span class="other-modal-title">🎵 Genre / Style</span>
+<div style="width:36px;"></div>
+</div>
+<div class="modal-inner-scroll">
+
+<div class="modal-section-label">🌍 International</div>
+<div class="chip-group" style="margin-bottom:22px;">
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Sad')">Sad</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Relaxing')">Relaxing</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Rap')">Rap</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Remix')">Remix</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'R&B')">R&amp;B</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Classical')">Classical</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'EDM')">EDM</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Country')">Country</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Soul')">Soul</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Blues')">Blues</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Folk')">Folk</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Metal')">Metal</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Reggae')">Reggae</button>
+<button class="chip chip-sm other-style-chip" onclick="selectOtherStyle(this,'Latin')">Latin</button>
+</div>
+
+<div class="modal-section-label" style="color:#a78bfa;">🇰🇭 ចង្វាក់ខ្មែរ (Khmer Rhythm)</div>
+<div class="chip-group">
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="romvong"     onclick="selectOtherStyle(this,'romvong')">រាំវង់</button>
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="romkbach"    onclick="selectOtherStyle(this,'romkbach')">រាំក្បាច់</button>
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="saravan"     onclick="selectOtherStyle(this,'saravan')">សារ៉ាវ៉ាន់</button>
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="kantreum"    onclick="selectOtherStyle(this,'kantreum')">កន្ទ្រឹម</button>
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="madison"     onclick="selectOtherStyle(this,'madison')">ម៉ាឌីហ្សូន</button>
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="cha_cha_cha" onclick="selectOtherStyle(this,'cha_cha_cha')">ឆា ឆា ឆា</button>
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="taloong"     onclick="selectOtherStyle(this,'taloong')">តាឡូង</button>
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="slow"        onclick="selectOtherStyle(this,'slow')">រាំស៊្លូ</button>
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="chapey"      onclick="selectOtherStyle(this,'chapey')">ចាប៉ី</button>
+<button class="chip chip-sm other-style-chip khmer-chip" data-khmer-key="lbokkatob"   onclick="selectOtherStyle(this,'lbokkatob')">អាយ៉ៃ</button>
+</div>
+</div>
+</div>
+</body>
+</html>      <div class="pp-section">
+        <div class="pp-section-title"><i class="fas fa-star"></i> PLAN FEATURES</div>
+        <div id="ppPlanFeatures" style="display:flex;flex-direction:column;gap:4px;padding:2px 0 4px;"></div>
+      </div>
+      
