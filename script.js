@@ -1,6 +1,7 @@
 "use strict";
 
 const VIDEO_PLAN_LIMITS = { free: 1, pro: 3, proplus: 10, max: Infinity };
+let _videoUsageMem = { date: "", count: 0 };
 const TOTAL_PANELS = 4;
 let videoDuration = "8s";
 let videoRefs = { start: null, end: null };
@@ -622,11 +623,13 @@ function onLoginSuccess(user, runPending) {
   removeAuthGate();
   closeAuthModal();
   setTimeout(function(){ goToPanel(currentPanel); }, 80);
+  setTimeout(updateVideoUI, 150);
   if (runPending) {
     const action = pendingAction; pendingAction = null;
     if (action === "chat")  setTimeout(() => _sendChat(),      100);
     if (action === "image") setTimeout(() => _generateImage(), 100);
     if (action === "song")  setTimeout(() => _generateSong(),  100);
+    if (action === "video") setTimeout(() => generateVideo(),  100);
   }
 }
 
@@ -1959,20 +1962,14 @@ function canUseVideoReferences(plan = userPlan) {
 }
 
 function getVideoUsageToday() {
-  try {
-    const raw = localStorage.getItem("jl_video_usage") || "{}";
-    const data = JSON.parse(raw);
-    const today = new Date().toISOString().slice(0, 10);
-    if (data.date !== today) return 0;
-    return Number(data.count || 0);
-  } catch (_) {
-    return 0;
-  }
+  const today = new Date().toISOString().slice(0, 10);
+  if (_videoUsageMem.date !== today) return 0;
+  return Number(_videoUsageMem.count || 0);
 }
 
 function setVideoUsageToday(count) {
   const today = new Date().toISOString().slice(0, 10);
-  localStorage.setItem("jl_video_usage", JSON.stringify({ date: today, count: Number(count || 0) }));
+  _videoUsageMem = { date: today, count: Number(count || 0) };
 }
 
 function getRemainingVideoQuota(plan = userPlan) {
@@ -2074,7 +2071,7 @@ async function generateVideo() {
   fd.append("plan", userPlan);
   // âœ… FIX: Send aspect ratio to server
   const _aspectChip = document.querySelector("#videoAspectGroup .chip.active, .video-aspect-chips .chip.active, [data-group='videoAspect'] .chip.active");
-  const _aspectVal  = _aspectChip?.dataset?.value || _aspectChip?.textContent?.trim().replace(/\s+/g,"") || "16:9";
+  const _aspectVal  = _aspectChip?.dataset?.value || "16:9";
   fd.append("aspect", _aspectVal);
   if (videoRefs.start) fd.append("startImage", videoRefs.start);
 
