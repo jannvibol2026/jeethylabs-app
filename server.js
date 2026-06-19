@@ -1692,7 +1692,7 @@ setInterval(() => {
 
 const VEO_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-// In-memory job store for async video polling
+// Async job store
 const _videoJobs = new Map();
 setInterval(() => {
   const now = Date.now();
@@ -1701,7 +1701,6 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-// Single non-blocking poll check
 async function checkVideoOperation(operationName, key) {
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${key}`);
   if (!r.ok) {
@@ -1720,7 +1719,6 @@ async function checkVideoOperation(operationName, key) {
   return { done: false };
 }
 
-// Legacy alias (unused now but kept for safety)
 async function pollVideoOperation(operationName, key, maxWaitMs = 300000) {
   const start = Date.now();
   while (Date.now() - start < maxWaitMs) {
@@ -1823,74 +1821,50 @@ app.post(
 
       console.log(`[video/generate] user=${userId} plan=${plan} prompt="${prompt.slice(0, 60)}" aspect=${aspectRatio}`);
 
-      // Async job: submit Veo job, return jobId immediately (avoids Cloudflare 100s timeout)
-      const durStr = String(req.body?.duration || '8s').trim();
-      const durationSeconds = parseInt(durStr, 10) || 8;
-
-      let operationName = null;
-      let usedModel = null;
-      let lastErr = null;
-
+      // Async job: submit Veo job and return jobId immediately
+      const durStr2 = String(req.body?.duration || '8s').trim();
+      const durationSeconds = parseInt(durStr2, 10) || 8;
+      let operationName = null, usedModel = null, lastErr2 = null;
       for (const model of VIDEO_MODELS_FALLBACK) {
         try {
           const instance = { prompt };
           if (startImage?.buffer) {
-            instance.image = {
-              bytesBase64Encoded: startImage.buffer.toString('base64'),
-              mimeType: startImage.mimetype || 'image/jpeg',
-            };
+            instance.image = { bytesBase64Encoded: startImage.buffer.toString('base64'), mimeType: startImage.mimetype || 'image/jpeg' };
           }
           const parameters = { aspectRatio, sampleCount: 1, durationSeconds };
           const r = await fetch(`${VEO_BASE}/models/${model}:predictLongRunning?key=${key}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ instances: [instance], parameters }),
           });
-          const data = await r.json();
-          if (!r.ok) throw new Error(data?.error?.message || `HTTP ${r.status}`);
-          if (!data?.name) throw new Error('No operation name from Veo.');
-          operationName = data.name;
-          usedModel = model;
+          const d = await r.json();
+          if (!r.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
+          if (!d?.name) throw new Error('No operation name from Veo.');
+          operationName = d.name; usedModel = model;
+          console.log(`[video/generate] Veo job started op=${operationName} model=${model}`);
           break;
-        } catch (err) {
-          lastErr = err?.message || String(err);
-          console.warn(`[video/generate] model ${model} failed:`, lastErr);
-        }
+        } catch (e) { lastErr2 = e?.message || String(e); console.warn(`[video/generate] ${model} failed:`, lastErr2); }
       }
-      if (!operationName) throw new Error(lastErr || 'All Veo models failed.');
-
-      // Store job for client polling
+      if (!operationName) throw new Error(lastErr2 || 'All Veo models failed.');
       const jobId = require('crypto').randomBytes(16).toString('hex');
       _videoJobs.set(jobId, {
-        operationName,
-        key,
-        userId,
-        plan,
-        duration,
+        operationName, key, userId, plan, duration, model: usedModel,
         usedReferences: Boolean(startImage),
-        model: usedModel,
-        status: 'processing',
-        videoToken: null,
-        error: null,
+        status: 'processing', videoToken: null, error: null,
         expires: Date.now() + 30 * 60 * 1000,
       });
+      res.json({ ok: true, jobId, message: 'Video job started.' });
 
-      console.log(`[video/generate] job created: ${jobId} op=${operationName}`);
-      // Return immediately - client will poll /api/video/status/:jobId
-      res.json({ ok: true, jobId, message: 'Video generating... please wait.' });
-
-    } catch (err) {
+        } catch (err) {
       console.error('/api/video/generate error:', err);
       res.status(500).json({ error: err?.message || 'Video generation failed.' });
     }
   }
 );
 
-/* Poll video job status - client calls every 8s */
+/* Poll video job status */
 app.get('/api/video/status/:jobId', auth, async (req, res) => {
   const job = _videoJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: 'Job not found or expired. Please regenerate.' });
-
   if (job.status === 'done') {
     return res.json({ ok: true, status: 'done', videoUrl: `/api/video/stream/${job.videoToken}`,
       duration: job.duration, plan: job.plan, usedReferences: job.usedReferences });
@@ -1899,20 +1873,15 @@ app.get('/api/video/status/:jobId', auth, async (req, res) => {
     _videoJobs.delete(req.params.jobId);
     return res.json({ ok: false, status: 'error', error: job.error });
   }
-
-  // Check Veo operation status (single fast request ~200ms)
   try {
     const result = await checkVideoOperation(job.operationName, job.key);
     if (result.done) {
       const videoToken = require('crypto').randomBytes(16).toString('hex');
       _videoCache.set(videoToken, { uri: result.uri, key: job.key, expires: Date.now() + 2 * 60 * 60 * 1000 });
       const usageCount = incrementVideoUsage(job.userId, job.plan);
-      job.status = 'done';
-      job.videoToken = videoToken;
-      console.log(`[video/status] job done: ${req.params.jobId} token=${videoToken}`);
+      job.status = 'done'; job.videoToken = videoToken;
       return res.json({
-        ok: true, status: 'done',
-        videoUrl: `/api/video/stream/${videoToken}`,
+        ok: true, status: 'done', videoUrl: `/api/video/stream/${videoToken}`,
         usageCount, duration: job.duration, plan: job.plan,
         planLabel: job.plan === 'proplus' ? 'Pro+' : job.plan.charAt(0).toUpperCase() + job.plan.slice(1),
         usedReferences: job.usedReferences, model: job.model,
@@ -1921,9 +1890,7 @@ app.get('/api/video/status/:jobId', auth, async (req, res) => {
     }
     return res.json({ ok: true, status: 'processing', message: 'Video is still generating...' });
   } catch (err) {
-    job.status = 'error';
-    job.error = err.message;
-    console.error(`[video/status] job error:`, err.message);
+    job.status = 'error'; job.error = err.message;
     return res.json({ ok: false, status: 'error', error: err.message });
   }
 });
@@ -1945,42 +1912,31 @@ app.get('/api/video/stream/:token', async (req, res) => {
   try {
     const targetUrl = entry.uri.includes('?') ? entry.uri : `${entry.uri}?key=${entry.key}`;
     const isDownload = req.query.dl === '1';
-
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 90000);
     let videoRes;
     try {
       videoRes = await fetch(targetUrl, { signal: controller.signal });
-    } finally {
-      clearTimeout(timeout);
-    }
-    if (!videoRes.ok) {
-      return res.status(502).json({ error: `Failed to fetch video from Veo (${videoRes.status}).` });
-    }
-
+    } finally { clearTimeout(timeout); }
+    if (!videoRes.ok) return res.status(502).json({ error: `Veo fetch failed (${videoRes.status}).` });
     const buffer = Buffer.from(await videoRes.arrayBuffer());
-    const total  = buffer.length;
+    const total = buffer.length;
     if (total === 0) return res.status(502).json({ error: 'Empty video from Veo.' });
-
     res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Range, Authorization');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', 'private, max-age=7200');
-    res.setHeader('Content-Disposition', isDownload
-      ? 'attachment; filename="jeethy-video.mp4"'
-      : 'inline; filename="jeethy-video.mp4"');
-
+    res.setHeader('Content-Disposition', isDownload ? 'attachment; filename="jeethy-video.mp4"' : 'inline; filename="jeethy-video.mp4"');
     const rangeHeader = req.headers['range'];
     if (rangeHeader) {
       const parts = rangeHeader.replace(/bytes=/, '').split('-');
-      const start  = parseInt(parts[0], 10);
-      const end    = parts[1] ? parseInt(parts[1], 10) : total - 1;
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
       const safeEnd = Math.min(end, total - 1);
-      const chunk  = safeEnd - start + 1;
-      res.setHeader('Content-Range',  `bytes ${start}-${safeEnd}/${total}`);
-      res.setHeader('Content-Length', chunk);
+      res.setHeader('Content-Range', `bytes ${start}-${safeEnd}/${total}`);
+      res.setHeader('Content-Length', safeEnd - start + 1);
       return res.status(206).end(buffer.slice(start, safeEnd + 1));
     }
     res.setHeader('Content-Length', total);
