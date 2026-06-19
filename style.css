@@ -1164,23 +1164,7 @@ audio{
 ══════════════════════════════════════ */
 
 /* Force video result to show when JS sets display:block */
-#videoResult {
-  display: none;
-}
-#videoResult[style*="display: block"],
-#videoResult[style*="display:block"] {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-/* Panel video scroll - ensure content is visible */
-.panel-video .panel-inner-scroll {
-  overflow-y: scroll !important;
-  -webkit-overflow-scrolling: touch !important;
-  max-height: 100% !important;
-  padding-bottom: 80px !important;
-}
+/* video result visibility handled below */
 
 /* Video player - mobile native playback */
 #videoPlayer {
@@ -1210,13 +1194,32 @@ audio{
   }
 }
 
-/* Fix panel-video scroll to show video result */
-@media (max-width: 1023px) {
-  .panel-video {
-    overflow-y: auto !important;
-  }
-  .panel-video .panel-inner-scroll {
-    overflow-y: scroll !important;
-  }
+/* ══ VIDEO PANEL SCROLL FIX — result card visible ══ */
+.panel {
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
-
+.panel-inner-scroll {
+  flex: 1 1 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: 0 !important; /* flex child trick — makes scroll work */
+  min-height: 0 !important;
+}
+.panel-video .panel-inner-scroll {
+  overflow-y: scroll !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+/* Ensure videoResult card is never clipped */
+#videoResult {
+  position: relative !important;
+  z-index: 2 !important;
+}
+#videoResult[style*="display: block"],
+#videoResult[style*="display:block"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
