@@ -2162,9 +2162,23 @@ async function generateVideo() {
           playerEl.setAttribute("playsinline", "true");
           playerEl.setAttribute("webkit-playsinline", "true");
           playerEl.setAttribute("preload", "auto");
+          playerEl.muted = true;
           playerEl.load();
+          // Fallback link
+          const fbLink = document.getElementById("videoFallbackLink");
+          if (fbLink) fbLink.href = absUrl;
+          playerEl.oncanplay = () => {
+            playerEl.muted = false;
+          };
           playerEl.onerror = () => {
             if (statusEl) statusEl.innerHTML = `<i class="fas fa-circle-check"></i> Ready Â· <a href="${absUrl}" target="_blank" style="color:#22d3ee;text-decoration:underline">Open video</a>`;
+            const playerShell = document.querySelector(".video-player-shell");
+            if (playerShell) {
+              playerShell.innerHTML = `<div style="padding:20px;text-align:center;color:#9ca3af;font-size:13px;">
+                <p>Preview unavailable on this browser.</p>
+                <a href="${absUrl}" target="_blank" style="color:#22d3ee;font-weight:700;text-decoration:underline;font-size:14px;display:inline-block;margin-top:8px;">â–¶ Open Video</a>
+              </div>`;
+            }
           };
         }
 
@@ -2192,7 +2206,23 @@ async function generateVideo() {
         }
 
         if (statusEl) statusEl.innerHTML = `<i class="fas fa-circle-check"></i> ${data.message || "Video ready"} Â· Preview below`;
-        if (playerEl) playerEl.play().catch(() => {});
+        if (playerEl) {
+          // Small delay to let browser load metadata
+          setTimeout(() => {
+            playerEl.play().catch(() => {
+              // Autoplay blocked - show play overlay
+              const shell = document.querySelector(".video-player-shell");
+              if (shell && !shell.querySelector(".play-overlay")) {
+                const ov = document.createElement("div");
+                ov.className = "play-overlay";
+                ov.innerHTML = '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.6);border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;"><i class="fas fa-play" style="color:#fff;font-size:20px;margin-left:3px;"></i></div>';
+                ov.style.cssText = "position:relative;";
+                ov.onclick = () => { playerEl.play(); ov.remove(); };
+                shell.prepend(ov);
+              }
+            });
+          }, 500);
+        }
         showToast("Video generated! âœ“", "success");
         return;
       }
@@ -2226,7 +2256,8 @@ function resetVideoForm() {
   if (startPreview) startPreview.textContent = "No file selected";
   if (endPreview) endPreview.textContent = "No file selected";
   videoRefs = { start: null, end: null };
-  selectVideoDuration("8s", document.querySelector('#videoDurationChips .chip[data-value="8s"]'));
+  const defDurChip = document.querySelector('#videoDurationChips .chip[data-value="8s"]');
+  if (defDurChip) selectVideoDuration("8s", defDurChip);
 }
 
 window.addEventListener("load", () => {
