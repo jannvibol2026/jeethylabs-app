@@ -881,7 +881,7 @@ function showUpgradeModal() {
   const upgradeDesc  = document.querySelector("#upgradeModal .upgrade-plan-desc");
   const upgradeBtn   = document.querySelector("#upgradeModal .btn-upgrade-confirm");
   if (upgradeTitle) upgradeTitle.textContent = "Upgrade to " + NP.label;
-  if (upgradeDesc)  upgradeDesc.textContent  = (NP.chatMsg < 0 ? "Unlimited" : NP.chatMsg) + " chat msg/day Â· " + NP.price;
+  if (upgradeDesc)  upgradeDesc.textContent  = (NP.chatMsg < 0 ? "Unlimited" : NP.chatMsg) + " chat msg/day · " + NP.price;
   if (upgradeBtn)   upgradeBtn.textContent   = "ðŸ‘‘ Upgrade to " + NP.label;
   const desc = document.getElementById("upgradeModalDesc");
   if (desc) {
@@ -1994,7 +1994,7 @@ function updateVideoUI() {
 
   if (badge) badge.textContent = `Plan: ${(PLAN_LIMITS[userPlan]?.label || userPlan).toUpperCase()}`;
   if (usage) usage.textContent = Number.isFinite(limit)
-    ? `Used ${used}/${limit} videos today Â· Remaining ${remaining}`
+    ? `Used ${used}/${limit} videos today · Remaining ${remaining}`
     : `Unlimited video generations today`;
   if (note) note.textContent = refsAllowed
     ? "Reference images unlocked. You can upload both a start image and an end image."
