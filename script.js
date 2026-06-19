@@ -2081,7 +2081,7 @@ async function generateVideo() {
   const oldHtml = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-  // Step 1: Submit job
+  // Step 1: Submit job (fast response < 5s, avoids Cloudflare 100s timeout)
   let jobId = null;
   try {
     const res = await fetch("/api/video/generate", {
@@ -2091,7 +2091,7 @@ async function generateVideo() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Video generation failed");
-    if (!data.jobId) throw new Error(data.error || "No job ID returned");
+    if (!data.jobId) throw new Error(data.error || "No job ID returned from server");
     jobId = data.jobId;
   } catch (err) {
     showToast(err.message || "Unable to start video generation", "error");
@@ -2100,27 +2100,25 @@ async function generateVideo() {
     return;
   }
 
-  // Step 2: Poll /api/video/status/:jobId every 8s
-  const status  = document.getElementById("videoStatusText");
-  const result  = document.getElementById("videoResult");
-  const player  = document.getElementById("videoPlayer");
-  const dl      = document.getElementById("videoDownloadBtn");
+  // Step 2: Show processing UI immediately
+  const statusEl = document.getElementById("videoStatusText");
+  const resultEl = document.getElementById("videoResult");
+  const playerEl = document.getElementById("videoPlayer");
+  const dlEl     = document.getElementById("videoDownloadBtn");
 
-  // Show result card with processing state
-  if (result) result.style.display = "block";
-  if (status) status.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Generating video... (this may take 1-3 minutes)`;
-  if (result) setTimeout(() => result.scrollIntoView({ behavior: "smooth", block: "nearest" }), 150);
+  if (resultEl) { resultEl.style.display = "block"; }
+  if (statusEl) statusEl.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Generating video... (1-3 minutes)`;
+  if (resultEl) setTimeout(() => resultEl.scrollIntoView({ behavior:"smooth", block:"nearest" }), 150);
 
+  // Step 3: Poll every 8s
   let pollCount = 0;
-  const maxPolls = 40; // 40 x 8s = ~5 min max
-
-  const pollInterval = setInterval(async () => {
+  const maxPolls = 45;
+  const pollTimer = setInterval(async () => {
     pollCount++;
     if (pollCount > maxPolls) {
-      clearInterval(pollInterval);
-      btn.disabled = false;
-      btn.innerHTML = oldHtml;
-      if (status) status.innerHTML = `<i class="fas fa-circle-exclamation"></i> Timed out. Please try again.`;
+      clearInterval(pollTimer);
+      btn.disabled = false; btn.innerHTML = oldHtml;
+      if (statusEl) statusEl.innerHTML = `<i class="fas fa-circle-exclamation"></i> Timed out. Please try again.`;
       showToast("Video generation timed out", "error");
       return;
     }
@@ -2131,91 +2129,82 @@ async function generateVideo() {
       const data = await r.json();
 
       if (data.status === "error") {
-        clearInterval(pollInterval);
-        btn.disabled = false;
-        btn.innerHTML = oldHtml;
-        if (status) status.innerHTML = `<i class="fas fa-circle-xmark"></i> Error: ${data.error}`;
-        showToast(data.error || "Video generation failed", "error");
+        clearInterval(pollTimer);
+        btn.disabled = false; btn.innerHTML = oldHtml;
+        if (statusEl) statusEl.innerHTML = `<i class="fas fa-circle-xmark"></i> Error: ${data.error}`;
+        showToast(data.error || "Video failed", "error");
         return;
       }
 
       if (data.status === "done" && data.videoUrl) {
-        clearInterval(pollInterval);
-        btn.disabled = false;
-        btn.innerHTML = oldHtml;
+        clearInterval(pollTimer);
+        btn.disabled = false; btn.innerHTML = oldHtml;
 
-        // Update usage
-        if (Number.isFinite(data.usageCount)) {
-          setVideoUsageToday(data.usageCount);
-        } else {
-          setVideoUsageToday(getVideoUsageToday() + 1);
-        }
+        // Update quota
+        if (Number.isFinite(data.usageCount)) setVideoUsageToday(data.usageCount);
+        else setVideoUsageToday(getVideoUsageToday() + 1);
         updateVideoUI();
 
-        // Build absolute URL
+        // Absolute URL
         const absUrl = data.videoUrl.startsWith("http")
-          ? data.videoUrl
-          : (window.location.origin + data.videoUrl);
+          ? data.videoUrl : (window.location.origin + data.videoUrl);
 
-        // Set up video player with <source> tag (required for Android/iOS)
-        if (player) {
-          player.pause();
-          while (player.firstChild) player.removeChild(player.firstChild);
-          player.removeAttribute("src");
-          player.load();
+        // Set video player using <source> tag (required for Android/iOS)
+        if (playerEl) {
+          playerEl.pause();
+          while (playerEl.firstChild) playerEl.removeChild(playerEl.firstChild);
+          playerEl.removeAttribute("src");
+          playerEl.load();
           const srcEl = document.createElement("source");
-          srcEl.src  = absUrl;
+          srcEl.src = absUrl;
           srcEl.type = "video/mp4";
-          player.appendChild(srcEl);
-          player.setAttribute("playsinline", "true");
-          player.setAttribute("webkit-playsinline", "true");
-          player.setAttribute("preload", "auto");
-          player.load();
-          player.onerror = () => {
-            if (status) status.innerHTML = `<i class="fas fa-circle-check"></i> Video ready Â· <a href="${absUrl}" target="_blank" style="color:var(--accent)">Tap here to open</a>`;
+          playerEl.appendChild(srcEl);
+          playerEl.setAttribute("playsinline", "true");
+          playerEl.setAttribute("webkit-playsinline", "true");
+          playerEl.setAttribute("preload", "auto");
+          playerEl.load();
+          playerEl.onerror = () => {
+            if (statusEl) statusEl.innerHTML = `<i class="fas fa-circle-check"></i> Ready Â· <a href="${absUrl}" target="_blank" style="color:#22d3ee;text-decoration:underline">Open video</a>`;
           };
         }
 
         // Download button
         const dlUrl = absUrl + (absUrl.includes("?") ? "&dl=1" : "?dl=1");
-        if (dl) {
-          dl.onclick = async (e) => {
+        if (dlEl) {
+          dlEl.onclick = async (e) => {
             e.preventDefault();
             try {
               showToast("Preparing download...", "success");
-              const resp = await fetch(dlUrl, {
-                headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
-              });
+              const resp = await fetch(dlUrl, { headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} });
               if (!resp.ok) throw new Error("Server error " + resp.status);
               const blob = await resp.blob();
               const a = document.createElement("a");
               a.href = URL.createObjectURL(blob);
               a.download = `jeethy-video-${Date.now()}.mp4`;
-              document.body.appendChild(a);
-              a.click();
+              document.body.appendChild(a); a.click();
               setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 1000);
               showToast("Download started! âœ“", "success");
             } catch(ex) { window.open(absUrl, "_blank"); }
           };
-          dl.href = dlUrl;
-          dl.style.opacity = "1";
-          dl.style.pointerEvents = "auto";
+          dlEl.href = dlUrl;
+          dlEl.style.opacity = "1";
+          dlEl.style.pointerEvents = "auto";
         }
 
-        if (status) status.innerHTML = `<i class="fas fa-circle-check"></i> ${data.message || "Video ready"} Â· Preview below`;
-        if (player) player.play().catch(() => {});
+        if (statusEl) statusEl.innerHTML = `<i class="fas fa-circle-check"></i> ${data.message || "Video ready"} Â· Preview below`;
+        if (playerEl) playerEl.play().catch(() => {});
         showToast("Video generated! âœ“", "success");
         return;
       }
 
-      // Still processing - update status message
-      if (status) {
-        const elapsed = Math.round(pollCount * 8);
-        status.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Generating... ${elapsed}s elapsed`;
+      // Still processing
+      if (statusEl) {
+        const elapsed = pollCount * 8;
+        statusEl.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Generating... ${elapsed}s`;
       }
-    } catch (err) {
-      console.warn("[video poll] error:", err.message);
-      // Don't stop polling on network blip - just continue
+    } catch (netErr) {
+      console.warn("[video poll] network error:", netErr.message);
+      // Continue polling on network blip
     }
   }, 8000);
 }
