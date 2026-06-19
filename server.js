@@ -414,7 +414,7 @@ function cleanLyricsText(raw) {
   if (!raw) return '';
   return String(raw)
     .replace(/music|bpm|duration|seconds?|tempo|key|time signature|mood|energy/gi, '')
-    .replace(/^[-Ã¢â‚¬â€\s]+/gm, '')
+    .replace(/^[-ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â\s]+/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
@@ -1754,7 +1754,7 @@ async function generateVideoVeo(key, prompt, aspectRatio, durationSeconds, start
 }
 
 /* =========================
-   VIDEO Ã¢â‚¬â€ Real Veo API
+   VIDEO ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Real Veo API
 ========================= */
 
 const videoUpload = multer({
@@ -1776,7 +1776,7 @@ app.post(
       const duration = String(req.body?.duration || '8s').trim();
       // Accept 'aspect', 'aspectRatio', or no-colon formats like '169'/'916'/'11'
       const aspect   = String(req.body?.aspect || req.body?.aspectRatio || '16:9').trim();
-      // Always use server-side plan from JWT Ã¢â‚¬â€ never trust client-sent plan
+      // Always use server-side plan from JWT ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â never trust client-sent plan
       // FIX: fetch plan from DB (JWT can be stale after upgrade)
       const plan = await getUserPlan(req.user.id);
       const startImage = req.files?.startImage?.[0] || null;
@@ -1796,7 +1796,7 @@ app.post(
       if (!refsAllowed && (startImage || endImage))
         return res.status(403).json({ error: 'Reference images require Pro, Pro+, or Max plan.' });
 
-      // Aspect ratio Ã¢â‚¬â€ support colon and no-colon formats
+      // Aspect ratio ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â support colon and no-colon formats
       const ASPECT_MAP = {
         '16:9': '16:9', '9:16': '9:16', '1:1': '1:1',
         '169':  '16:9', '916':  '9:16', '11':  '1:1',
@@ -1817,7 +1817,7 @@ app.post(
 
       const usageCount = incrementVideoUsage(userId, plan);
 
-      // FIX: Proxy video through server â€” don't expose API key to client
+      // FIX: Proxy video through server Ã¢â‚¬â€ don't expose API key to client
       const videoToken = require('crypto').randomBytes(16).toString('hex');
       _videoCache.set(videoToken, { uri: videoUri, key, expires: Date.now() + 60 * 60 * 1000 });
       const videoUrl = `/api/video/stream/${videoToken}`;
@@ -1857,34 +1857,62 @@ app.get('/api/video/stream/:token', async (req, res) => {
   }
   try {
     const targetUrl = entry.uri.includes('?') ? entry.uri : `${entry.uri}?key=${entry.key}`;
-    // Buffer full video to support Range requests (required for mobile browser playback)
-    const videoRes = await fetch(targetUrl);
-    if (!videoRes.ok) return res.status(502).json({ error: 'Failed to fetch video from Veo.' });
+    const isDownload = req.query.dl === '1';
+
+    // Fetch video buffer from Veo with timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+    let videoRes;
+    try {
+      videoRes = await fetch(targetUrl, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!videoRes.ok) {
+      const errText = await videoRes.text().catch(() => '');
+      console.error('[video/stream] Veo fetch failed:', videoRes.status, errText.slice(0, 200));
+      return res.status(502).json({ error: `Failed to fetch video from Veo (${videoRes.status}).` });
+    }
+
     const buffer = Buffer.from(await videoRes.arrayBuffer());
     const total  = buffer.length;
-    const rangeHeader = req.headers['range'];
+
+    if (total === 0) {
+      return res.status(502).json({ error: 'Empty video received from Veo.' });
+    }
+
+    // Set headers
     res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Access-Control-Allow-Headers', 'Range, Authorization');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('Content-Disposition', isDownload
+      ? 'attachment; filename="jeethy-video.mp4"'
+      : 'inline; filename="jeethy-video.mp4"');
+
+    const rangeHeader = req.headers['range'];
     if (rangeHeader) {
+      // Handle Range requests (required for iOS/Android seeking)
       const parts = rangeHeader.replace(/bytes=/, '').split('-');
-      const start  = parseInt(parts[0], 10);
-      const end    = parts[1] ? parseInt(parts[1], 10) : total - 1;
-      const chunk  = end - start + 1;
-      res.setHeader('Content-Range',  `bytes ${start}-${end}/${total}`);
+      const start = parseInt(parts[0], 10);
+      const end   = parts[1] ? parseInt(parts[1], 10) : total - 1;
+      const safeEnd = Math.min(end, total - 1);
+      const chunk = safeEnd - start + 1;
+      res.setHeader('Content-Range',  `bytes ${start}-${safeEnd}/${total}`);
       res.setHeader('Content-Length', chunk);
-      return res.status(206).end(buffer.slice(start, end + 1));
+      return res.status(206).end(buffer.slice(start, safeEnd + 1));
     } else {
       res.setHeader('Content-Length', total);
-      const isDownload = req.query.dl === "1";
-    res.setHeader('Content-Disposition', isDownload ? 'attachment; filename="jeethy-video.mp4"' : 'inline; filename="jeethy-video.mp4"');
       return res.status(200).end(buffer);
     }
   } catch (err) {
     console.error('[video/stream] error:', err.message);
-    res.status(500).json({ error: err.message || 'Stream error.' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message || 'Stream error.' });
+    }
   }
 });
 
