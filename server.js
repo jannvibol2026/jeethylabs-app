@@ -1823,7 +1823,10 @@ app.post(
 
       // Async job: submit Veo job and return jobId immediately
       const durStr2 = String(req.body?.duration || '8s').trim();
-      const durationSeconds = parseInt(durStr2, 10) || 8;
+      // Veo3 supported durations: 5, 8, 10 seconds
+      const durRaw = parseInt(durStr2.replace(/[^0-9]/g, ''), 10) || 8;
+      const ALLOWED_DURATIONS = [5, 8, 10];
+      const durationSeconds = ALLOWED_DURATIONS.includes(durRaw) ? durRaw : 8;
       let operationName = null, usedModel = null, lastErr2 = null;
       for (const model of VIDEO_MODELS_FALLBACK) {
         try {
@@ -1845,7 +1848,7 @@ app.post(
         } catch (e) { lastErr2 = e?.message || String(e); console.warn(`[video/generate] ${model} failed:`, lastErr2); }
       }
       if (!operationName) throw new Error(lastErr2 || 'All Veo models failed.');
-      const jobId = require('crypto').randomBytes(16).toString('hex');
+      const jobId = crypto.randomBytes(16).toString('hex');
       _videoJobs.set(jobId, {
         operationName, key, userId, plan, duration, model: usedModel,
         usedReferences: Boolean(startImage),
@@ -1876,7 +1879,7 @@ app.get('/api/video/status/:jobId', auth, async (req, res) => {
   try {
     const result = await checkVideoOperation(job.operationName, job.key);
     if (result.done) {
-      const videoToken = require('crypto').randomBytes(16).toString('hex');
+      const videoToken = crypto.randomBytes(16).toString('hex');
       _videoCache.set(videoToken, { uri: result.uri, key: job.key, expires: Date.now() + 2 * 60 * 60 * 1000 });
       const usageCount = incrementVideoUsage(job.userId, job.plan);
       job.status = 'done'; job.videoToken = videoToken;
