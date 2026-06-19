@@ -105,8 +105,15 @@
 
 
 <style>
-.panels-track{display:flex !important;width:400vw !important;will-change:transform;transition:transform .35s cubic-bezier(.4,0,.2,1) !important;}
-.panel{flex:0 0 100vw !important;width:100vw !important;max-width:100vw !important;min-width:0 !important;}
+/* Mobile only — desktop overridden by media query below */
+@media (max-width: 1023px) {
+  .panels-track{display:flex !important;width:400vw !important;will-change:transform;transition:transform .35s cubic-bezier(.4,0,.2,1) !important;}
+  .panel{flex:0 0 100vw !important;width:100vw !important;max-width:100vw !important;min-width:0 !important;}
+}
+@media (min-width: 1024px) {
+  .panels-track{display:grid !important;grid-template-columns:repeat(4,1fr) !important;width:100% !important;max-width:1600px !important;transform:none !important;transition:none !important;}
+  .panel{flex:unset !important;width:auto !important;max-width:none !important;min-width:0 !important;height:100% !important;overflow:hidden !important;}
+}
 </style>
 
 </head>
@@ -452,7 +459,6 @@
 
         <label class="field-label">DURATION</label>
         <div id="videoDurationChips" class="chip-row">
-          <button class="chip" data-value="5s" onclick="selectVideoDuration('5s',this)">5 seconds</button>
           <button class="chip active" data-value="8s" onclick="selectVideoDuration('8s',this)">8 seconds</button>
           <button class="chip" data-value="10s" onclick="selectVideoDuration('10s',this)">10 seconds</button>
         </div>
