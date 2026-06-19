@@ -479,13 +479,19 @@
           <div class="video-ref-block">
             <div class="video-ref-title">START FRAME</div>
             <div id="videoStartPreview" class="video-ref-preview">No file selected</div>
-            <input type="file" id="videoStartImage" accept="image/*" onchange="handleVideoRefUpload('start',event)">
+            <label class="video-upload-label" id="videoStartLabel">
+              <i class="fas fa-image"></i> Choose Start Image
+              <input type="file" id="videoStartImage" accept="image/*" onchange="handleVideoRefUpload('start',event)" style="display:none">
+            </label>
           </div>
           <div class="video-ref-divider"></div>
           <div class="video-ref-block video-ref-disabled">
             <div class="video-ref-title">END FRAME</div>
             <div id="videoEndPreview" class="video-ref-preview">No file selected</div>
-            <input type="file" id="videoEndImage" accept="image/*" onchange="handleVideoRefUpload('end',event)">
+            <label class="video-upload-label" id="videoEndLabel">
+              <i class="fas fa-image"></i> Choose End Image
+              <input type="file" id="videoEndImage" accept="image/*" onchange="handleVideoRefUpload('end',event)" style="display:none">
+            </label>
           </div>
         </div>
 
@@ -888,5 +894,8 @@
 </div>
 </div>
 </body>
-</html>     
-      
+    <div class="pp-section">
+        <div class="pp-section-title"><i class="fas fa-star"></i> PLAN FEATURES</div>
+        <div id="ppPlanFeatures" style="display:flex;flex-direction:column;gap:4px;padding:2px 0 4px;"></div>
+      </div>
+</html>
