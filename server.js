@@ -1692,26 +1692,43 @@ setInterval(() => {
 
 const VEO_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+// In-memory job store for async video polling
+const _videoJobs = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, job] of _videoJobs.entries()) {
+    if (job.expires < now) _videoJobs.delete(id);
+  }
+}, 5 * 60 * 1000);
+
+// Single non-blocking poll check
+async function checkVideoOperation(operationName, key) {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${key}`);
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(`Poll HTTP ${r.status}: ${t.slice(0, 300)}`);
+  }
+  const data = await r.json();
+  if (data.done) {
+    if (data.error) throw new Error(data.error.message || 'Veo operation error.');
+    const samples = data?.response?.generateVideoResponse?.generatedSamples;
+    if (!samples || !samples.length) throw new Error('No video samples returned from Veo.');
+    const uri = samples[0]?.video?.uri;
+    if (!uri) throw new Error('No video URI in Veo response.');
+    return { done: true, uri };
+  }
+  return { done: false };
+}
+
+// Legacy alias (unused now but kept for safety)
 async function pollVideoOperation(operationName, key, maxWaitMs = 300000) {
   const start = Date.now();
   while (Date.now() - start < maxWaitMs) {
     await new Promise(r => setTimeout(r, 8000));
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${key}`);
-    if (!r.ok) {
-      const t = await r.text();
-      throw new Error(`Poll HTTP ${r.status}: ${t.slice(0, 300)}`);
-    }
-    const data = await r.json();
-    if (data.done) {
-      if (data.error) throw new Error(data.error.message || 'Veo operation error.');
-      const samples = data?.response?.generateVideoResponse?.generatedSamples;
-      if (!samples || !samples.length) throw new Error('No video samples returned from Veo.');
-      const uri = samples[0]?.video?.uri;
-      if (!uri) throw new Error('No video URI in Veo response.');
-      return uri;
-    }
+    const result = await checkVideoOperation(operationName, key);
+    if (result.done) return result.uri;
   }
-  throw new Error('Video generation timed out (5 min). Please try again.');
+  throw new Error('Video generation timed out. Please try again.');
 }
 
 async function generateVideoVeo(key, prompt, aspectRatio, durationSeconds, startImageBuf, startImageMime, endImageBuf, endImageMime) {
@@ -1806,33 +1823,61 @@ app.post(
 
       console.log(`[video/generate] user=${userId} plan=${plan} prompt="${prompt.slice(0, 60)}" aspect=${aspectRatio}`);
 
-      // Call real Veo API
+      // Async job: submit Veo job, return jobId immediately (avoids Cloudflare 100s timeout)
       const durStr = String(req.body?.duration || '8s').trim();
-      const durationSeconds = parseInt(durStr, 10) || 8; // "8s"->8, "10s"->10
-      const { videoUri, model } = await generateVideoVeo(
-        key, prompt, aspectRatio, durationSeconds,
-        startImage?.buffer || null, startImage?.mimetype || null,
-        endImage?.buffer   || null, endImage?.mimetype   || null,
-      );
+      const durationSeconds = parseInt(durStr, 10) || 8;
 
-      const usageCount = incrementVideoUsage(userId, plan);
+      let operationName = null;
+      let usedModel = null;
+      let lastErr = null;
 
-      // FIX: Proxy video through server Ã¢â‚¬â€ don't expose API key to client
-      const videoToken = require('crypto').randomBytes(16).toString('hex');
-      _videoCache.set(videoToken, { uri: videoUri, key, expires: Date.now() + 60 * 60 * 1000 });
-      const videoUrl = `/api/video/stream/${videoToken}`;
+      for (const model of VIDEO_MODELS_FALLBACK) {
+        try {
+          const instance = { prompt };
+          if (startImage?.buffer) {
+            instance.image = {
+              bytesBase64Encoded: startImage.buffer.toString('base64'),
+              mimeType: startImage.mimetype || 'image/jpeg',
+            };
+          }
+          const parameters = { aspectRatio, sampleCount: 1, durationSeconds };
+          const r = await fetch(`${VEO_BASE}/models/${model}:predictLongRunning?key=${key}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ instances: [instance], parameters }),
+          });
+          const data = await r.json();
+          if (!r.ok) throw new Error(data?.error?.message || `HTTP ${r.status}`);
+          if (!data?.name) throw new Error('No operation name from Veo.');
+          operationName = data.name;
+          usedModel = model;
+          break;
+        } catch (err) {
+          lastErr = err?.message || String(err);
+          console.warn(`[video/generate] model ${model} failed:`, lastErr);
+        }
+      }
+      if (!operationName) throw new Error(lastErr || 'All Veo models failed.');
 
-      res.json({
-        ok: true,
-        message: 'Video generated successfully.',
-        duration,
+      // Store job for client polling
+      const jobId = require('crypto').randomBytes(16).toString('hex');
+      _videoJobs.set(jobId, {
+        operationName,
+        key,
+        userId,
         plan,
-        planLabel: plan === 'proplus' ? 'Pro+' : plan.charAt(0).toUpperCase() + plan.slice(1),
-        usageCount,
-        videoUrl,
+        duration,
         usedReferences: Boolean(startImage),
-        model,
+        model: usedModel,
+        status: 'processing',
+        videoToken: null,
+        error: null,
+        expires: Date.now() + 30 * 60 * 1000,
       });
+
+      console.log(`[video/generate] job created: ${jobId} op=${operationName}`);
+      // Return immediately - client will poll /api/video/status/:jobId
+      res.json({ ok: true, jobId, message: 'Video generating... please wait.' });
 
     } catch (err) {
       console.error('/api/video/generate error:', err);
@@ -1840,6 +1885,48 @@ app.post(
     }
   }
 );
+
+/* Poll video job status - client calls every 8s */
+app.get('/api/video/status/:jobId', auth, async (req, res) => {
+  const job = _videoJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found or expired. Please regenerate.' });
+
+  if (job.status === 'done') {
+    return res.json({ ok: true, status: 'done', videoUrl: `/api/video/stream/${job.videoToken}`,
+      duration: job.duration, plan: job.plan, usedReferences: job.usedReferences });
+  }
+  if (job.status === 'error') {
+    _videoJobs.delete(req.params.jobId);
+    return res.json({ ok: false, status: 'error', error: job.error });
+  }
+
+  // Check Veo operation status (single fast request ~200ms)
+  try {
+    const result = await checkVideoOperation(job.operationName, job.key);
+    if (result.done) {
+      const videoToken = require('crypto').randomBytes(16).toString('hex');
+      _videoCache.set(videoToken, { uri: result.uri, key: job.key, expires: Date.now() + 2 * 60 * 60 * 1000 });
+      const usageCount = incrementVideoUsage(job.userId, job.plan);
+      job.status = 'done';
+      job.videoToken = videoToken;
+      console.log(`[video/status] job done: ${req.params.jobId} token=${videoToken}`);
+      return res.json({
+        ok: true, status: 'done',
+        videoUrl: `/api/video/stream/${videoToken}`,
+        usageCount, duration: job.duration, plan: job.plan,
+        planLabel: job.plan === 'proplus' ? 'Pro+' : job.plan.charAt(0).toUpperCase() + job.plan.slice(1),
+        usedReferences: job.usedReferences, model: job.model,
+        message: 'Video generated successfully.',
+      });
+    }
+    return res.json({ ok: true, status: 'processing', message: 'Video is still generating...' });
+  } catch (err) {
+    job.status = 'error';
+    job.error = err.message;
+    console.error(`[video/status] job error:`, err.message);
+    return res.json({ ok: false, status: 'error', error: err.message });
+  }
+});
 
 /* =========================
    FALLBACK
@@ -1859,60 +1946,48 @@ app.get('/api/video/stream/:token', async (req, res) => {
     const targetUrl = entry.uri.includes('?') ? entry.uri : `${entry.uri}?key=${entry.key}`;
     const isDownload = req.query.dl === '1';
 
-    // Fetch video buffer from Veo with timeout
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+    const timeout = setTimeout(() => controller.abort(), 90000);
     let videoRes;
     try {
       videoRes = await fetch(targetUrl, { signal: controller.signal });
     } finally {
       clearTimeout(timeout);
     }
-
     if (!videoRes.ok) {
-      const errText = await videoRes.text().catch(() => '');
-      console.error('[video/stream] Veo fetch failed:', videoRes.status, errText.slice(0, 200));
       return res.status(502).json({ error: `Failed to fetch video from Veo (${videoRes.status}).` });
     }
 
     const buffer = Buffer.from(await videoRes.arrayBuffer());
     const total  = buffer.length;
+    if (total === 0) return res.status(502).json({ error: 'Empty video from Veo.' });
 
-    if (total === 0) {
-      return res.status(502).json({ error: 'Empty video received from Veo.' });
-    }
-
-    // Set headers
     res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Range, Authorization');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('Cache-Control', 'private, max-age=7200');
     res.setHeader('Content-Disposition', isDownload
       ? 'attachment; filename="jeethy-video.mp4"'
       : 'inline; filename="jeethy-video.mp4"');
 
     const rangeHeader = req.headers['range'];
     if (rangeHeader) {
-      // Handle Range requests (required for iOS/Android seeking)
       const parts = rangeHeader.replace(/bytes=/, '').split('-');
-      const start = parseInt(parts[0], 10);
-      const end   = parts[1] ? parseInt(parts[1], 10) : total - 1;
+      const start  = parseInt(parts[0], 10);
+      const end    = parts[1] ? parseInt(parts[1], 10) : total - 1;
       const safeEnd = Math.min(end, total - 1);
-      const chunk = safeEnd - start + 1;
+      const chunk  = safeEnd - start + 1;
       res.setHeader('Content-Range',  `bytes ${start}-${safeEnd}/${total}`);
       res.setHeader('Content-Length', chunk);
       return res.status(206).end(buffer.slice(start, safeEnd + 1));
-    } else {
-      res.setHeader('Content-Length', total);
-      return res.status(200).end(buffer);
     }
+    res.setHeader('Content-Length', total);
+    return res.status(200).end(buffer);
   } catch (err) {
     console.error('[video/stream] error:', err.message);
-    if (!res.headersSent) {
-      res.status(500).json({ error: err.message || 'Stream error.' });
-    }
+    if (!res.headersSent) res.status(500).json({ error: err.message || 'Stream error.' });
   }
 });
 
