@@ -1729,47 +1729,45 @@ async function pollVideoOperation(operationName, key, maxWaitMs = 300000) {
   throw new Error('Video generation timed out. Please try again.');
 }
 
-async function generateVideoVeo(key, prompt, aspectRatio, durationSeconds, startImageBuf, startImageMime, endImageBuf, endImageMime) {
+async function generateVideoVeo(key, prompt, aspectRatio, durationSeconds, startImageBuf, startImageMime) {
   let lastErr = null;
   for (const model of VIDEO_MODELS_FALLBACK) {
     try {
-      const instance = { prompt };
+      const durSec = Number.isFinite(durationSeconds) && durationSeconds > 0 ? durationSeconds : 8;
+      const instance = { prompt: String(prompt || '').normalize('NFC') };
       if (startImageBuf) {
         instance.image = {
           bytesBase64Encoded: startImageBuf.toString('base64'),
           mimeType: startImageMime || 'image/jpeg',
         };
       }
-      if (endImageBuf) {
-        console.warn('Ignoring end image for Veo request because this model configuration does not support lastFrame in the current app flow.');
-      }
-      const durSec = Number.isFinite(durationSeconds) && durationSeconds > 0 ? durationSeconds : 8;
-      const parameters = { aspectRatio: aspectRatio || '16:9', sampleCount: 1, durationSeconds: durSec };
-
-      const result = await withRetry(async () => {
-        const r = await fetch(`${VEO_BASE}/models/${model}:predictLongRunning?key=${key}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ instances: [instance], parameters }),
-        });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data?.error?.message || `HTTP ${r.status}`);
-        const operationName = data?.name;
-        if (!operationName) throw new Error('No operation name returned from Veo API.');
-        return operationName;
-      }, 3, 2000);
-      const videoUri = await pollVideoOperation(result, key);
-      return { videoUri, model };
+      const parameters = {
+        aspectRatio: aspectRatio || '16:9',
+        sampleCount: 1,
+        durationSeconds: durSec,
+        enhancePrompt: true,
+      };
+      const r = await fetch(`${VEO_BASE}/models/${model}:predictLongRunning?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({ instances: [instance], parameters }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error?.message || `HTTP ${r.status}`);
+      const operationName = data?.name;
+      if (!operationName) throw new Error('No operation name returned from Veo API.');
+      console.log(`[generateVideoVeo] model=${model} op=${operationName}`);
+      return operationName;
     } catch (err) {
       lastErr = err?.message || String(err);
-      console.warn(`Veo failed [${model}]:`, lastErr);
+      console.warn(`Veo [${model}] failed:`, lastErr);
     }
   }
   throw new Error(lastErr || 'All Veo models failed. Please try again.');
 }
 
 /* =========================
-   VIDEO ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Real Veo API
+   VIDEO â€” Real Veo API
 ========================= */
 
 const videoUpload = multer({
@@ -1782,84 +1780,70 @@ app.post(
   auth,
   videoUpload.fields([
     { name: 'startImage', maxCount: 1 },
-    { name: 'endImage', maxCount: 1 },
+    { name: 'endImage',   maxCount: 1 },
   ]),
   async (req, res) => {
     try {
-      const key = geminiKey();
-      const prompt   = String(req.body?.prompt || '').trim();
-      const duration = String(req.body?.duration || '8s').trim();
-      // Accept 'aspect', 'aspectRatio', or no-colon formats like '169'/'916'/'11'
-      const aspect   = String(req.body?.aspect || req.body?.aspectRatio || '16:9').trim();
-      // Always use server-side plan from JWT ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â never trust client-sent plan
-      // FIX: fetch plan from DB (JWT can be stale after upgrade)
-      const plan = await getUserPlan(req.user.id);
+      const key    = geminiKey();
+      const prompt = String(req.body?.prompt || '').trim();
+      const aspect = String(req.body?.aspect || req.body?.aspectRatio || '16:9').trim();
+      const plan   = await getUserPlan(req.user.id);
+      const userId = String(req.user?.id || req.user?.email || req.ip);
       const startImage = req.files?.startImage?.[0] || null;
-      const endImage   = req.files?.endImage?.[0]   || null;
 
       if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
 
       // Daily quota check
-      const limit  = VIDEO_DAILY_LIMITS[plan] ?? VIDEO_DAILY_LIMITS.free;
-      const userId = String(req.user?.id || req.user?.email || req.ip);
+      const limit   = VIDEO_DAILY_LIMITS[plan] ?? VIDEO_DAILY_LIMITS.free;
       const current = getVideoUsageCount(userId, plan);
       if (Number.isFinite(limit) && current >= limit)
-        return res.status(403).json({ error: `Daily video limit reached (${current}/${limit}). Please upgrade your plan.` });
+        return res.status(403).json({ error: `Daily video limit reached (${current}/${limit}). Please upgrade.` });
 
       // Reference images: Pro+ only
       const refsAllowed = ['pro', 'proplus', 'max'].includes(plan);
-      if (!refsAllowed && (startImage || endImage))
-        return res.status(403).json({ error: 'Reference images require Pro, Pro+, or Max plan.' });
+      if (!refsAllowed && startImage)
+        return res.status(403).json({ error: 'Reference images require Pro plan or above.' });
 
-      // Aspect ratio ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â support colon and no-colon formats
+      // Aspect ratio
       const ASPECT_MAP = {
         '16:9': '16:9', '9:16': '9:16', '1:1': '1:1',
         '169':  '16:9', '916':  '9:16', '11':  '1:1',
       };
-      const aspectKey   = aspect.replace(':', '');
-      const aspectRatio = ASPECT_MAP[aspect] || ASPECT_MAP[aspectKey] || '16:9';
+      const aspectRatio = ASPECT_MAP[aspect] || ASPECT_MAP[aspect.replace(':', '')] || '16:9';
 
-      console.log(`[video/generate] user=${userId} plan=${plan} prompt="${prompt.slice(0, 60)}" aspect=${aspectRatio}`);
+      // Duration: 5, 8, 10 seconds only (Veo 3 supported)
+      const durRaw = parseInt(String(req.body?.duration || '8').replace(/[^0-9]/g, ''), 10) || 8;
+      const durationSeconds = [5, 8, 10].includes(durRaw) ? durRaw : 8;
 
-      // Async job: submit Veo job and return jobId immediately
-      const durStr2 = String(req.body?.duration || '8s').trim();
-      // Veo3 supported durations: 5, 8, 10 seconds
-      const durRaw = parseInt(durStr2.replace(/[^0-9]/g, ''), 10) || 8;
-      const ALLOWED_DURATIONS = [5, 8, 10];
-      const durationSeconds = ALLOWED_DURATIONS.includes(durRaw) ? durRaw : 8;
-      let operationName = null, usedModel = null, lastErr2 = null;
-      for (const model of VIDEO_MODELS_FALLBACK) {
-        try {
-          const instance = { prompt };
-          if (startImage?.buffer) {
-            instance.image = { bytesBase64Encoded: startImage.buffer.toString('base64'), mimeType: startImage.mimetype || 'image/jpeg' };
-          }
-          const parameters = { aspectRatio, sampleCount: 1, durationSeconds };
-          const r = await fetch(`${VEO_BASE}/models/${model}:predictLongRunning?key=${key}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ instances: [instance], parameters }),
-          });
-          const d = await r.json();
-          if (!r.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
-          if (!d?.name) throw new Error('No operation name from Veo.');
-          operationName = d.name; usedModel = model;
-          console.log(`[video/generate] Veo job started op=${operationName} model=${model}`);
-          break;
-        } catch (e) { lastErr2 = e?.message || String(e); console.warn(`[video/generate] ${model} failed:`, lastErr2); }
-      }
-      if (!operationName) throw new Error(lastErr2 || 'All Veo models failed.');
+      console.log(`[video/generate] user=${userId} plan=${plan} dur=${durationSeconds}s aspect=${aspectRatio} prompt="${prompt.slice(0,60)}"`);
+
+      // Submit Veo job â€” returns operationName immediately (no blocking poll)
+      const operationName = await generateVideoVeo(
+        key, prompt, aspectRatio, durationSeconds,
+        startImage?.buffer || null,
+        startImage?.mimetype || null
+      );
+
+      // Store async job
       const jobId = crypto.randomBytes(16).toString('hex');
       _videoJobs.set(jobId, {
-        operationName, key, userId, plan, duration, model: usedModel,
+        operationName,
+        key,
+        userId,
+        plan,
+        duration: String(req.body?.duration || '8s'),
         usedReferences: Boolean(startImage),
-        status: 'processing', videoToken: null, error: null,
+        status: 'processing',
+        videoToken: null,
+        error: null,
         expires: Date.now() + 30 * 60 * 1000,
       });
-      res.json({ ok: true, jobId, message: 'Video job started.' });
 
-        } catch (err) {
-      console.error('/api/video/generate error:', err);
-      res.status(500).json({ error: err?.message || 'Video generation failed.' });
+      return res.json({ ok: true, jobId, message: 'Video job started.' });
+
+    } catch (err) {
+      console.error('[video/generate] error:', err.message);
+      return res.status(500).json({ error: err?.message || 'Video generation failed.' });
     }
   }
 );
