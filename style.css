@@ -1235,3 +1235,29 @@ audio{
 }
 .video-upload-label:hover { background: rgba(255,255,255,.12); }
 .video-ref-disabled .video-upload-label { opacity: .5; pointer-events: none; }
+
+/* ══ MOBILE: Video ref upload buttons always visible ══ */
+@media (max-width: 1023px) {
+  .video-ref-card {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: visible !important;
+  }
+  .video-upload-label {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 44px !important;
+    font-size: 13px !important;
+    padding: 10px 16px !important;
+  }
+  .video-ref-disabled .video-upload-label {
+    opacity: 0.45 !important;
+    pointer-events: none !important;
+  }
+  /* Ensure panel-video scrolls properly on mobile */
+  .panel-video .panel-inner-scroll {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
