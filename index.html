@@ -452,6 +452,7 @@
 
         <label class="field-label">DURATION</label>
         <div id="videoDurationChips" class="chip-row">
+          <button class="chip" data-value="5s" onclick="selectVideoDuration('5s',this)">5 seconds</button>
           <button class="chip active" data-value="8s" onclick="selectVideoDuration('8s',this)">8 seconds</button>
           <button class="chip" data-value="10s" onclick="selectVideoDuration('10s',this)">10 seconds</button>
         </div>
@@ -489,7 +490,14 @@
         <div id="videoResult" class="video-result-card">
           <div id="videoStatusText" class="video-status-pill">Preparing video…</div>
           <div class="video-player-shell">
-            <video id="videoPlayer" controls playsinline preload="metadata"></video>
+            <video id="videoPlayer" controls playsinline webkit-playsinline
+               preload="auto" muted
+               style="width:100%;display:block;background:#000;border-radius:10px;">
+              <p style="color:#9ca3af;font-size:13px;padding:16px;text-align:center;">
+                Your browser doesn't support HTML5 video.
+                <a id="videoFallbackLink" href="#" style="color:#22d3ee;">Download video</a>
+              </p>
+            </video>
           </div>
           <div class="video-actions">
             <a id="videoDownloadBtn" class="video-download-btn" download="jeethy-video.mp4">
@@ -799,10 +807,6 @@
         <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;">
           <div id="ppUsageBar" style="height:100%;border-radius:3px;width:0%;background:#a855f7;transition:width .6s;"></div>
         </div>
-        <div class="pp-section">
-        <div class="pp-section-title"><i class="fas fa-star"></i> PLAN FEATURES</div>
-        <div id="ppPlanFeatures" style="display:flex;flex-direction:column;gap:4px;padding:2px 0 4px;"></div>
-      </div>
       </div>
       <div class="pp-upgrade-banner" id="ppUpgradeBanner"
         onclick="closeProfileSheet();setTimeout(()=>openPlanModal(),200)">
@@ -878,4 +882,8 @@
 </div>
 </div>
 </body>
-</html>
+</html>      <div class="pp-section">
+        <div class="pp-section-title"><i class="fas fa-star"></i> PLAN FEATURES</div>
+        <div id="ppPlanFeatures" style="display:flex;flex-direction:column;gap:4px;padding:2px 0 4px;"></div>
+      </div>
+      
