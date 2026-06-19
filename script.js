@@ -746,9 +746,9 @@ function syncProfileSheet() {
   // Show plan features summary in profile
   const planFeatEl = document.getElementById("ppPlanFeatures");
   if (planFeatEl && P2) {
-    const chatLbl  = P2.chatMsg < 0 ? "âˆž" : P2.chatMsg;
-    const imgLbl   = P2.imgDay  < 0 ? "âˆž" : P2.imgDay;
-    const songLbl  = P2.songDay < 0 ? "âˆž" : P2.songDay;
+    const chatLbl  = P2.chatMsg < 0 ? "∞" : P2.chatMsg;
+    const imgLbl   = P2.imgDay  < 0 ? "∞" : P2.imgDay;
+    const songLbl  = P2.songDay < 0 ? "∞" : P2.songDay;
     planFeatEl.innerHTML = `
   <div style="overflow:hidden;">
     <div class="pp-feat-row"><i class="fas fa-comments"></i> Chat: <b>${chatLbl}/day</b></div>
@@ -2096,15 +2096,23 @@ async function generateVideo() {
     const status = document.getElementById("videoStatusText");
     const dl     = document.getElementById("videoDownloadBtn");
     if (player && data.videoUrl) {
-      player.pause();
-      player.removeAttribute("src");
-      player.removeAttribute("controlslist");
-      player.load();
-      player.src = data.videoUrl;
-      player.setAttribute("playsinline", "true");
-      player.setAttribute("webkit-playsinline", "true");
-      player.load();
-    }
+  player.pause();
+  // Clear old source
+  while (player.firstChild) player.removeChild(player.firstChild);
+  player.removeAttribute("src");
+  player.load();
+
+  // Add <source> element with explicit type for mobile compatibility
+  const src = document.createElement("source");
+  src.src  = data.videoUrl;
+  src.type = "video/mp4";
+  player.appendChild(src);
+
+  player.setAttribute("playsinline", "true");
+  player.setAttribute("webkit-playsinline", "true");
+  player.setAttribute("preload", "auto");
+  player.load();
+}
     if (dl && data.videoUrl) {
       dl.onclick = async (e) => {
         e.preventDefault();
