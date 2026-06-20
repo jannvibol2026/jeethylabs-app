@@ -914,7 +914,8 @@ audio{
 .video-ref-divider{height:1px;background:rgba(255,255,255,.08)}
 .video-ref-disabled{opacity:.58}
 .video-ref-disabled input{pointer-events:none}
-.video-generate-btn{margin-top:2px;background:linear-gradient(135deg,#22d3ee,#06b6d4)!important;color:#04131a!important;box-shadow:0 12px 24px rgba(34,211,238,.22)}
+.video-generate-btn{margin-top:8px;box-shadow:0 12px 24px rgba(34,211,238,.22)}
+.video-generate-btn i{color:#04131a!important}
 .video-generate-btn i{color:#04131a!important}
 .video-result-card{display:none;margin-top:6px;background:linear-gradient(180deg,rgba(22,24,34,.98),rgba(11,13,22,.98));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.24)}
 .video-status-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(34,211,238,.12);color:#a5f3fc;font-size:12px;font-weight:700;margin-bottom:12px}
