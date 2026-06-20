@@ -1702,7 +1702,12 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 async function checkVideoOperation(operationName, key) {
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${key}`);
+  const _ctrl = new AbortController();
+const _t = setTimeout(() => _ctrl.abort(), 15000);
+let r;
+try {
+  r = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${key}`, { signal: _ctrl.signal });
+} finally { clearTimeout(_t); }
   if (!r.ok) {
     const t = await r.text();
     throw new Error(`Poll HTTP ${r.status}: ${t.slice(0, 300)}`);
@@ -1747,11 +1752,19 @@ async function generateVideoVeo(key, prompt, aspectRatio, durationSeconds, start
         durationSeconds: durSec,
         enhancePrompt: true,
       };
-      const r = await fetch(`${VEO_BASE}/models/${model}:predictLongRunning?key=${key}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: JSON.stringify({ instances: [instance], parameters }),
-      });
+      const _veoCtrl = new AbortController();
+const _veoTimeout = setTimeout(() => _veoCtrl.abort(), 25000); // 25s max
+let r;
+try {
+  r = await fetch(`${VEO_BASE}/models/${model}:predictLongRunning?key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify({ instances: [instance], parameters }),
+    signal: _veoCtrl.signal,
+  });
+} finally {
+  clearTimeout(_veoTimeout);
+}
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error?.message || `HTTP ${r.status}`);
       const operationName = data?.name;
@@ -1852,6 +1865,12 @@ app.post(
 app.get('/api/video/status/:jobId', auth, async (req, res) => {
   const job = _videoJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: 'Job not found or expired. Please regenerate.' });
+
+  // ✅ FIX 4: Handle pending status (Veo not yet accepted)
+  if (job.status === 'pending') {
+    return res.json({ ok: true, status: 'processing', message: 'Submitting to Veo...' });
+  }
+
   if (job.status === 'done') {
     return res.json({ ok: true, status: 'done', videoUrl: `/api/video/stream/${job.videoToken}`,
       duration: job.duration, plan: job.plan, usedReferences: job.usedReferences });
