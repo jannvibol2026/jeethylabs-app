@@ -1703,11 +1703,11 @@ setInterval(() => {
 
 async function checkVideoOperation(operationName, key) {
   const _ctrl = new AbortController();
-const _t = setTimeout(() => _ctrl.abort(), 15000);
-let r;
-try {
-  r = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${key}`, { signal: _ctrl.signal });
-} finally { clearTimeout(_t); }
+  const _t = setTimeout(() => _ctrl.abort(), 15000);
+  let r;
+  try {
+    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${key}`, { signal: _ctrl.signal });
+  } finally { clearTimeout(_t); }
   if (!r.ok) {
     const t = await r.text();
     throw new Error(`Poll HTTP ${r.status}: ${t.slice(0, 300)}`);
@@ -1753,18 +1753,18 @@ async function generateVideoVeo(key, prompt, aspectRatio, durationSeconds, start
         enhancePrompt: true,
       };
       const _veoCtrl = new AbortController();
-const _veoTimeout = setTimeout(() => _veoCtrl.abort(), 25000); // 25s max
-let r;
-try {
-  r = await fetch(`${VEO_BASE}/models/${model}:predictLongRunning?key=${key}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json; charset=utf-8' },
-    body: JSON.stringify({ instances: [instance], parameters }),
-    signal: _veoCtrl.signal,
-  });
-} finally {
-  clearTimeout(_veoTimeout);
-}
+      const _veoTimeout = setTimeout(() => _veoCtrl.abort(), 25000);
+      let r;
+      try {
+        r = await fetch(`${VEO_BASE}/models/${model}:predictLongRunning?key=${key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          body: JSON.stringify({ instances: [instance], parameters }),
+          signal: _veoCtrl.signal,
+        });
+      } finally {
+        clearTimeout(_veoTimeout);
+      }
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error?.message || `HTTP ${r.status}`);
       const operationName = data?.name;
@@ -1830,27 +1830,35 @@ app.post(
 
       console.log(`[video/generate] user=${userId} plan=${plan} dur=${durationSeconds}s aspect=${aspectRatio} prompt="${prompt.slice(0,60)}"`);
 
-      // Submit Veo job â€” returns operationName immediately (no blocking poll)
-      const operationName = await generateVideoVeo(
-        key, prompt, aspectRatio, durationSeconds,
-        startImage?.buffer || null,
-        startImage?.mimetype || null
-      );
-
-      // Store async job
+      // ✅ FIX 3: Non-blocking — return jobId immediately, Veo runs in background
       const jobId = crypto.randomBytes(16).toString('hex');
       _videoJobs.set(jobId, {
-        operationName,
+        operationName: null,
         key,
         userId,
         plan,
         duration: String(req.body?.duration || '8s'),
         usedReferences: Boolean(startImage),
-        status: 'processing',
+        status: 'pending',
         videoToken: null,
         error: null,
         expires: Date.now() + 30 * 60 * 1000,
       });
+
+      // Submit Veo async (non-blocking — avoids Cloudflare 100s timeout / 502)
+      const _sBuf  = startImage?.buffer  || null;
+      const _sMime = startImage?.mimetype || null;
+      generateVideoVeo(key, prompt, aspectRatio, durationSeconds, _sBuf, _sMime)
+        .then(opName => {
+          const job = _videoJobs.get(jobId);
+          if (job) { job.operationName = opName; job.status = 'processing'; }
+          console.log(`[video/generate] jobId=${jobId} op=${opName}`);
+        })
+        .catch(err => {
+          const job = _videoJobs.get(jobId);
+          if (job) { job.status = 'error'; job.error = err.message; }
+          console.error(`[video/generate] Veo error: ${err.message}`);
+        });
 
       return res.json({ ok: true, jobId, message: 'Video job started.' });
 
