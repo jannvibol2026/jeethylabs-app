@@ -617,6 +617,8 @@ function onLoginSuccess(user, runPending) {
     renderPlanBadge();
     initSongPlanBadge();
     initPlanFeatures();
+    // Update video UI with correct plan AFTER login
+    setTimeout(updateVideoUI, 50);
   }
   updateNavAvatar(user);
   removeAuthGate();
@@ -2013,15 +2015,20 @@ function updateVideoUI() {
     }
   });
 
+  const s = document.getElementById("videoStartPreview");
+  const e = document.getElementById("videoEndPreview");
   if (!refsAllowed) {
     videoRefs.start = null;
     videoRefs.end = null;
-    const s = document.getElementById("videoStartPreview");
-    const e = document.getElementById("videoEndPreview");
-    if (s) s.textContent = "Upgrade to Pro to use start image";
-    if (e) e.textContent = "No file selected";
+    if (s && !s.querySelector("img")) s.textContent = "Available on Pro plan";
+    if (e && !e.querySelector("img")) e.textContent = "No file selected";
     if (startInput) startInput.value = "";
     if (endInput) endInput.value = "";
+  } else {
+    // PRO+ user - reset placeholder text if no image selected
+    if (s && !s.querySelector("img") && (s.textContent.includes("Upgrade") || s.textContent.includes("Pro"))) {
+      s.textContent = "No file selected";
+    }
   }
 }
 
@@ -2161,8 +2168,9 @@ async function generateVideo() {
         updateVideoUI();
 
         // Absolute URL
+        // Use relative URL to avoid VPN proxy/CDN host mismatch issues
         const absUrl = data.videoUrl.startsWith("http")
-          ? data.videoUrl : (window.location.origin + data.videoUrl);
+          ? data.videoUrl : data.videoUrl;  // keep relative /api/video/stream/token
 
         // Set video player - direct src for best mobile compatibility
         if (playerEl) {
@@ -2193,10 +2201,10 @@ async function generateVideo() {
                 <div style="font-size:40px;margin-bottom:12px;">🎬</div>
                 <p style="color:#e2e0dc;font-size:14px;font-weight:600;margin-bottom:6px;">Your video is ready!</p>
                 <p style="color:#9ca3af;font-size:12px;margin-bottom:16px;">Tap the button below to watch or download</p>
-                <a href="${absUrl}" target="_blank"
-                   style="display:inline-block;padding:13px 28px;background:#22d3ee;color:#000;font-weight:700;border-radius:12px;text-decoration:none;font-size:14px;margin-bottom:10px;width:100%;box-sizing:border-box;">
+                <button onclick="(function(){var a=document.createElement('a');a.href='${absUrl}';a.target='_blank';a.rel='noopener noreferrer';document.body.appendChild(a);a.click();document.body.removeChild(a);})()"
+                   style="display:block;padding:13px 28px;background:#22d3ee;color:#000;font-weight:700;border-radius:12px;text-decoration:none;font-size:14px;margin-bottom:10px;width:100%;box-sizing:border-box;border:none;cursor:pointer;">
                   ▶ Watch Video
-                </a>
+                </button>
               </div>`;
             }
           };
