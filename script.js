@@ -2068,7 +2068,7 @@ async function generateVideo() {
   if (!prompt) return showToast("Please enter a video prompt", "error");
 
   const remaining = getRemainingVideoQuota();
-  if (remaining <= 0) {
+    if (remaining <= 0) {
     showUpgradeModal();
     return;
   }
