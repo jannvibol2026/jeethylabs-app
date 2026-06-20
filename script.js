@@ -2074,7 +2074,7 @@ async function generateVideo() {
   }
 
   const refsAllowed = canUseVideoReferences();
-  if (!refsAllowed && (videoRefs.start || videoRefs.end)) {
+    if (remaining <= 0) {
     showUpgradeModal();
     return;
   }
