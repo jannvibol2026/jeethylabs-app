@@ -2069,15 +2069,13 @@ async function generateVideo() {
 
   const remaining = getRemainingVideoQuota();
   if (remaining <= 0) {
-    // ថ្មី:
-showUpgradeModal();
+        showUpgradeModal();
     return;
   }
 
   const refsAllowed = canUseVideoReferences();
   if (!refsAllowed && (videoRefs.start || videoRefs.end)) {
-    // ថ្មី:
-showUpgradeModal();
+        showUpgradeModal();
     return;
   }
 
