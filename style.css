@@ -1224,19 +1224,9 @@ audio{
   opacity: 1 !important;
 }
 
-/* Video upload label button */
-.video-upload-label {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 14px; border-radius: 10px; cursor: pointer;
-  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
-  color: #e2e0dc; font-size: 12px; font-weight: 600;
-  transition: background .2s; margin-top: 4px; width: 100%;
-  justify-content: center;
-}
-.video-upload-label:hover { background: rgba(255,255,255,.12); }
-.video-ref-disabled .video-upload-label { opacity: .5; pointer-events: none; }
 
-/* ══ MOBILE: Video ref upload buttons always visible ══ */
+
+
 @media (max-width: 1023px) {
   .video-ref-card {
     display: flex !important;
@@ -1260,4 +1250,136 @@ audio{
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
+}
+
+
+/* ════════════════════════════════════════════
+   UNIVERSAL RESPONSIVE FIX - All devices
+   ════════════════════════════════════════════ */
+
+/* --- Upload label always clickable --- */
+.video-upload-label {
+  display: flex !important;
+  visibility: visible !important;
+  min-height: 44px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  color: #e2e0dc;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 6px;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+.video-upload-label:active { background: rgba(255,255,255,.18) !important; }
+.video-ref-disabled .video-upload-label {
+  opacity: 0.45 !important;
+  pointer-events: none !important;
+}
+
+/* --- Video result section always visible --- */
+#videoResult { display: none; }
+#videoResult[style*="display: block"],
+#videoResult[style*="display:block"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* --- Tab bar always fixed bottom --- */
+.tab-bar {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 200 !important;
+}
+
+/* --- Panels correct on all screens --- */
+@media screen and (max-width: 1199px) {
+  .panels-wrap {
+    position: fixed !important;
+    top: var(--nav, 56px) !important;
+    bottom: var(--tab, 64px) !important;
+    left: 0 !important; right: 0 !important;
+    overflow: hidden !important;
+  }
+  .panels-track {
+    display: flex !important;
+    width: 400vw !important;
+    height: 100% !important;
+    transition: transform .35s cubic-bezier(.4,0,.2,1) !important;
+  }
+  .panel {
+    flex: 0 0 100vw !important;
+    width: 100vw !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+  .panel-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+  }
+  .panel-inner-scroll {
+    flex: 1 1 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+
+/* --- Desktop: 4 column layout --- */
+@media screen and (min-width: 1200px) {
+  .panels-wrap {
+    position: fixed !important;
+    top: var(--nav, 56px) !important;
+    bottom: 0 !important;
+    left: 0 !important; right: 0 !important;
+    overflow: hidden !important;
+  }
+  .panels-track {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    width: 100% !important;
+    height: 100% !important;
+    transform: none !important;
+  }
+  .panel {
+    flex: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    border-right: 1px solid rgba(255,255,255,.07);
+  }
+  .panel-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+  }
+  .panel-inner-scroll {
+    flex: 1 1 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+  }
+  .tab-bar { display: none !important; }
+  .nav-back-btn { display: none !important; }
+}
+
+/* --- Tablet: 2 column layout --- */
+@media screen and (min-width: 768px) and (max-width: 1199px) {
+  .panels-track {
+    display: flex !important;
+    width: 400vw !important;
+  }
+  .panel { flex: 0 0 100vw !important; }
 }
