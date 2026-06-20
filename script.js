@@ -2069,13 +2069,13 @@ async function generateVideo() {
 
   const remaining = getRemainingVideoQuota();
   if (remaining <= 0) {
-        showUpgradeModal();
+    showUpgradeModal();
     return;
   }
 
   const refsAllowed = canUseVideoReferences();
   if (!refsAllowed && (videoRefs.start || videoRefs.end)) {
-        showUpgradeModal();
+    showUpgradeModal();
     return;
   }
 
