@@ -4,7 +4,7 @@ const VIDEO_PLAN_LIMITS = { free: 1, pro: 3, proplus: 10, max: Infinity };
 const TOTAL_PANELS = 4;
 let videoDuration = "8s";
 let videoRefs = { start: null, end: null };
-
+let _videoUsageMem = { date: "", count: 0 };
 // ======================= MODELS =======================
 let GEMINI_CHAT_MODEL    = "gemini-2.5-flash";
 let GEMINI_IMAGE_MODELS  = [];
@@ -326,7 +326,7 @@ async function checkExistingSession() {
   try {
     const r = await fetch("/api/me", { credentials: "include" });
     if (r.ok) { const d = await r.json(); onLoginSuccess(d.user, false); return; }
-    const stored = localStorage.getItem("jl_token");
+    const stored = null; // localStorage blocked in sandbox
     if (stored) {
       authToken = stored;
       window._jlToken = stored;
@@ -336,7 +336,7 @@ async function checkExistingSession() {
         headers: { "Authorization": "Bearer " + stored }
       });
       if (r2.ok) { const d = await r2.json(); onLoginSuccess(d.user, false); }
-      else { localStorage.removeItem("jl_token"); authToken = null; }
+     else { authToken = null; }
     }
   } catch (e) {}
 }
@@ -537,7 +537,7 @@ async function submitOtp() {
     const data = await res.json();
     if (res.ok) {
       _otpPending = null;
-      if (data.token) { authToken = data.token; localStorage.setItem("jl_token", data.token); window._jlToken = data.token; window.authToken = data.token; }
+      if (data.token) { authToken = data.token; window._jlToken = data.token; window.authToken = data.token; }
       showAuthMsg("Welcome, " + data.user.name + "! Account created!", "success");
       setTimeout(() => onLoginSuccess(data.user, true), 900);
     } else { showAuthMsg(data.error || "Invalid or expired code.", "error"); }
@@ -599,7 +599,7 @@ async function submitLogin(e) {
     });
     const data = await res.json();
     if (res.ok) {
-      if (data.token) { authToken = data.token; localStorage.setItem("jl_token", data.token); window._jlToken = data.token; window.authToken = data.token; }
+      if (data.token) { authToken = data.token; window._jlToken = data.token; window.authToken = data.token; }
       showAuthMsg("Welcome back, " + data.user.name + "!", "success");
       setTimeout(() => onLoginSuccess(data.user, true), 800);
     } else { showAuthMsg(data.error || "Invalid email or password.", "error"); }
@@ -644,7 +644,7 @@ function onLoginSuccess(user, runPending) {
 async function doLogout() {
   currentUser = null; window.currentUser = null;
   authToken   = null;
-  localStorage.removeItem("jl_token");
+  // localStorage removed (blocked in sandbox)
   window._jlToken = null;
   window.authToken = null;
   userPlan    = "free";
@@ -1960,21 +1960,17 @@ function canUseVideoReferences(plan = userPlan) {
   return ["pro", "proplus", "max"].includes(plan);
 }
 
+// ថ្មី:
 function getVideoUsageToday() {
-  try {
-    const raw = localStorage.getItem("jl_video_usage") || "{}";
-    const data = JSON.parse(raw);
-    const today = new Date().toISOString().slice(0, 10);
-    if (data.date !== today) return 0;
-    return Number(data.count || 0);
-  } catch (_) {
-    return 0;
-  }
+  const today = new Date().toISOString().slice(0, 10);
+  if (_videoUsageMem.date !== today) return 0;
+  return _videoUsageMem.count || 0;
 }
 
+// ថ្មី:
 function setVideoUsageToday(count) {
   const today = new Date().toISOString().slice(0, 10);
-  localStorage.setItem("jl_video_usage", JSON.stringify({ date: today, count: Number(count || 0) }));
+  _videoUsageMem = { date: today, count: Number(count || 0) };
 }
 
 function getRemainingVideoQuota(plan = userPlan) {
@@ -2040,7 +2036,8 @@ function selectVideoDuration(value, el) {
 
 function handleVideoRefUpload(kind, event) {
   if (!canUseVideoReferences()) {
-    showUpgradeModal("pro", "Reference images require Pro, Pro+, or Max plan.");
+    // ថ្មី:
+     showUpgradeModal();
     if (event && event.target) event.target.value = "";
     return;
   }
@@ -2072,13 +2069,15 @@ async function generateVideo() {
 
   const remaining = getRemainingVideoQuota();
   if (remaining <= 0) {
-    showUpgradeModal(userPlan === "free" ? "pro" : "proplus", "You reached your daily video limit. Upgrade to continue generating more videos.");
+    // ថ្មី:
+showUpgradeModal();
     return;
   }
 
   const refsAllowed = canUseVideoReferences();
   if (!refsAllowed && (videoRefs.start || videoRefs.end)) {
-    showUpgradeModal("pro", "Reference images are available on Pro, Pro+, and Max only.");
+    // ថ្មី:
+showUpgradeModal();
     return;
   }
 
